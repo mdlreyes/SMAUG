@@ -127,6 +127,11 @@ def find_nearest_temp(temp):
 def getAtm(temp, logg, fe, alpha, directory):
 	"""Get path of *.atm file."""
 
+	temp  = temp
+	logg  = int(logg*10)
+	fe    = int(fe*10)
+	alpha = int(alpha*10)
+
 	filebase	= 't' + str(temp) + 'g_' + '{:02}'.format(logg)
 
 	# Note different sign conventions for [Fe/H], [alpha/Fe]
@@ -147,13 +152,13 @@ def getAtm(temp, logg, fe, alpha, directory):
 def readAtm(temp, logg, fe, alpha):
 	"""Read *.atm file."""
 
-	temp  = temp
-	logg  = int(logg*10)
-	fe    = int(fe*10)
-	alpha = int(alpha*10)
+	tempnew  = temp
+	loggnew  = int(logg*10)
+	fenew    = int(fe*10)
+	alphanew = int(alpha*10)
 
 	# Directory to read atmospheres from
-	directory	= '/raid/grid7/atmospheres/t' + str(temp) + '/g_' + '{:02}'.format(logg) + '/' 
+	directory	= '/raid/grid7/atmospheres/t' + str(tempnew) + '/g_' + '{:02}'.format(loggnew) + '/' 
 
 	# Atmosphere to read
 	filestr = getAtm(temp, logg, fe, alpha, directory)
@@ -198,6 +203,8 @@ def interpolateAtm(temp, logg, fe, alpha):
 
 	alphaUp = round_to(alphanew, 1, 'up')/10.
 	alphaDown = round_to(alphanew, 1, 'down')/10.
+
+	print(tempUp, tempDown, loggUp, loggDown, feUp, feDown, alphaUp, alphaDown)
 
 	# Check that points are within range of grid
 	if tempError:
@@ -319,7 +326,7 @@ def interpolateAtm(temp, logg, fe, alpha):
 
 		return flux
 
-def writeAtm(temp, logg, fe, alpha, dir='/raid/madlr', elements=None, abunds=None):
+def writeAtm(temp, logg, fe, alpha, dir='/raid/madlr/', elements=None, abunds=None):
 	"""Create *.atm file
 
     Inputs:
@@ -335,7 +342,7 @@ def writeAtm(temp, logg, fe, alpha, dir='/raid/madlr', elements=None, abunds=Non
     """
 
 	# Atmosphere to write
-	filestr = getAtm(temp, logg, fe, alpha, directory)
+	filestr = getAtm(temp, logg, fe, alpha, dir)
 	printstr = str(temp) + './' + ('%.2f' % float(logg)) + '/' + ('%5.2f' % float(fe)) + '/' + ('%5.2f' % float(alpha))
 
 	# Check if file already exists
@@ -348,7 +355,7 @@ def writeAtm(temp, logg, fe, alpha, dir='/raid/madlr', elements=None, abunds=Non
 
 		# Header text
 		#############
-		headertxt = s('KURUCZ\n' +
+		headertxt = str('KURUCZ\n' +
 					printstr +
 					'\nntau=      72')
 
@@ -359,7 +366,7 @@ def writeAtm(temp, logg, fe, alpha, dir='/raid/madlr', elements=None, abunds=Non
 		# If not adding any elements, use default NATOMS footer
 		if elements is None:
 			natoms = 6
-			atomstxt = s( ('%.3E' % microturbvel) +
+			atomstxt = str( ('%.3E' % microturbvel) +
 					'\nNATOMS    ' + str(natoms) + '   ' + ('%5.2f' % float(fe)) +
 					'\n      12      ' + ('%5.2f' % float(7.38 + fe)) +
 					'\n      14      ' + ('%5.2f' % float(7.35 + fe)) +
@@ -375,7 +382,7 @@ def writeAtm(temp, logg, fe, alpha, dir='/raid/madlr', elements=None, abunds=Non
 
 		else:
 			natoms = 6 + len(elements)
-			atomstxt = s( ('%.3E' % microturbvel) +
+			atomstxt = str( ('%.3E' % microturbvel) +
 					'\nNATOMS    ' + str(natoms) + '   ' + ('%5.2f' % float(fe)) +
 					'\n      12      ' + ('%5.2f' % float(7.38 + fe)) +
 					'\n      14      ' + ('%5.2f' % float(7.35 + fe)) +
@@ -386,11 +393,11 @@ def writeAtm(temp, logg, fe, alpha, dir='/raid/madlr', elements=None, abunds=Non
 
 			# Add the new elements
 			for i in range(len(elements)):
-				atomstxt = s( atomstxt + 
+				atomstxt = str( atomstxt + 
 					'\n      '+str(elements[i])+'      ' + ('%5.2f' % float(abunds[i])) )
 
 		# Create final footer by adding NMOL footer to NATOMS footer
-		footertxt = s( atomstxt +
+		footertxt = str( atomstxt +
 					'\nNMOL       15' +
 					'\n   101.0   106.0   107.0   108.0   606.0   607.0   608.0   707.0' +
 					'\n   708.0   808.0 10108.0 60808.0     6.1     7.1     8.1' )
@@ -399,10 +406,10 @@ def writeAtm(temp, logg, fe, alpha, dir='/raid/madlr', elements=None, abunds=Non
 		###########
 		np.savetxt(filestr, atmosphere, header=headertxt, delimiter=' ', 
 			fmt=['%10.9E','%9.1f','%10.4E','%10.4E','%10.4E','%10.4E','%10.4E'],
-			footer=footertxt)
+			footer=footertxt, comments='')
 
 		return filestr
 
 #print( readAtm(temp=7000, logg=1.0, fe=-0.5, alpha=0.5) )
 #print( interpolateAtm(temp=6900, logg=3.0, fe=-0.5, alpha=0.5) )
-#writeAtm(temp=6900, logg=0.1, fe=-0.5, alpha=0.5)
+writeAtm(temp=5900, logg=0.1, fe=-0.5, alpha=0.5)

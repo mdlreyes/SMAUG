@@ -10,6 +10,8 @@
 import os
 import numpy as np
 import math
+
+linelists = np.array(['linelist_Mn4754','linelist_Mn4783','linelist_Mn4823','linelist_Mn5394','linelist_Mn5537','linelist_Mn60136021'])
 	
 def createPar(name, atmfile, linelist, directory=''):
 	"""Create *.par file using *.atm file and linelist."""
@@ -50,3 +52,7 @@ def createPar(name, atmfile, linelist, directory=''):
 			file.write('synlimits'+'\n')
 			file.write('  '+'{0:.3f}'.format(wavelengthrange[0])+' '+'{0:.3f}'.format(wavelengthrange[1])+'  0.01  1.00'+'\n')
 			file.write('obspectrum    0')
+
+for i in range(len(linelists)):
+	filestr = 'raid/madlr'+
+	createPar()
