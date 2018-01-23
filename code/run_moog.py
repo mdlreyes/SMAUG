@@ -4,6 +4,7 @@
 # - createPar: for a given *.atm file and linelist, output *.par file
 # 
 # Created 4 Jan 18
+# Updated 22 Jan 18
 ###################################################################
 
 import os
@@ -17,7 +18,8 @@ def createPar(name, atmfile, linelist, directory=''):
 	filestr = directory + name + '.par'
 
 	# Open linelist and get wavelength range to synthesize spectrum
-	XXXXXXXX IN PROGRESS XXXXXXXX
+	wavelengths = np.genfromtxt(linelist, skip_header=1, usecols=0)
+	wavelengthrange = [ math.floor(wavelengths[0]),math.ceil(wavelegnths[-1]) ]
 
 	# Check if file already exists
 	exists, readytowrite = checkFile(filestr)
@@ -46,5 +48,5 @@ def createPar(name, atmfile, linelist, directory=''):
 			file.write('flux/int      0'+'\n')
 			file.write('plot          0'+'\n')
 			file.write('synlimits'+'\n')
-			file.write('  4000.000 6030.000  0.02  1.00'+'\n')
+			file.write('  '+'{0:.3f}'.format(wavelengthrange[0])+' '+'{0:.3f}'.format(wavelengthrange[1])+'  0.01  1.00'+'\n')
 			file.write('obspectrum    0')
