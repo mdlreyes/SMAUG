@@ -13,7 +13,7 @@
 # - writeAtm: given atmosphere, put contents into a *.atm file
 # 
 # Created 2 Nov 17
-# Updated 4 Jan 18
+# Updated 22 Jan 18
 ###################################################################
 
 import os
@@ -149,7 +149,7 @@ def readAtm(temp, logg, fe, alpha):
 
 	temp  = temp
 	logg  = int(logg*10)
-	fe 	  = int(fe*10)
+	fe    = int(fe*10)
 	alpha = int(alpha*10)
 
 	# Directory to read atmospheres from
@@ -181,23 +181,23 @@ def interpolateAtm(temp, logg, fe, alpha):
     """
 
 	# Change input parameters to correct format for filenames
-	#temp  = temp
-	#logg  = int(logg*10)
-	#fe 	  = int(fe*10)
-	#alpha = int(alpha*10)
+	tempnew  = temp
+	loggnew  = logg*10
+	fenew 	 = fe*10
+	alphanew = alpha*10
 
 	# Get nearest gridpoints for each parameter
-	tempUp, tempDown, tempError = find_nearest_temp(temp)
+	tempUp, tempDown, tempError = find_nearest_temp(tempnew)
 
-	loggUp = round_to(logg, 0.5, 'up')
-	loggDown = round_to(logg, 0.5, 'down')
+	loggUp = round_to(loggnew, 5, 'up')/10.
+	loggDown = round_to(loggnew, 5, 'down')/10.
 
-	feUp = round_to(fe, 0.1, 'up')
-	feDown = round_to(fe, 0.1, 'down')
+	feUp = round_to(fenew, 1, 'up')/10.
+	feDown = round_to(fenew, 1, 'down')/10.
 
 
-	alphaUp = round_to(alpha, 0.1, 'up')
-	alphaDown = round_to(alpha, 0.1, 'down')
+	alphaUp = round_to(alphanew, 1, 'up')/10.
+	alphaDown = round_to(alphanew, 1, 'down')/10.
 
 	# Check that points are within range of grid
 	if tempError:
@@ -217,7 +217,7 @@ def interpolateAtm(temp, logg, fe, alpha):
 		return
 
 	# Grid isn't uniform, so do additional checks to make sure points are within range of grid
-	elif logg < 0.5 and temp >= 7000:
+	elif ((loggUp < 0.5) or (loggDown < 0.5)) and ((tempUp >= 7000) or (tempDown >= 7000)):
 		print('Error: T = ' + str(temp) + ' and log(g) = ' + str(logg) + ' out of range!')
 		return
 
@@ -228,13 +228,13 @@ def interpolateAtm(temp, logg, fe, alpha):
 	# If within grid, interpolate
 	else:
 		print('Interpolating: ')
-		print('Temps = ', tempUp, tempDown)
+		print('temp = ', tempUp, tempDown)
 		print('logg = ', loggUp, loggDown)
 		print('fe = ', feUp, feDown)
 		print('alpha = ', alphaUp, alphaDown)
 
 		# Comment out for actual run
-		return
+		#return
 		
 		# Calculate intervals for each variable
 		# (quantities needed for interpolation)
@@ -246,42 +246,42 @@ def interpolateAtm(temp, logg, fe, alpha):
 
 			# If so, interpolation interval is just one point,
 			# so interval is just one point, and delta(T) and n(T) are both 1
-			tempInterval = [temp]
-			tempDelta 	 = [1]
+			tempInterval = np.array([temp])
+			tempDelta 	 = np.array([1])
 			nTemp 		 = 1
 
 		## If not, then input temp is between two grid points
 		else:
-			tempInterval = [tempDown, tempUp]
-			tempDelta	 = np.absolute([tempUp, tempDown] - temp)
+			tempInterval = np.array([tempDown, tempUp])
+			tempDelta	 = np.absolute(np.array([tempUp, tempDown]) - temp)
 			nTemp 		 = 2
 
 		# Repeat for other variables:
 		if loggUp == loggDown:
-			loggInterval = [logg]
-			loggDelta 	 = [1]
+			loggInterval = np.array([logg])
+			loggDelta 	 = np.array([1])
 			nLogg		 = 1
 		else:
-			loggInterval = [loggDown, loggUp]
-			loggDelta	 = np.absolute([loggUp, loggDown] - logg)
+			loggInterval = np.array([loggDown, loggUp])
+			loggDelta	 = np.absolute(np.array([loggUp, loggDown]) - logg)
 			nLogg 		 = 2
 
 		if feUp == feDown:
-			feInterval	= [fe]
-			feDelta 	= [1]
+			feInterval	= np.array([fe])
+			feDelta 	= np.array([1])
 			nFe		 	= 1
 		else:
-			feInterval	= [feDown, feUp]
-			feDelta		= np.absolute([feUp, feDown] - fe)
+			feInterval	= np.array([feDown, feUp])
+			feDelta		= np.absolute(np.array([feUp, feDown]) - fe)
 			nFe 		= 2
 
 		if alphaUp == alphaDown:
-			alphaInterval	= [alpha]
-			alphaDelta 		= [1]
+			alphaInterval	= np.array([alpha])
+			alphaDelta 		= np.array([1])
 			nAlpha	 		= 1
 		else:
-			alphaInterval	= [alphaDown, alphaUp]
-			alphaDelta		= np.absolute([alphaUp, alphaDown] - alpha)
+			alphaInterval	= np.array([alphaDown, alphaUp])
+			alphaDelta		= np.absolute(np.array([alphaUp, alphaDown]) - alpha)
 			nAlpha 			= 2
 
 		# Do interpolation!
@@ -292,7 +292,8 @@ def interpolateAtm(temp, logg, fe, alpha):
 					for n in range(nAlpha):
 
 						# Read in grid point (atmosphere file)
-						iflux = read_atm(tempInterval[i],loggInterval[j],feInterval[m],alphaInterval[n])[:,0]
+						iflux = readAtm(tempInterval[i],loggInterval[j],feInterval[m],alphaInterval[n]) #[:,0]
+						#print(iflux)
 
 						# Compute weighted sum of grid points
 						## If first iteration, initialize flux as weighted value of lowest grid point 
@@ -343,13 +344,13 @@ def writeAtm(temp, logg, fe, alpha, dir='/raid/madlr', elements=None, abunds=Non
 
 		# Get atmosphere data
 		#####################
-		atmosphere = interpolateSpectrum(temp,logg,fe,alpha)
+		atmosphere = interpolateAtm(temp,logg,fe,alpha)
 
 		# Header text
 		#############
-		headertxt = 'KURUCZ\n' +
+		headertxt = s('KURUCZ\n' +
 					printstr +
-					'\nntau=      72'
+					'\nntau=      72')
 
 		# Footer text
 		#############
@@ -358,14 +359,14 @@ def writeAtm(temp, logg, fe, alpha, dir='/raid/madlr', elements=None, abunds=Non
 		# If not adding any elements, use default NATOMS footer
 		if elements is None:
 			natoms = 6
-			atomstxt = ('%.3E' % microturbvel) +
+			atomstxt = s( ('%.3E' % microturbvel) +
 					'\nNATOMS    ' + str(natoms) + '   ' + ('%5.2f' % float(fe)) +
 					'\n      12      ' + ('%5.2f' % float(7.38 + fe)) +
 					'\n      14      ' + ('%5.2f' % float(7.35 + fe)) +
 					'\n      16      ' + ('%5.2f' % float(7.01 + fe)) +
 					'\n      18      ' + ('%5.2f' % float(6.36 + fe)) +
 					'\n      20      ' + ('%5.2f' % float(6.16 + fe)) +
-					'\n      22      ' + ('%5.2f' % float(4.79 + fe))
+					'\n      22      ' + ('%5.2f' % float(4.79 + fe)) )
 
 		# If adding elements, first make sure that number of elements matches number of abundances
 		elif len(elements) != len(abunds):
@@ -374,25 +375,25 @@ def writeAtm(temp, logg, fe, alpha, dir='/raid/madlr', elements=None, abunds=Non
 
 		else:
 			natoms = 6 + len(elements)
-			atomstxt = ('%.3E' % microturbvel) +
+			atomstxt = s( ('%.3E' % microturbvel) +
 					'\nNATOMS    ' + str(natoms) + '   ' + ('%5.2f' % float(fe)) +
 					'\n      12      ' + ('%5.2f' % float(7.38 + fe)) +
 					'\n      14      ' + ('%5.2f' % float(7.35 + fe)) +
 					'\n      16      ' + ('%5.2f' % float(7.01 + fe)) +
 					'\n      18      ' + ('%5.2f' % float(6.36 + fe)) +
 					'\n      20      ' + ('%5.2f' % float(6.16 + fe)) +
-					'\n      22      ' + ('%5.2f' % float(4.79 + fe))
+					'\n      22      ' + ('%5.2f' % float(4.79 + fe)) )
 
 			# Add the new elements
 			for i in range(len(elements)):
-				atomstxt = atomstxt + 
-					'\n      '+str(elements[i])+'      ' + ('%5.2f' % float(abunds[i]))
+				atomstxt = s( atomstxt + 
+					'\n      '+str(elements[i])+'      ' + ('%5.2f' % float(abunds[i])) )
 
 		# Create final footer by adding NMOL footer to NATOMS footer
-		footertxt = atomstxt +
+		footertxt = s( atomstxt +
 					'\nNMOL       15' +
 					'\n   101.0   106.0   107.0   108.0   606.0   607.0   608.0   707.0' +
-					'\n   708.0   808.0 10108.0 60808.0     6.1     7.1     8.1'
+					'\n   708.0   808.0 10108.0 60808.0     6.1     7.1     8.1' )
 
 		# Save file
 		###########
@@ -402,5 +403,6 @@ def writeAtm(temp, logg, fe, alpha, dir='/raid/madlr', elements=None, abunds=Non
 
 		return filestr
 
-test = interpolateSpectrum(temp=6900, logg=0.1, fe=-0.5, alpha=0.5)
-writeAtm(temp=6900, logg=0.1, fe=-0.5, alpha=0.5)
+#print( readAtm(temp=7000, logg=1.0, fe=-0.5, alpha=0.5) )
+#print( interpolateAtm(temp=6900, logg=3.0, fe=-0.5, alpha=0.5) )
+#writeAtm(temp=6900, logg=0.1, fe=-0.5, alpha=0.5)
