@@ -326,7 +326,7 @@ def interpolateAtm(temp, logg, fe, alpha):
 
 		return flux
 
-def writeAtm(temp, logg, fe, alpha, dir='/raid/madlr/', elements=None, abunds=None):
+def writeAtm(temp, logg, fe, alpha, dir='/raid/madlr/atm/', elements=None, abunds=None):
 	"""Create *.atm file
 
     Inputs:
@@ -337,12 +337,13 @@ def writeAtm(temp, logg, fe, alpha, dir='/raid/madlr/', elements=None, abunds=No
 
     Keywords:
     dir 	 -- directory to write atmospheres to [default = '/raid/madlr']
-    elements -- list of elements to add to the list of atoms
+    elements -- list of atomic numbers of elements to add to the list of atoms
     abunds 	 -- list of elemental abundances corresponding to list of elements
     """
 
 	# Atmosphere to write
 	filestr = getAtm(temp, logg, fe, alpha, dir)
+	filestr = filestr[:-4] # Remove '.atm' (in case additional elements need to be added to name)
 	printstr = str(temp) + './' + ('%.2f' % float(logg)) + '/' + ('%5.2f' % float(fe)) + '/' + ('%5.2f' % float(alpha))
 
 	# Check if file already exists
@@ -396,6 +397,19 @@ def writeAtm(temp, logg, fe, alpha, dir='/raid/madlr/', elements=None, abunds=No
 				atomstxt = str( atomstxt + 
 					'\n      '+str(elements[i])+'      ' + ('%5.2f' % float(abunds[i])) )
 
+				# Also add new elements to filename
+				abund = int(abunds[i]*10)
+				if elements[i] == 25:
+					elementname = 'mn'
+
+				# Note different sign conventions for abundances
+				if abund < 0:
+					elementstr 	= elementname + '{:03}'.format(abund)
+				else:
+					elementstr	= elementname + '_' + '{:02}'.format(abund)
+
+				filestr = filestr + elementstr
+
 		# Create final footer by adding NMOL footer to NATOMS footer
 		footertxt = str( atomstxt +
 					'\nNMOL       15' +
@@ -404,12 +418,12 @@ def writeAtm(temp, logg, fe, alpha, dir='/raid/madlr/', elements=None, abunds=No
 
 		# Save file
 		###########
-		np.savetxt(filestr, atmosphere, header=headertxt, delimiter=' ', 
+		np.savetxt(filestr+'.atm', atmosphere, header=headertxt, delimiter=' ', 
 			fmt=['%10.9E','%9.1f','%10.4E','%10.4E','%10.4E','%10.4E','%10.4E'],
 			footer=footertxt, comments='')
 
-		return filestr
+		return filestr+'.atm'
 
 #print( readAtm(temp=7000, logg=1.0, fe=-0.5, alpha=0.5) )
 #print( interpolateAtm(temp=6900, logg=3.0, fe=-0.5, alpha=0.5) )
-writeAtm(temp=5900, logg=0.1, fe=-0.5, alpha=0.5)
+writeAtm(temp=5900, logg=0.1, fe=-0.5, alpha=0.5, elements=[25], abunds=[0.5])

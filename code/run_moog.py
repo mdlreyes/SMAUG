@@ -10,6 +10,7 @@
 import os
 import numpy as np
 import math
+from interp_atmosphere import *
 
 linelists = np.array(['linelist_Mn4754','linelist_Mn4783','linelist_Mn4823','linelist_Mn5394','linelist_Mn5537','linelist_Mn60136021'])
 	
@@ -28,8 +29,8 @@ def createPar(name, atmfile, linelist, directory=''):
 	if readytowrite:
 
 		# Outfile names:
-		out1 = '\''+directory+'/'+name+'.out1\''
-		out2 = '\''+directory+'/'+name+'.out2\''
+		out1 = '\''+directory+name+'.out1\''
+		out2 = '\''+directory+name+'.out2\''
 
 		# If file exists, open file
 		with open(filestr, 'wr') as file:
@@ -53,6 +54,54 @@ def createPar(name, atmfile, linelist, directory=''):
 			file.write('  '+'{0:.3f}'.format(wavelengthrange[0])+' '+'{0:.3f}'.format(wavelengthrange[1])+'  0.01  1.00'+'\n')
 			file.write('obspectrum    0')
 
-for i in range(len(linelists)):
-	filestr = 'raid/madlr'+
-	createPar()
+def runMoog(temp, logg, fe, alpha, directory='/raid/madlr/moogspectra/', elements=None, abunds=None):
+	"""Run MOOG for each Mn linelist.
+
+    Inputs:
+    temp 	 -- effective temperature (K)
+    logg 	 -- surface gravity
+    fe 		 -- [Fe/H]
+    alpha 	 -- [alpha/Fe]
+
+    Keywords:
+    dir 	 -- directory to write MOOG output to [default = '/raid/madlr/moogspectra/']
+    elements -- list of atomic numbers of elements to add to the *.atm file
+    abunds 	 -- list of elemental abundances corresponding to list of elements
+    """
+
+
+	# Create identifying filename (including all parameters + linelist used)
+	name = getAtm(temp, logg, fe, alpha, directory) # Add all parameters to name
+	name = name[:-4] # remove .atm
+
+	# Add the new elements to filename, if any
+	if elements not None:
+
+		for i in range(len(elements)):
+
+			abund = int(abunds[i]*10)
+			if elements[i] == 25:
+				elementname = 'mn'
+
+			# Note different sign conventions for abundances
+			if abund < 0:
+				elementstr 	= elementname + '{:03}'.format(abund)
+			else:
+				elementstr	= elementname + '_' + '{:02}'.format(abund)
+
+			name = name + elementstr
+
+	# Create *.atm file (for use with each linelist)
+	atmfile = writeAtm(temp=5900, logg=0.1, fe=-0.5, alpha=0.5, elements=[25], abunds=[0.5])
+
+	# Loop over all linelists
+	for i in range(len(linelists)):
+
+		# Create *.par file
+		createPar(name, atmfile, linelists[i], directory='/raid/madlr/par/')
+
+		# Run MOOG
+
+	return 
+
+runMoog(temp=5900, logg=0.1, fe=-0.5, alpha=0.5, elements=[25], abunds=[0.5])
