@@ -22,7 +22,7 @@ def createPar(name, atmfile, linelist, directory=''):
 
 	# Open linelist and get wavelength range to synthesize spectrum
 	wavelengths = np.genfromtxt(linelist, skip_header=1, usecols=0)
-	wavelengthrange = [ math.floor(wavelengths[0]),math.ceil(wavelegnths[-1]) ]
+	wavelengthrange = [ math.floor(wavelengths[0]),math.ceil(wavelengths[-1]) ]
 
 	# Check if file already exists
 	exists, readytowrite = checkFile(filestr)
@@ -33,7 +33,7 @@ def createPar(name, atmfile, linelist, directory=''):
 		out2 = '\''+directory+name+'.out2\''
 
 		# If file exists, open file
-		with open(filestr, 'wr') as file:
+		with open(filestr, 'w+') as file:
 
 			# Print lines of .par file
 			file.write('synth'+'\n')
@@ -54,6 +54,8 @@ def createPar(name, atmfile, linelist, directory=''):
 			file.write('  '+'{0:.3f}'.format(wavelengthrange[0])+' '+'{0:.3f}'.format(wavelengthrange[1])+'  0.01  1.00'+'\n')
 			file.write('obspectrum    0')
 
+	return filestr
+
 def runMoog(temp, logg, fe, alpha, directory='/raid/madlr/moogspectra/', elements=None, abunds=None):
 	"""Run MOOG for each Mn linelist.
 
@@ -71,11 +73,11 @@ def runMoog(temp, logg, fe, alpha, directory='/raid/madlr/moogspectra/', element
 
 
 	# Create identifying filename (including all parameters + linelist used)
-	name = getAtm(temp, logg, fe, alpha, directory) # Add all parameters to name
+	name = getAtm(temp, logg, fe, alpha, directory='') # Add all parameters to name
 	name = name[:-4] # remove .atm
 
 	# Add the new elements to filename, if any
-	if elements not None:
+	if elements is not None:
 
 		for i in range(len(elements)):
 
@@ -97,11 +99,15 @@ def runMoog(temp, logg, fe, alpha, directory='/raid/madlr/moogspectra/', element
 	# Loop over all linelists
 	for i in range(len(linelists)):
 
+		parname = name + '_' + linelists[i][9:]
+
 		# Create *.par file
-		createPar(name, atmfile, linelists[i], directory='/raid/madlr/par/')
+		parfile = createPar(parname, atmfile, '/raid/madlr/linelists/'+linelists[i], directory='/raid/madlr/par/')
 
 		# Run MOOG
+		os.system('MOOG')
 
 	return 
 
+#createPar()
 runMoog(temp=5900, logg=0.1, fe=-0.5, alpha=0.5, elements=[25], abunds=[0.5])

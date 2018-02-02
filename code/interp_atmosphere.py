@@ -39,7 +39,7 @@ def checkFile(filestr, overridecheck=True):
 
 		# If this is for a writeable file, make sure I don't accidentally overwrite something
 		if overridecheck:
-			override = raw_input('Warning: File '+filestr+' already exists! Do you want to overwrite? (y/n) ')
+			override = input('Warning: File '+filestr+' already exists! Do you want to overwrite? (y/n)\n')
 			if override == 'y' or override == 'Y' or override == 'yes':
 				exists = True
 				readytowrite = True
