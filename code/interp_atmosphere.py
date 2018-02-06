@@ -39,13 +39,16 @@ def checkFile(filestr, overridecheck=True):
 
 		# If this is for a writeable file, make sure I don't accidentally overwrite something
 		if overridecheck:
-			override = input('Warning: File '+filestr+' already exists! Do you want to overwrite? (y/n)\n')
-			if override == 'y' or override == 'Y' or override == 'yes':
-				exists = True
-				readytowrite = True
-			else:
-				exists = True
-				readytowrite = False
+			#override = input('Warning: File '+filestr+' already exists! Do you want to overwrite? (y/n)\n')
+			#if override == 'y' or override == 'Y' or override == 'yes':
+			#	exists = True
+			#	readytowrite = True
+			#else:
+			#	exists = True
+			#	readytowrite = False
+			#print('Overwriting file '+filestr+'!')
+			exists = True
+			readytowrite = True
 
 		# Otherwise, don't need to worry about overwriting
 		else:
@@ -56,7 +59,7 @@ def checkFile(filestr, overridecheck=True):
 	else:
 		exists = False
 		readytowrite = True
-		print('File '+filestr+' doesn\'t exist... yet?')
+		#print('File '+filestr+' doesn\'t exist... yet?')
 
 	return exists, readytowrite
 
@@ -326,7 +329,7 @@ def interpolateAtm(temp, logg, fe, alpha):
 
 		return flux
 
-def writeAtm(temp, logg, fe, alpha, dir='/raid/madlr/atm/', elements=None, abunds=None):
+def writeAtm(temp, logg, fe, alpha, dir='/raid/madlr/atm/', elements=None, abunds=None, solar=None):
 	"""Create *.atm file
 
     Inputs:
@@ -339,6 +342,7 @@ def writeAtm(temp, logg, fe, alpha, dir='/raid/madlr/atm/', elements=None, abund
     dir 	 -- directory to write atmospheres to [default = '/raid/madlr']
     elements -- list of atomic numbers of elements to add to the list of atoms
     abunds 	 -- list of elemental abundances corresponding to list of elements
+    solar 	 -- solar abundances corresponding to list of elements
     """
 
 	# Atmosphere to write
@@ -369,12 +373,12 @@ def writeAtm(temp, logg, fe, alpha, dir='/raid/madlr/atm/', elements=None, abund
 			natoms = 6
 			atomstxt = str( ('%.3E' % microturbvel) +
 					'\nNATOMS    ' + str(natoms) + '   ' + ('%5.2f' % float(fe)) +
-					'\n      12      ' + ('%5.2f' % float(7.38 + fe)) +
-					'\n      14      ' + ('%5.2f' % float(7.35 + fe)) +
-					'\n      16      ' + ('%5.2f' % float(7.01 + fe)) +
-					'\n      18      ' + ('%5.2f' % float(6.36 + fe)) +
-					'\n      20      ' + ('%5.2f' % float(6.16 + fe)) +
-					'\n      22      ' + ('%5.2f' % float(4.79 + fe)) )
+					'\n      12      ' + ('%5.2f' % float(7.60 + fe)) +
+					'\n      14      ' + ('%5.2f' % float(7.51 + fe)) +
+					'\n      16      ' + ('%5.2f' % float(7.12 + fe)) +
+					'\n      18      ' + ('%5.2f' % float(6.40 + fe)) +
+					'\n      20      ' + ('%5.2f' % float(6.34 + fe)) +
+					'\n      22      ' + ('%5.2f' % float(4.95 + fe)) )
 
 		# If adding elements, first make sure that number of elements matches number of abundances
 		elif len(elements) != len(abunds):
@@ -385,17 +389,17 @@ def writeAtm(temp, logg, fe, alpha, dir='/raid/madlr/atm/', elements=None, abund
 			natoms = 6 + len(elements)
 			atomstxt = str( ('%.3E' % microturbvel) +
 					'\nNATOMS    ' + str(natoms) + '   ' + ('%5.2f' % float(fe)) +
-					'\n      12      ' + ('%5.2f' % float(7.38 + fe)) +
-					'\n      14      ' + ('%5.2f' % float(7.35 + fe)) +
-					'\n      16      ' + ('%5.2f' % float(7.01 + fe)) +
-					'\n      18      ' + ('%5.2f' % float(6.36 + fe)) +
-					'\n      20      ' + ('%5.2f' % float(6.16 + fe)) +
-					'\n      22      ' + ('%5.2f' % float(4.79 + fe)) )
+					'\n      12      ' + ('%5.2f' % float(7.60 + fe)) +
+					'\n      14      ' + ('%5.2f' % float(7.51 + fe)) +
+					'\n      16      ' + ('%5.2f' % float(7.12 + fe)) +
+					'\n      18      ' + ('%5.2f' % float(6.40 + fe)) +
+					'\n      20      ' + ('%5.2f' % float(6.34 + fe)) +
+					'\n      22      ' + ('%5.2f' % float(4.95 + fe)) )
 
 			# Add the new elements
 			for i in range(len(elements)):
 				atomstxt = str( atomstxt + 
-					'\n      '+str(elements[i])+'      ' + ('%5.2f' % float(abunds[i])) )
+					'\n      '+str(elements[i])+'      ' + ('%5.2f' % float(abunds[i] + solar[i])) )
 
 				# Also add new elements to filename
 				abund = int(abunds[i]*10)
@@ -426,4 +430,4 @@ def writeAtm(temp, logg, fe, alpha, dir='/raid/madlr/atm/', elements=None, abund
 
 #print( readAtm(temp=7000, logg=1.0, fe=-0.5, alpha=0.5) )
 #print( interpolateAtm(temp=6900, logg=3.0, fe=-0.5, alpha=0.5) )
-writeAtm(temp=5900, logg=0.1, fe=-0.5, alpha=0.5, elements=[25], abunds=[0.5])
+#writeAtm(temp=5900, logg=0.1, fe=-0.5, alpha=0.5, elements=[25], abunds=[0.5])
