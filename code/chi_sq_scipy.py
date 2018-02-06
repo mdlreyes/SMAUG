@@ -16,9 +16,9 @@ from interp_atmosphere import *
 from run_moog import *
 import subprocess
 import pandas
-import lmfit
+from scipy.optimize import leastsq
 
-def residual(params, data, eps_data):
+def residual(mn, data, eps_data, temp, logg, fe, alpha):
 	"""Compute residual.
 
     Inputs:
@@ -29,13 +29,6 @@ def residual(params, data, eps_data):
     Outputs:
     residual -- residual (weighted by measurement uncertainties)
     """
-
-    # Parameters
-    temp	= params['temp']
-    logg	= params['logg']
-    fe 		= params['fe']
-    alpha	= params['alpha']
-    mn 		= params['mn']
 
 	# Compute synthetic spectrum
 	synth = runMoog(temp=temp, logg=logg, fe=fe, alpha=alpha, elements=[25], abunds=[mn], solar=[5.43])
@@ -66,21 +59,21 @@ def minimize(data, eps_data=None, temp, logg, fe, alpha, mn, vary=[False, False,
     params -- chi-squared (weighted by measurement uncertainties)
     """
 
-	# Define parameters
-	params = lmfit.Parameters()
-	params.add('temp', value = temp, vary=vary[0])
-	params.add('logg', value = logg, vary=vary[1])
-	params.add('fe', value = fe, vary=vary[2])
-	params.add('alpha', value = alpha, vary=vary[3])
-	params.add('mn', value = mn, vary=vary[4])
+    # Define parameters to vary
+    params = [mn]
 
 	# Do minimization
-	mini = lmfit.Minimizer(residual, params, method)
-	out  = mini.minimize()
+	fitparams, cov = leastsq(residual, params, args=(data, eps_data, temp, logg, fe, alpha))
 
-	# Outputs
-	fitparams = out.params 	# best-fit parameters
-	rchisq  = out.redchi 	# reduced chi square
-	cints 	= lmfit.conf_interval(mini,out) 	# confidence intervals
+	# Compute reduced chi-squared
+	rchisq = np.sum(np.power(residual(mn, data, eps_data, temp, logg, fe, alpha),2.))/(len(data) - 1.)
+	
+	# Compute standard error
+	#error = []
+	#for i in range(len(params)):
+	#	try:
+	#		error.append( np.absolute((cov[i][i] * rchisq)**2.) )
+	#	except:
+	#		error.append( 0.0 )
 
 	return fitparams, rchisq
