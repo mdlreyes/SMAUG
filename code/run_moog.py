@@ -1,7 +1,9 @@
 # run_moog.py
 # Runs MOOG 8 times, one for each Mn linelist
+# Outputs spliced synthetic spectrum
 #
 # - createPar: for a given *.atm file and linelist, output *.par file
+# - runMoog: runs MOOG for each Mn linelist, splices output spectrum
 # 
 # Created 4 Jan 18
 # Updated 5 Feb 18
@@ -13,8 +15,6 @@ import math
 from interp_atmosphere import *
 import subprocess
 import pandas
-
-linelists = np.array(['linelist_Mn4754','linelist_Mn4783','linelist_Mn4823','linelist_Mn5394','linelist_Mn5537','linelist_Mn60136021'])
 	
 def createPar(name, atmfile, linelist, directory=''):
 	"""Create *.par file using *.atm file and linelist."""
@@ -80,6 +80,9 @@ def runMoog(temp, logg, fe, alpha, directory='/raid/madlr/moogspectra/', element
 	subprocess.Popen(['rm', '-rf', '*'], cwd='/raid/madlr/moogout/')
 	subprocess.Popen(['rm', '-rf', '*'], cwd='/raid/madlr/par/')
 
+	# Define list of Mn linelists
+	linelists = np.array(['linelist_Mn4754','linelist_Mn4783','linelist_Mn4823','linelist_Mn5394','linelist_Mn5537','linelist_Mn60136021']) 
+
 	# Create identifying filename (including all parameters + linelist used)
 	name = getAtm(temp, logg, fe, alpha, directory='') # Add all parameters to name
 	name = name[:-4] # remove .atm
@@ -130,9 +133,8 @@ def runMoog(temp, logg, fe, alpha, directory='/raid/madlr/moogspectra/', element
 			flux = data[~np.isnan(data)][:-1]
 
 		spectrum = np.vstack((wavelength, flux)).T
-		np.savetxt('test.txt', spectrum)
+		np.savetxt(directory+parname, spectrum)
 
 	return spectrum
 
-#createPar()
-runMoog(temp=5900, logg=0.1, fe=-0.5, alpha=0.5, elements=[25], abunds=[0.5], solar=[5.43])
+#runMoog(temp=5900, logg=0.1, fe=-0.5, alpha=0.5, elements=[25], abunds=[0.5], solar=[5.43])
