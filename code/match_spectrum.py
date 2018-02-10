@@ -14,13 +14,17 @@ import os
 import numpy as np
 import math
 from astropy.io import fits
-from smooth_gauss import smooth_gauss
+#from smooth_gauss import smooth_gauss
 
-def open_obs_file(filename):
+def open_obs_file(filename, retrievespec=None):
 	"""Open .fits.gz files with observed spectra.
 
     Inputs:
     filename - name of file to open
+
+    Keywords:
+    retrievespec - if None (default), output number of stars in file; 
+                    else, retrieve spectrum of nth star from the file (where n = retrievespec)
 
     Outputs:
     wavearray - wavelength array for all stars (i.e., 'wavearray[0]' = wavelength array for star 0)
@@ -30,10 +34,13 @@ def open_obs_file(filename):
 	hdu1 = fits.open(filename)
 	data = hdu1[1].data
 
-	wavearray = data['LAMBDA'][:]
-	fluxarray = data['SPEC'][:]
+	wavearray = data['LAMBDA']
+	fluxarray = data['SPEC']
 
-	return wavearray, fluxarray 
+	if retrievespec is not None:
+		return wavearray[retrievespec], fluxarray[retrievespec] 
+	else:
+		return len(wavearray)
 
 def smooth_gauss_wrapper(lambda1, spec1, lambda2, dlam_in):
 	"""
@@ -95,4 +102,4 @@ def smooth_gauss_wrapper(lambda1, spec1, lambda2, dlam_in):
 
 	return spec2
 
-open_obs_file('/raid/caltech/moogify/bscl1/moogify.fits.gz')
+print(open_obs_file('/raid/caltech/moogify/bscl1/moogify.fits.gz', retrievespec=0))
