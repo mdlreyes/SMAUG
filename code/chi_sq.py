@@ -20,8 +20,10 @@ import math
 from interp_atmosphere import *
 from run_moog import *
 import subprocess
+from astropy.io import fits
 import pandas
 import lmfit
+from scipy.optimize import leastsq
 
 def residual_lmfit(params, data, eps_data):
 	"""Compute residual for lmfit.

@@ -3,7 +3,7 @@
 # Outputs spliced synthetic spectrum
 #
 # - createPar: for a given *.atm file and linelist, output *.par file
-# - runMoog: runs MOOG for each Mn linelist, splices output spectrum
+# - runMoog: runs MOOG for each Mn linelist (calls createPar), splices output spectrum
 # 
 # Created 4 Jan 18
 # Updated 5 Feb 18
