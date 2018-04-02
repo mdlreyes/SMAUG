@@ -27,7 +27,7 @@ def open_obs_file(filename, retrievespec=None):
                     else, retrieve spectrum of nth star from the file (where n = retrievespec)
 
     Outputs:
-    wvl  - wavelength array for nth star
+    wvl  - rest wavelength array for nth star
     flux - flux array for nth star
     ivar - inverse variance array for nth star
     """
