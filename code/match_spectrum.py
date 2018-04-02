@@ -27,8 +27,9 @@ def open_obs_file(filename, retrievespec=None):
                     else, retrieve spectrum of nth star from the file (where n = retrievespec)
 
     Outputs:
-    wavearray - wavelength array for all stars (i.e., 'wavearray[0]' = wavelength array for star 0)
-    fluxarray - flux array for all stars (i.e., 'fluxarray[0]' = spectrum for star 0)
+    wvl  - wavelength array for nth star
+    flux - flux array for nth star
+    ivar - inverse variance array for nth star
     """
 
 	hdu1 = fits.open(filename)
@@ -36,9 +37,23 @@ def open_obs_file(filename, retrievespec=None):
 
 	wavearray = data['LAMBDA']
 	fluxarray = data['SPEC']
+	ivararray = data['IVAR']
 
 	if retrievespec is not None:
-		return wavearray[retrievespec], fluxarray[retrievespec] 
+
+		# Get spectrum of a single star
+		wvl  = wavearray[retrievespec]
+		flux = fluxarray[retrievespec] 
+		ivar = ivararray[retrievespec]
+
+		# Correct for wavelength
+		zrest = data['ZREST'][retrievespec]
+		if zrest > 0:
+			wvl = wvl / (1. + zrest)
+
+		return wvl, flux, ivar
+
+	# Else, return number of stars in file
 	else:
 		return len(wavearray)
 
