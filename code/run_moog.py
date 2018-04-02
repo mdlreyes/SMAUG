@@ -12,7 +12,7 @@
 import os
 import numpy as np
 import math
-from interp_atmosphere import *
+from interp_atmosphere import checkFile, getAtm, writeAtm
 import subprocess
 import pandas
 	

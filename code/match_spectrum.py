@@ -14,7 +14,7 @@ import os
 import numpy as np
 import math
 from astropy.io import fits
-#from smooth_gauss import smooth_gauss
+from smooth_gauss import smooth_gauss
 
 def open_obs_file(filename, retrievespec=None):
 	"""Open .fits.gz files with observed spectra.
@@ -82,7 +82,7 @@ def smooth_gauss_wrapper(lambda1, spec1, lambda2, dlam_in):
 		in accordance with IDL
 		"""
 		result = np.digitize(u, v)-1
-		w = [long((v[i] - u[result[i]])/(u[result[i]+1] - u[result[i]]) + result[i]) for i in range(n2)]
+		w = [int((v[i] - u[result[i]])/(u[result[i]+1] - u[result[i]]) + result[i]) for i in range(n2)]
 		return np.array(w)
 
 	f = findex(lambda1, lambda2)
@@ -95,11 +95,16 @@ def smooth_gauss_wrapper(lambda1, spec1, lambda2, dlam_in):
 
 	dlambda1 = np.diff(lambda1)
 	dlambda1 = dlambda1[dlambda1 > 0.]
-	halfwindow = long(np.ceil(1.1*5.*dlam.max()/dlambda1.min()))
+	halfwindow = int(np.ceil(1.1*5.*dlam.max()/dlambda1.min()))
 
 	#Python wrapped fortran implementation of smooth gauss
 	spec2 = smooth_gauss(lambda1, spec1, lambda2, dlam, f, halfwindow)
 
 	return spec2
 
-print(open_obs_file('/raid/caltech/moogify/bscl1/moogify.fits.gz', retrievespec=0))
+#print(open_obs_file('/raid/caltech/moogify/bscl1/moogify.fits.gz', retrievespec=None))
+#lambda2, spec2 = open_obs_file('/raid/caltech/moogify/bscl1/moogify.fits.gz', retrievespec=0)
+#testarray = np.array([lambda2, spec2])
+#np.savetxt('test.txt.gz',testarray)
+#print(spec2)
+#print(lambda2)

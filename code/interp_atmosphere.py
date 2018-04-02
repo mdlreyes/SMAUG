@@ -13,12 +13,14 @@
 # - writeAtm: given atmosphere, put contents into a *.atm file
 # 
 # Created 2 Nov 17
-# Updated 22 Jan 18
+# Updated 2 Apr 18
 ###################################################################
 
 import os
 import numpy as np
 import math
+import gzip
+import subprocess
 
 def checkFile(filestr, overridecheck=True):
 	"""Check if file exists and is non-empty.
@@ -128,7 +130,7 @@ def find_nearest_temp(temp):
 	return uptemp, downtemp, error
 
 def getAtm(temp, logg, fe, alpha, directory):
-	"""Get path of *.atm file."""
+	"""Get path of grid file."""
 
 	temp  = temp
 	logg  = int(logg*10)
@@ -144,16 +146,29 @@ def getAtm(temp, logg, fe, alpha, directory):
 		fepart	= 'f_' + '{:02}'.format(fe)
 
 	if alpha < 0:
-		alphapart 	= 'a' + '{:03}'.format(alpha) + '.atm'
+		alphapart 	= 'a' + '{:03}'.format(alpha)
 	else:
-		alphapart 	= 'a_' + '{:02}'.format(alpha) + '.atm'
+		alphapart 	= 'a_' + '{:02}'.format(alpha)
 
 	filestr	= directory + filebase + fepart + alphapart
 
 	return filestr
 
-def readAtm(temp, logg, fe, alpha):
-	"""Read *.atm file."""
+def readAtm(temp, logg, fe, alpha, inputdir='/raid/grid7/atmospheres/'):
+	"""Read file from grid.
+
+	Inputs:
+    temp -- effective temperature (K)
+    logg -- surface gravity
+    fe -- [Fe/H]
+    alpha -- [alpha/Fe]
+
+    Keywords:
+    inputdir - input directory
+    	if '/raid/grid7/atmospheres/' (default): return '.atm' file
+    	if 'raid/gridie/bin/': return '.bin.gz' file
+
+	"""
 
 	tempnew  = temp
 	loggnew  = int(logg*10)
@@ -161,25 +176,26 @@ def readAtm(temp, logg, fe, alpha):
 	alphanew = int(alpha*10)
 
 	# Directory to read atmospheres from
-	directory	= '/raid/grid7/atmospheres/t' + str(tempnew) + '/g_' + '{:02}'.format(loggnew) + '/' 
+	directory	= inputdir + 't' + str(tempnew) + '/g_' + '{:02}'.format(loggnew) + '/' 
 
 	# Atmosphere to read
-	filestr = getAtm(temp, logg, fe, alpha, directory)
-
-	# Check if file already exists
-	exists, readytowrite = checkFile(filestr, overridecheck=False)
-	if exists:
-
-		#If file exists, read contents
+	if inputdir == '/raid/grid7/atmospheres/':
+		filestr = getAtm(temp, logg, fe, alpha, directory) + '.atm'
 		contents = np.genfromtxt(filestr, skip_header=3, max_rows=72, usecols=None, autostrip=True)
-		return contents
 
-	else:
-		print('File doesn\'t exist!')
-		return
+	elif inputdir == '/raid/gridie/bin/':
+		filestr = getAtm(temp, logg, fe, alpha, directory) + '.bin.gz' 
+		with gzip.open(filestr, 'rb') as f:
+			bstring = f.read()
+			contents = np.fromstring(bstring, dtype=np.float32)
+			f.close()
+		#subprocess.Popen(['gunzip', '-c', filestr+'.gz', '>', 'synthspec.bin'])
+		#contents = np.fromfile('synthspec.bin')
 
-def interpolateAtm(temp, logg, fe, alpha):
-	"""Interpolate atmosphere from ATLAS9 grid.
+	return contents
+
+def interpolateAtm(temp, logg, fe, alpha, griddir='/raid/grid7/atmospheres/'):
+	"""Interpolate atmosphere from grid of atmospheres.
 
     Inputs:
     temp -- effective temperature (K)
@@ -302,7 +318,7 @@ def interpolateAtm(temp, logg, fe, alpha):
 					for n in range(nAlpha):
 
 						# Read in grid point (atmosphere file)
-						iflux = readAtm(tempInterval[i],loggInterval[j],feInterval[m],alphaInterval[n]) #[:,0]
+						iflux = readAtm(tempInterval[i],loggInterval[j],feInterval[m],alphaInterval[n],inputdir=griddir) #[:,0]
 						#print(iflux)
 
 						# Compute weighted sum of grid points

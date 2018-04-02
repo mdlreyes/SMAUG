@@ -17,8 +17,7 @@
 import os
 import numpy as np
 import math
-from interp_atmosphere import *
-from run_moog import *
+from run_moog import runMoog
 import subprocess
 from astropy.io import fits
 import pandas
