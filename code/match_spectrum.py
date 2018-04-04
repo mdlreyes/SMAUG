@@ -118,8 +118,7 @@ def smooth_gauss_wrapper(lambda1, spec1, lambda2, dlam_in):
 	return spec2
 
 #print(open_obs_file('/raid/caltech/moogify/bscl1/moogify.fits.gz', retrievespec=None))
-#lambda2, spec2 = open_obs_file('/raid/caltech/moogify/bscl1/moogify.fits.gz', retrievespec=0)
-#testarray = np.array([lambda2, spec2])
+#lambda2, spec2, ivar = open_obs_file('/raid/caltech/moogify/bscl1/moogify.fits.gz', retrievespec=0)
+#testarray = np.array([lambda2, spec2, ivar])
 #np.savetxt('test.txt.gz',testarray)
 #print(spec2)
-#print(lambda2)

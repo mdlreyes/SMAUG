@@ -8,6 +8,7 @@
 ###################################################################
 
 import os
+import sys
 import numpy as np
 import numpy.ma as ma
 import matplotlib.pyplot as plt
@@ -17,6 +18,7 @@ from astropy.io import fits
 from smooth_gauss import smooth_gauss
 from interp_atmosphere import interpolateAtm
 from match_spectrum import open_obs_file, smooth_gauss_wrapper
+from scipy.interpolate import splrep, splev
 
 def get_synth(obsfilename, starnum, temp, logg, fe, alpha):
 	"""Get synthetic spectrum from Ivanna's grid, and smooth to match observed spectrum.
@@ -82,7 +84,7 @@ def mask_obs(obsfilename, starnum, temp, logg, fe, alpha):
     mask 	  -- mask to avoid bad shit (chip gaps, bad pixels, Na D lines)
     """
 
-    synthflux, obsflux, obswvl, ivar = get_synth(obsfilename, starnum, temp, logg, fe, alpha)
+	synthflux, obsflux, obswvl, ivar = get_synth(obsfilename, starnum, temp, logg, fe, alpha)
 
 	mask = np.zeros(len(synthflux), dtype=bool)
 
@@ -110,15 +112,22 @@ def mask_obs(obsfilename, starnum, temp, logg, fe, alpha):
 	mask[np.where((obswvl > 6008.) & (obswvl < 6018.))] = True
 	mask[np.where((obswvl > 6016.) & (obswvl < 6026.))] = True
 
+	# Create masked arrays
 	synthfluxmask = ma.masked_array(synthflux, mask)
 	obsfluxmask   = ma.masked_array(obsflux, mask)
 	obswvlmask	  = ma.masked_array(obswvl, mask)
+	ivarmask	  = ma.masked_array(ivar, mask)
 
-	return synthfluxmask, obsfluxmask, obswvlmask, mask
+	return synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask
 
 def divide_spec(obsfilename, starnum, temp, logg, fe, alpha):
 	"""Do the actual continuum fitting:
-	Divide obs/synth, fit spline to quotient, and divide obs/spline.
+	- Divide obs/synth.
+	- Fit spline to quotient. 
+		- Use cubic B-spline representation with breakpoints spaced every 150 Angstroms (Kirby+09)
+		- Do iteratively, so that pixels that deviate from fit by more than 5sigma are removed for next iteration
+		- Don't worry about telluric absorption corrections?
+	- Divide obs/spline.
 
     Inputs:
     For observed spectrum --
@@ -134,16 +143,91 @@ def divide_spec(obsfilename, starnum, temp, logg, fe, alpha):
     Keywords:
 
     Outputs:
+    obswvl 		 -- observed wavelength
+    obsflux_norm -- normalized observed flux
+    ivar_norm    -- normalized inverse variance
 
     """
 
-    synthfluxmask, obsfluxmask, obswvlmask, mask = mask_obs(obsfilename, starnum, temp, logg, fe, alpha)
+	synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask = mask_obs(obsfilename, starnum, temp, logg, fe, alpha)
 
-    quotient = np.divide(obsfluxmask, synthfluxmask)
+	# Convert inverse variance to inverse standard dev
+	ivarmask = np.sqrt(ivarmask)
 
-    return
+	# Divide obs/synth
+	quotient = obsfluxmask/synthfluxmask
 
-#get_synth('/raid/caltech/moogify/bscl1/moogify.fits.gz', starnum=0, temp=3500, logg=3.0, fe=-3.3, alpha=1.2)
-#synthflux, obsflux, obswvl = get_synth('/raid/caltech/moogify/bscl1/moogify.fits.gz', starnum=0, temp=3500, logg=3.0, fe=-3.3, alpha=1.2)
-#testarray = np.array([synthflux, obsflux, obswvl])
+	# First check if there are enough points to compute continuum
+	if len(synthfluxmask.compressed()) < 300:
+		print('Insufficient number of pixels to determine the continuum!')
+		return
+
+	# Compute breakpoints for B-spline 
+	def calc_breakpoints(array, interval):
+		"""
+		Helper function for use with a B-spline.
+		Computes breakpoints for an array given an interval.
+		"""
+
+		breakpoints = []
+		counter = 0
+		for i in range(len(array)):
+
+			if (array[i] - array[counter]) >= interval:
+				counter = i
+				breakpoints.append(i)
+
+		return breakpoints
+	
+	# Determine initial spline fit, before sigma-clipping
+	breakpoints_old	= calc_breakpoints(obsfluxmask.compressed(), 150.) # Use 150 A spacing
+	splinerep_old 	= splrep(obswvlmask.compressed(), quotient.compressed(), w=ivarmask.compressed(), t=breakpoints_old)
+	continuum_old	= splev(obswvlmask.compressed(), splinerep_old)
+
+	# Iterate the fit, sigma-clipping until it converges or max number of iterations is reached
+	iternum  = 0
+	maxiter  = 10
+	clipmask = np.ones(size, dtype=bool)
+
+	while iternum < maxiter:
+
+		# Compute residual between quotient and spline
+		resid = quotient.compressed() - continuum_old
+		sigma = np.std(resid)
+
+		# Sigma-clipping
+		clipmask[np.where((resid < -0.3*sigma) | (resid > 5*sigma))] = False
+
+		# Recalculate the fit after sigma-clipping
+		breakpoints_new = calc_breakpoints(obswvlmask.compressed()[clipmask], 150.)
+		splinerep_new 	= splrep(obswvlmask.compressed()[clipmask], quotient.compressed()[clipmask], w=ivarmask.compressed()[clipmask], t=breakpoints_new)
+		continuum_new 	= splev(obswvlmask.compressed()[clipmask], splinerep_new)
+
+		# Check for convergence (if all points have been clipped)
+		if (obswvlmask.compressed()[clipmask]).size == 0:
+			print('Continuum fit converged')
+			break 
+
+		else:
+			continuum_old = continuum_new
+			k += 1
+
+	# Compute final spline
+	continuum_final = splev(obswvlmask.data, splinerep_new)
+
+	#Now divide obs/spline
+	obswvl 		 = obswvlmask.data
+	obsflux_norm = obsfluxmask.data/continuum_final
+	ivar_norm 	 = ivarmask.data * np.power(continuum_final, 2.)
+
+	return obswvl, obsflux_norm, ivar_norm
+
+#synthflux, obsflux, obswvl, ivar = get_synth('/raid/caltech/moogify/bscl1/moogify.fits.gz', starnum=0, temp=3500, logg=3.0, fe=-3.3, alpha=1.2)
+#synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask = mask_obs('/raid/caltech/moogify/bscl1/moogify.fits.gz', starnum=0, temp=3500, logg=3.0, fe=-3.3, alpha=1.2)
+divide_spec('/raid/caltech/moogify/bscl1/moogify.fits.gz', starnum=0, temp=3500, logg=3.0, fe=-3.3, alpha=1.2)
+
+#print(obswvl, obswvl[1]-obswvl[0], obswvl[2]-obswvl[1])
+#np.set_printoptions(threshold=np.inf)
+#print(synthflux, synthfluxmask)
+#testarray = np.array([synthfluxmask, obsfluxmask, obswvlmask])
 #np.savetxt('test.txt.gz',testarray)
