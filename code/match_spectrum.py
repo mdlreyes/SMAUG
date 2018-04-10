@@ -50,6 +50,7 @@ def open_obs_file(filename, retrievespec=None):
 		zrest = data['ZREST'][retrievespec]
 		if zrest > 0:
 			wvl = wvl / (1. + zrest)
+			print('Redshift: ', zrest)
 
 		return wvl, flux, ivar
 

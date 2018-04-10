@@ -11,6 +11,8 @@ import os
 import sys
 import numpy as np
 import numpy.ma as ma
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import math
 import gzip
@@ -48,18 +50,29 @@ def get_synth(obsfilename, starnum, temp, logg, fe, alpha):
 	wvl_range = np.arange(4100., 6300.+0.14, 0.14)
 	synthwvl  = 0.5*(wvl_range[1:] + wvl_range[:-1])
 
-	# For testing purposes
-	#print(len(synthflux), len(synthwvl))
-	#plt.plot(synthwvl, synthflux)
-	#plt.show()
-
 	# Open observed spectrum
 	obswvl, obsflux, ivar = open_obs_file(obsfilename, retrievespec=starnum)
 
 	# Interpolate and smooth the synthetic spectrum onto the observed wavelength array
-	synthflux = smooth_gauss_wrapper(synthwvl, synthflux, obswvl, 1.1)
+	synthfluxnew = smooth_gauss_wrapper(synthwvl, synthflux, obswvl, 1.1)
 
-	return synthflux, obsflux, obswvl, ivar
+	# For testing purposes
+	'''
+	plt.figure()
+	plt.subplot(211)
+	plt.plot(synthwvl, synthflux, 'r-', label='Original')
+	plt.plot(obswvl, synthfluxnew, 'b-', label='Smoothed')
+	plt.legend()
+	plt.title('Synthetic spectrum')
+	
+	plt.subplot(212)
+	plt.plot(obswvl, obsflux)
+	plt.title('Observed spectrum')
+
+	plt.show()
+	'''
+
+	return synthfluxnew, obsflux, obswvl, ivar
 
 def mask_obs(obsfilename, starnum, temp, logg, fe, alpha):
 	"""Make a mask for synthetic and observed spectra.
@@ -111,6 +124,10 @@ def mask_obs(obsfilename, starnum, temp, logg, fe, alpha):
 	mask[np.where((obswvl > 5532.) & (obswvl < 5542.))] = True
 	mask[np.where((obswvl > 6008.) & (obswvl < 6018.))] = True
 	mask[np.where((obswvl > 6016.) & (obswvl < 6026.))] = True
+
+	# Mask out anywhere synthetic spectrum doesn't exist
+	mask[np.where(obswvl < 4100.)] = True
+	mask[np.where(obswvl > 6300.)] = True
 
 	# Create masked arrays
 	synthfluxmask = ma.masked_array(synthflux, mask)
@@ -175,7 +192,7 @@ def divide_spec(obsfilename, starnum, temp, logg, fe, alpha):
 
 			if (array[i] - array[counter]) >= interval:
 				counter = i
-				breakpoints.append(i)
+				breakpoints.append(array[i])
 
 		return breakpoints
 	
@@ -187,7 +204,7 @@ def divide_spec(obsfilename, starnum, temp, logg, fe, alpha):
 	# Iterate the fit, sigma-clipping until it converges or max number of iterations is reached
 	iternum  = 0
 	maxiter  = 10
-	clipmask = np.ones(size, dtype=bool)
+	clipmask = np.ones(len(obswvlmask.compressed()), dtype=bool)
 
 	while iternum < maxiter:
 
@@ -199,18 +216,36 @@ def divide_spec(obsfilename, starnum, temp, logg, fe, alpha):
 		clipmask[np.where((resid < -0.3*sigma) | (resid > 5*sigma))] = False
 
 		# Recalculate the fit after sigma-clipping
-		breakpoints_new = calc_breakpoints(obswvlmask.compressed()[clipmask], 150.)
-		splinerep_new 	= splrep(obswvlmask.compressed()[clipmask], quotient.compressed()[clipmask], w=ivarmask.compressed()[clipmask], t=breakpoints_new)
-		continuum_new 	= splev(obswvlmask.compressed()[clipmask], splinerep_new)
+		breakpoints_new = calc_breakpoints((obswvlmask.compressed())[clipmask], 150.)
+		splinerep_new 	= splrep((obswvlmask.compressed())[clipmask], (quotient.compressed())[clipmask], w=(ivarmask.compressed())[clipmask], t=breakpoints_new)
+		continuum_new 	= splev(obswvlmask.compressed(), splinerep_new)
+
+		# For testing purposes
+		'''
+		print('Iteration ', iternum)
+		print((obswvlmask.compressed()[clipmask]).size)
+
+		plt.figure()
+
+		plt.subplot(211)
+		plt.title('Iteration '+str(iternum))
+		plt.plot(obswvlmask, quotient, 'b.')
+		plt.plot(obswvlmask[~clipmask], quotient[~clipmask], 'ko')
+		plt.plot(obswvlmask.compressed(), continuum_new, 'r-')
+
+		plt.subplot(212)
+		plt.plot(obswvlmask.compressed(), resid)
+		plt.show()
+		'''
 
 		# Check for convergence (if all points have been clipped)
 		if (obswvlmask.compressed()[clipmask]).size == 0:
-			print('Continuum fit converged')
+			print('Continuum fit converged at iteration ', iternum)
 			break 
 
 		else:
 			continuum_old = continuum_new
-			k += 1
+			iternum += 1
 
 	# Compute final spline
 	continuum_final = splev(obswvlmask.data, splinerep_new)
@@ -222,12 +257,12 @@ def divide_spec(obsfilename, starnum, temp, logg, fe, alpha):
 
 	return obswvl, obsflux_norm, ivar_norm
 
-#synthflux, obsflux, obswvl, ivar = get_synth('/raid/caltech/moogify/bscl1/moogify.fits.gz', starnum=0, temp=3500, logg=3.0, fe=-3.3, alpha=1.2)
+#synthflux, obsflux, _, ivar = get_synth('/raid/caltech/moogify/bscl1/moogify.fits.gz', starnum=0, temp=3500, logg=3.0, fe=-3.3, alpha=1.2)
 #synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask = mask_obs('/raid/caltech/moogify/bscl1/moogify.fits.gz', starnum=0, temp=3500, logg=3.0, fe=-3.3, alpha=1.2)
-divide_spec('/raid/caltech/moogify/bscl1/moogify.fits.gz', starnum=0, temp=3500, logg=3.0, fe=-3.3, alpha=1.2)
+obswvl, obsflux_norm, ivar_norm = divide_spec('/raid/caltech/moogify/bscl1/moogify.fits.gz', starnum=0, temp=3500, logg=3.0, fe=-3.3, alpha=1.2)
 
 #print(obswvl, obswvl[1]-obswvl[0], obswvl[2]-obswvl[1])
 #np.set_printoptions(threshold=np.inf)
 #print(synthflux, synthfluxmask)
-#testarray = np.array([synthfluxmask, obsfluxmask, obswvlmask])
+#testarray = np.array([synthflux, obsflux, obswvl, obsflux_norm, ivar_norm])
 #np.savetxt('test.txt.gz',testarray)
