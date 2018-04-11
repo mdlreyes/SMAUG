@@ -161,7 +161,8 @@ def minimize_scipy(mn, obsfilename, starnum, temp, logg, fe, alpha):
 	fitparams, cov = leastsq(residual_scipy, params, args=(obsfilename, starnum, temp, logg, fe, alpha))
 
 	# Compute reduced chi-squared
-	rchisq = np.sum(np.power(residual(mn, data, eps_data, temp, logg, fe, alpha),2.))/(len(data) - 1.)
+	finalresid = residual_scipy(obsfilename, starnum, mn=fitparams[0], temp=temp, logg=logg, fe=fe, alpha=alpha)
+	rchisq = np.sum(np.power(finalresid,2.))/(len(finalresid) - 1.)
 	
 	# Compute standard error
 	#error = []
