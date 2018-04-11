@@ -6,7 +6,7 @@
 # - runMoog: runs MOOG for each Mn linelist (calls createPar), splices output spectrum
 # 
 # Created 4 Jan 18
-# Updated 5 Feb 18
+# Updated 10 Apr 18
 ###################################################################
 
 import os
@@ -16,15 +16,16 @@ from interp_atmosphere import checkFile, getAtm, writeAtm
 import subprocess
 import pandas
 	
-def createPar(name, atmfile, linelist, directory=''):
-	"""Create *.par file using *.atm file and linelist."""
-
-	# Define filename
-	filestr = directory + name + '.par'
+def createPar(name, linelist, atmfile='', directory=''):
+	"""Create *.par file using *.atm file and linelist.
+	"""
 
 	# Open linelist and get wavelength range to synthesize spectrum
 	wavelengths = np.genfromtxt(linelist, skip_header=1, usecols=0)
 	wavelengthrange = [ math.floor(wavelengths[0]),math.ceil(wavelengths[-1]) ]
+
+	# Define filename
+	filestr = directory + name + '.par'
 
 	# Check if file already exists
 	exists, readytowrite = checkFile(filestr)
@@ -132,8 +133,10 @@ def runMoog(temp, logg, fe, alpha, directory='/raid/madlr/moogspectra/', element
 			data = pandas.read_csv(outfile, skiprows=[0,1,-1], delimiter=' ').as_matrix()
 			flux = data[~np.isnan(data)][:-1]
 
-		spectrum = np.vstack((wavelength, flux)).T
-		np.savetxt(directory+parname, spectrum)
+	#spectrum = np.vstack((wavelength, flux)).T
+	#np.savetxt(directory+parname, spectrum)
+
+	spectrum = [flux, wavelength]
 
 	return spectrum
 

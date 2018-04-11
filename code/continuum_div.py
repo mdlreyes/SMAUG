@@ -4,7 +4,7 @@
 # - divides obs/synth, fits spline, and divides obs/spline (divide_spec)
 # 
 # Created 22 Feb 18
-# Updated 2 Apr 18
+# Updated 10 Apr 18
 ###################################################################
 
 import os
@@ -22,8 +22,8 @@ from interp_atmosphere import interpolateAtm
 from match_spectrum import open_obs_file, smooth_gauss_wrapper
 from scipy.interpolate import splrep, splev
 
-def get_synth(obsfilename, starnum, temp, logg, fe, alpha):
-	"""Get synthetic spectrum from Ivanna's grid, and smooth to match observed spectrum.
+def get_synth(obsfilename, starnum, synth=None, temp=None, logg=None, fe=None, alpha=None):
+	"""Get synthetic spectrum and smooth it to match observed spectrum.
 
     Inputs:
     For observed spectrum --
@@ -37,6 +37,8 @@ def get_synth(obsfilename, starnum, temp, logg, fe, alpha):
     alpha -- [alpha/Fe]
 
     Keywords:
+    synth -- if None, get synthetic spectrum from Ivanna's grid;
+    		 else, use synth (should be a list of arrays [synthflux, synthwvl])
 
     Outputs:
     synthflux -- synthetic flux array
@@ -45,10 +47,17 @@ def get_synth(obsfilename, starnum, temp, logg, fe, alpha):
     ivar 	  -- inverse variance array
     """
 
-	# Use modified version of interpolateAtm to get synthetic spectrum
-	synthflux = 1. - interpolateAtm(temp,logg,fe,alpha,griddir='/raid/gridie/bin/')
-	wvl_range = np.arange(4100., 6300.+0.14, 0.14)
-	synthwvl  = 0.5*(wvl_range[1:] + wvl_range[:-1])
+    # Get synthetic spectrum
+    if synth is None:
+
+		# Use modified version of interpolateAtm to get synthetic spectrum from Ivanna's grid
+		synthflux = 1. - interpolateAtm(temp,logg,fe,alpha,griddir='/raid/gridie/bin/')
+		wvl_range = np.arange(4100., 6300.+0.14, 0.14)
+		synthwvl  = 0.5*(wvl_range[1:] + wvl_range[:-1])
+
+	else:
+		synthflux = synth[0]
+		synthwvl  = synth[1]
 
 	# Open observed spectrum
 	obswvl, obsflux, ivar = open_obs_file(obsfilename, retrievespec=starnum)
@@ -74,7 +83,7 @@ def get_synth(obsfilename, starnum, temp, logg, fe, alpha):
 
 	return synthfluxnew, obsflux, obswvl, ivar
 
-def mask_obs(obsfilename, starnum, temp, logg, fe, alpha):
+def mask_obs(obsfilename, starnum, synth=None, mnlines=False, temp=None, logg=None, fe=None, alpha=None):
 	"""Make a mask for synthetic and observed spectra.
 
     Inputs:
@@ -89,6 +98,10 @@ def mask_obs(obsfilename, starnum, temp, logg, fe, alpha):
     alpha -- [alpha/Fe]
 
     Keywords:
+    synth   -- if None, get synthetic spectrum from Ivanna's grid;
+    		 else, use synth (should be a list of arrays [synthflux, synthwvl])
+	mnlines -- if True, mask out everything BUT Mn lines (for abundance measurement);
+			   else, mask out Mn lines (for continuum division) -- default
 
     Outputs:
     synthfluxmask -- (masked!) synthetic flux array
@@ -97,47 +110,96 @@ def mask_obs(obsfilename, starnum, temp, logg, fe, alpha):
     mask 	  -- mask to avoid bad shit (chip gaps, bad pixels, Na D lines)
     """
 
-	synthflux, obsflux, obswvl, ivar = get_synth(obsfilename, starnum, temp, logg, fe, alpha)
+    # Mask out bad stuff + Mn lines (for divide_spec)
+    if not mnlines:
 
-	mask = np.zeros(len(synthflux), dtype=bool)
+    	# Get smoothed synthetic spectrum and (NOT continuum-normalized) observed spectrum
+		synthflux, obsflux, obswvl, ivar = get_synth(obsfilename, starnum, synth=synth, temp=temp, logg=logg, fe=fe, alpha=alpha)
 
-	# Mask out first and last five pixels
-	mask[:5]  = True
-	mask[-5:] = True
+		# Make a mask
+		mask = np.zeros(len(synthflux), dtype=bool)
 
-	# Mask out pixels near chip gap
-	chipgap = int(len(mask)/2 - 1)
-	mask[(chipgap - 5): (chipgap + 5)] = True
+		# Mask out first and last five pixels
+		mask[:5]  = True
+		mask[-5:] = True
 
-	# Mask out any bad pixels
-	mask[np.where(synthflux <= 0.)] = True
-	mask[np.where(ivar < 0.)] = True
+		# Mask out pixels near chip gap
+		chipgap = int(len(mask)/2 - 1)
+		mask[(chipgap - 5): (chipgap + 5)] = True
 
-	# Mask out pixels around Na D doublet (5890, 5896 A)
-	mask[np.where((obswvl > 5884.) & (obswvl < 5904.))] = True
+		# Mask out any bad pixels
+		mask[np.where(synthflux <= 0.)] = True
+		mask[np.where(ivar < 0.)] = True
 
-	# Mask out pixels in regions around Mn lines (+/- 5A) 
-	mask[np.where((obswvl > 4749.) & (obswvl < 4759.))] = True
-	mask[np.where((obswvl > 4778.) & (obswvl < 4788.))] = True
-	mask[np.where((obswvl > 4818.) & (obswvl < 4828.))] = True
-	mask[np.where((obswvl > 5389.) & (obswvl < 5399.))] = True
-	mask[np.where((obswvl > 5532.) & (obswvl < 5542.))] = True
-	mask[np.where((obswvl > 6008.) & (obswvl < 6018.))] = True
-	mask[np.where((obswvl > 6016.) & (obswvl < 6026.))] = True
+		# Mask out pixels around Na D doublet (5890, 5896 A)
+		mask[np.where((obswvl > 5884.) & (obswvl < 5904.))] = True
 
-	# Mask out anywhere synthetic spectrum doesn't exist
-	mask[np.where(obswvl < 4100.)] = True
-	mask[np.where(obswvl > 6300.)] = True
+		# Mask out pixels in regions around Mn lines (+/- 5A) 
+		mask[np.where((obswvl > 4749.) & (obswvl < 4759.))] = True
+		mask[np.where((obswvl > 4778.) & (obswvl < 4788.))] = True
+		mask[np.where((obswvl > 4818.) & (obswvl < 4828.))] = True
+		mask[np.where((obswvl > 5389.) & (obswvl < 5399.))] = True
+		mask[np.where((obswvl > 5532.) & (obswvl < 5542.))] = True
+		mask[np.where((obswvl > 6008.) & (obswvl < 6018.))] = True
+		mask[np.where((obswvl > 6016.) & (obswvl < 6026.))] = True
 
-	# Create masked arrays
-	synthfluxmask = ma.masked_array(synthflux, mask)
-	obsfluxmask   = ma.masked_array(obsflux, mask)
-	obswvlmask	  = ma.masked_array(obswvl, mask)
-	ivarmask	  = ma.masked_array(ivar, mask)
+		# Mask out anywhere synthetic spectrum doesn't exist
+		#mask[np.where(obswvl < 4100.)] = True
+		#mask[np.where(obswvl > 6300.)] = True
 
-	return synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask
+		# Create masked arrays
+		synthfluxmask = ma.masked_array(synthflux, mask)
+		obsfluxmask   = ma.masked_array(obsflux, mask)
+		obswvlmask	  = ma.masked_array(obswvl, mask)
+		ivarmask	  = ma.masked_array(ivar, mask)
 
-def divide_spec(obsfilename, starnum, temp, logg, fe, alpha):
+		return synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask
+
+	# Mask out bad stuff + EVERYTHING BUT Mn lines (for actual abundance measurements)
+	else:
+
+		# Get smoothed synthetic spectrum and continuum-normalized observed spectrum
+		obswvl, obsflux_norm, ivar_norm, synthflux = divide_spec(obsfilename, starnum, synth=synth, temp=temp, logg=logg, alpha=alpha)
+
+		# Make a mask
+		mask = np.zeros(len(synthflux), dtype=bool)
+
+		# Mask out first and last five pixels
+		mask[:5]  = True
+		mask[-5:] = True
+
+		# Mask out pixels near chip gap
+		chipgap = int(len(mask)/2 - 1)
+		mask[(chipgap - 5): (chipgap + 5)] = True
+
+		# Mask out any bad pixels
+		mask[np.where(synthflux <= 0.)] = True
+		mask[np.where(ivar < 0.)] = True
+
+		# Mask out pixels around Na D doublet (5890, 5896 A)
+		mask[np.where((obswvl > 5884.) & (obswvl < 5904.))] = True
+
+		# Mask out everything EXCEPT Mn lines
+		mnmask = np.zeros(len(synthflux), dtype=bool) # Mask with all Mn lines masked out
+		mnmask[np.where((obswvl > 4749.) & (obswvl < 4759.))] = True
+		mnmask[np.where((obswvl > 4778.) & (obswvl < 4788.))] = True
+		mnmask[np.where((obswvl > 4818.) & (obswvl < 4828.))] = True
+		mnmask[np.where((obswvl > 5389.) & (obswvl < 5399.))] = True
+		mnmask[np.where((obswvl > 5532.) & (obswvl < 5542.))] = True
+		mnmask[np.where((obswvl > 6008.) & (obswvl < 6018.))] = True
+		mnmask[np.where((obswvl > 6016.) & (obswvl < 6026.))] = True
+
+		mask[~mnmask] = True
+
+		# Create masked arrays
+		synthfluxmask = ma.masked_array(synthflux, mask)
+		obsfluxmask   = ma.masked_array(obsflux_norm, mask)
+		obswvlmask	  = ma.masked_array(obswvl_norm, mask)
+		ivarmask	  = ma.masked_array(ivar_norm, mask)
+
+		return synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask
+
+def divide_spec(obsfilename, starnum, synth=None, temp=None, logg=None, fe=None, alpha=None):
 	"""Do the actual continuum fitting:
 	- Divide obs/synth.
 	- Fit spline to quotient. 
@@ -158,15 +220,18 @@ def divide_spec(obsfilename, starnum, temp, logg, fe, alpha):
     alpha -- [alpha/Fe]
 
     Keywords:
+    synth -- if None, get synthetic spectrum from Ivanna's grid;
+    		 else, use synth (should be a list of arrays [synthflux, synthwvl])
 
     Outputs:
+    synthflux    -- synthetic flux
+    obsflux_norm -- continuum-normalized observed flux
     obswvl 		 -- observed wavelength
-    obsflux_norm -- normalized observed flux
-    ivar_norm    -- normalized inverse variance
+    ivar_norm    -- continuum-normalized inverse variance
 
     """
 
-	synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask = mask_obs(obsfilename, starnum, temp, logg, fe, alpha)
+	synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask = mask_obs(obsfilename, starnum, synth=synth, temp=temp, logg=logg, fe=fe, alpha=alpha)
 
 	# Convert inverse variance to inverse standard dev
 	ivarmask = np.sqrt(ivarmask)
@@ -250,16 +315,19 @@ def divide_spec(obsfilename, starnum, temp, logg, fe, alpha):
 	# Compute final spline
 	continuum_final = splev(obswvlmask.data, splinerep_new)
 
-	#Now divide obs/spline
+	# Now divide obs/spline
 	obswvl 		 = obswvlmask.data
 	obsflux_norm = obsfluxmask.data/continuum_final
 	ivar_norm 	 = ivarmask.data * np.power(continuum_final, 2.)
 
-	return obswvl, obsflux_norm, ivar_norm
+	# Get synthetic spectrum too
+	synthflux = synthfluxmask.data
+
+	return synthflux, obsflux_norm, obswvl, ivar_norm
 
 #synthflux, obsflux, _, ivar = get_synth('/raid/caltech/moogify/bscl1/moogify.fits.gz', starnum=0, temp=3500, logg=3.0, fe=-3.3, alpha=1.2)
 #synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask = mask_obs('/raid/caltech/moogify/bscl1/moogify.fits.gz', starnum=0, temp=3500, logg=3.0, fe=-3.3, alpha=1.2)
-obswvl, obsflux_norm, ivar_norm = divide_spec('/raid/caltech/moogify/bscl1/moogify.fits.gz', starnum=0, temp=3500, logg=3.0, fe=-3.3, alpha=1.2)
+synthflux, obsflux_norm, obswvl, ivar_norm = divide_spec('/raid/caltech/moogify/bscl1/moogify.fits.gz', starnum=0, synth=None, temp=3500, logg=3.0, fe=-3.3, alpha=1.2)
 
 #print(obswvl, obswvl[1]-obswvl[0], obswvl[2]-obswvl[1])
 #np.set_printoptions(threshold=np.inf)
