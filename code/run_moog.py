@@ -136,6 +136,7 @@ def runMoog(temp, logg, fe, alpha, directory='/raid/madlr/moogspectra/', element
 	#spectrum = np.vstack((wavelength, flux)).T
 	#np.savetxt(directory+parname, spectrum)
 
+	# Output synthetic spectrum in a format that continuum_div functions will understand (list of arrays) 
 	spectrum = [flux, wavelength]
 
 	return spectrum
