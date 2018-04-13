@@ -12,8 +12,13 @@ import sys
 import numpy as np
 import numpy.ma as ma
 import matplotlib
+
+np.set_printoptions(threshold=np.inf)
+
+#Backend for python3 on mahler
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
+
 import math
 import gzip
 from astropy.io import fits
@@ -47,8 +52,8 @@ def get_synth(obsfilename, starnum, synth=None, temp=None, logg=None, fe=None, a
     ivar 	  -- inverse variance array
     """
 
-    # Get synthetic spectrum
-    if synth is None:
+	# Get synthetic spectrum
+	if synth is None:
 
 		# Use modified version of interpolateAtm to get synthetic spectrum from Ivanna's grid
 		synthflux = 1. - interpolateAtm(temp,logg,fe,alpha,griddir='/raid/gridie/bin/')
@@ -111,10 +116,10 @@ def mask_obs(obsfilename, starnum, synth=None, mnlines=False, temp=None, logg=No
     """
 
     # Mask out bad stuff + Mn lines (for divide_spec)
-    if not mnlines:
+	if not mnlines:
 
-    	# Get smoothed synthetic spectrum and (NOT continuum-normalized) observed spectrum
-		synthflux, obsflux, obswvl, ivar = get_synth(obsfilename, starnum, synth=synth, temp=temp, logg=logg, fe=fe, alpha=alpha)
+		# Get smoothed synthetic spectrum and (NOT continuum-normalized) observed spectrum
+		synthflux, obsflux, obswvl, ivar = get_synth(obsfilename, starnum, synth=None, temp=temp, logg=logg, fe=fe, alpha=alpha)
 
 		# Make a mask
 		mask = np.zeros(len(synthflux), dtype=bool)
@@ -129,23 +134,21 @@ def mask_obs(obsfilename, starnum, synth=None, mnlines=False, temp=None, logg=No
 
 		# Mask out any bad pixels
 		mask[np.where(synthflux <= 0.)] = True
-		mask[np.where(ivar < 0.)] = True
+		mask[np.where(ivar <= 0.)] = True
 
 		# Mask out pixels around Na D doublet (5890, 5896 A)
 		mask[np.where((obswvl > 5884.) & (obswvl < 5904.))] = True
 
 		# Mask out pixels in regions around Mn lines (+/- 5A) 
-		mask[np.where((obswvl > 4749.) & (obswvl < 4759.))] = True
-		mask[np.where((obswvl > 4778.) & (obswvl < 4788.))] = True
-		mask[np.where((obswvl > 4818.) & (obswvl < 4828.))] = True
-		mask[np.where((obswvl > 5389.) & (obswvl < 5399.))] = True
-		mask[np.where((obswvl > 5532.) & (obswvl < 5542.))] = True
-		mask[np.where((obswvl > 6008.) & (obswvl < 6018.))] = True
-		mask[np.where((obswvl > 6016.) & (obswvl < 6026.))] = True
-
-		# Mask out anywhere synthetic spectrum doesn't exist
-		#mask[np.where(obswvl < 4100.)] = True
-		#mask[np.where(obswvl > 6300.)] = True
+		mnmask = np.zeros(len(synthflux), dtype=bool)
+		mnmask[np.where((obswvl > 4749.) & (obswvl < 4759.))] = True
+		mnmask[np.where((obswvl > 4778.) & (obswvl < 4788.))] = True
+		mnmask[np.where((obswvl > 4818.) & (obswvl < 4828.))] = True
+		mnmask[np.where((obswvl > 5389.) & (obswvl < 5399.))] = True
+		mnmask[np.where((obswvl > 5532.) & (obswvl < 5542.))] = True
+		mnmask[np.where((obswvl > 6008.) & (obswvl < 6018.))] = True
+		mnmask[np.where((obswvl > 6016.) & (obswvl < 6026.))] = True
+		mask[mnmask] = True
 
 		# Create masked arrays
 		synthfluxmask = ma.masked_array(synthflux, mask)
@@ -159,7 +162,7 @@ def mask_obs(obsfilename, starnum, synth=None, mnlines=False, temp=None, logg=No
 	else:
 
 		# Get smoothed synthetic spectrum and continuum-normalized observed spectrum
-		obswvl, obsflux_norm, ivar_norm, synthflux = divide_spec(obsfilename, starnum, synth=synth, temp=temp, logg=logg, alpha=alpha)
+		synthflux, obsflux_norm, obswvl, ivar_norm = divide_spec(obsfilename, starnum, synth=synth, temp=temp, logg=logg, fe=fe, alpha=alpha)
 
 		# Make a mask
 		mask = np.zeros(len(synthflux), dtype=bool)
@@ -174,7 +177,7 @@ def mask_obs(obsfilename, starnum, synth=None, mnlines=False, temp=None, logg=No
 
 		# Mask out any bad pixels
 		mask[np.where(synthflux <= 0.)] = True
-		mask[np.where(ivar < 0.)] = True
+		mask[np.where(ivar_norm <= 0.)] = True
 
 		# Mask out pixels around Na D doublet (5890, 5896 A)
 		mask[np.where((obswvl > 5884.) & (obswvl < 5904.))] = True
@@ -194,7 +197,7 @@ def mask_obs(obsfilename, starnum, synth=None, mnlines=False, temp=None, logg=No
 		# Create masked arrays
 		synthfluxmask = ma.masked_array(synthflux, mask)
 		obsfluxmask   = ma.masked_array(obsflux_norm, mask)
-		obswvlmask	  = ma.masked_array(obswvl_norm, mask)
+		obswvlmask	  = ma.masked_array(obswvl, mask)
 		ivarmask	  = ma.masked_array(ivar_norm, mask)
 
 		return synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask
@@ -230,11 +233,20 @@ def divide_spec(obsfilename, starnum, synth=None, temp=None, logg=None, fe=None,
     ivar_norm    -- continuum-normalized inverse variance
 
     """
-
 	synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask = mask_obs(obsfilename, starnum, synth=synth, temp=temp, logg=logg, fe=fe, alpha=alpha)
 
+	# Mask out everything EXCEPT Mn lines
+	mnmask = np.zeros(len(synthfluxmask.data), dtype=bool) # Mask with all Mn lines masked out
+	mnmask[np.where((obswvlmask.data > 4749.) & (obswvlmask.data < 4759.))] = True
+	mnmask[np.where((obswvlmask.data > 4778.) & (obswvlmask.data < 4788.))] = True
+	mnmask[np.where((obswvlmask.data > 4818.) & (obswvlmask.data < 4828.))] = True
+	mnmask[np.where((obswvlmask.data > 5389.) & (obswvlmask.data < 5399.))] = True
+	mnmask[np.where((obswvlmask.data > 5532.) & (obswvlmask.data < 5542.))] = True
+	mnmask[np.where((obswvlmask.data > 6008.) & (obswvlmask.data < 6018.))] = True
+	mnmask[np.where((obswvlmask.data > 6016.) & (obswvlmask.data < 6026.))] = True
+
 	# Convert inverse variance to inverse standard dev
-	ivarmask = np.sqrt(ivarmask)
+	ivarmask = ma.masked_array(np.sqrt(ivarmask.data), mask)
 
 	# Divide obs/synth
 	quotient = obsfluxmask/synthfluxmask
@@ -262,7 +274,9 @@ def divide_spec(obsfilename, starnum, synth=None, temp=None, logg=None, fe=None,
 		return breakpoints
 	
 	# Determine initial spline fit, before sigma-clipping
-	breakpoints_old	= calc_breakpoints(obsfluxmask.compressed(), 150.) # Use 150 A spacing
+	breakpoints_old	= calc_breakpoints(obswvlmask.compressed(), 150.) # Use 150 A spacing
+	print('breakpoints: ', breakpoints_old)
+	#print(obswvlmask.compressed(), quotient.compressed(), ivarmask.compressed())
 	splinerep_old 	= splrep(obswvlmask.compressed(), quotient.compressed(), w=ivarmask.compressed(), t=breakpoints_old)
 	continuum_old	= splev(obswvlmask.compressed(), splinerep_old)
 
@@ -318,6 +332,7 @@ def divide_spec(obsfilename, starnum, synth=None, temp=None, logg=None, fe=None,
 	# Now divide obs/spline
 	obswvl 		 = obswvlmask.data
 	obsflux_norm = obsfluxmask.data/continuum_final
+
 	ivar_norm 	 = ivarmask.data * np.power(continuum_final, 2.)
 
 	# Get synthetic spectrum too
@@ -327,7 +342,7 @@ def divide_spec(obsfilename, starnum, synth=None, temp=None, logg=None, fe=None,
 
 #synthflux, obsflux, _, ivar = get_synth('/raid/caltech/moogify/bscl1/moogify.fits.gz', starnum=0, temp=3500, logg=3.0, fe=-3.3, alpha=1.2)
 #synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask = mask_obs('/raid/caltech/moogify/bscl1/moogify.fits.gz', starnum=0, temp=3500, logg=3.0, fe=-3.3, alpha=1.2)
-synthflux, obsflux_norm, obswvl, ivar_norm = divide_spec('/raid/caltech/moogify/bscl1/moogify.fits.gz', starnum=0, synth=None, temp=3500, logg=3.0, fe=-3.3, alpha=1.2)
+#synthflux, obsflux_norm, obswvl, ivar_norm = divide_spec('/raid/caltech/moogify/bscl1/moogify.fits.gz', starnum=0, synth=None, temp=3500, logg=3.0, fe=-3.3, alpha=1.2)
 
 #print(obswvl, obswvl[1]-obswvl[0], obswvl[2]-obswvl[1])
 #np.set_printoptions(threshold=np.inf)

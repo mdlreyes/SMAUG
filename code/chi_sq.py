@@ -18,12 +18,13 @@ import os
 import numpy as np
 import math
 from run_moog import runMoog
+from match_spectrum import open_obs_file
 from continuum_div import get_synth, mask_obs, divide_spec
 import subprocess
 from astropy.io import fits
 import pandas
-import lmfit
-from scipy.optimize import leastsq
+#import lmfit
+from scipy.optimize import least_squares
 
 def residual_lmfit(obsfilename, starnum, params):
 	"""Compute residual for lmfit.
@@ -84,6 +85,9 @@ def minimize_lmfit(obsfilename, starnum, temp, logg, fe, alpha, mn, method='leas
     rchisq	  -- reduced chi-squared
     """
 
+    # Get measured parameters from observed spectrum
+	temp, temperr, logg, loggerr, fe, feerr, alpha, alphaerr = open_obs_file(obsfilename, starnum, specparams=True)
+
 	# Define parameters
 	params = lmfit.Parameters()
 	params.add('obsfilename', value = obsfilename, vary=False)
@@ -105,7 +109,7 @@ def minimize_lmfit(obsfilename, starnum, temp, logg, fe, alpha, mn, method='leas
 
 	return fitparams, rchisq
 
-def residual_scipy(obsfilename, starnum, mn, temp, logg, fe, alpha):
+def residual_scipy(mn, *args):
 	"""Compute residual for scipy.optimize.
 
     Inputs:
@@ -122,19 +126,24 @@ def residual_scipy(obsfilename, starnum, mn, temp, logg, fe, alpha):
     ivar 	 -- inverse variance
     """
 
+	# Unpack arguments
+	obsfilename, starnum, temp, logg, fe, alpha = args
+
 	# Compute synthetic spectrum
+	print('Computing synthetic spectrum...')
 	synth = runMoog(temp=temp, logg=logg, fe=fe, alpha=alpha, elements=[25], abunds=[mn], solar=[5.43])
 
 	# Get observed spectrum and smooth the synthetic spectrum to match it
-	synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask = mask_obs(obsfilename, starnum, synth=synth, mnlines=True)
+	print('Getting observed spectrum...')
+	synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask = mask_obs(obsfilename, starnum, synth=synth, mnlines=True, temp=temp, logg=logg, fe=fe, alpha=alpha)
 
 	# Calculate residual
-	if ivar is None:
-		return (obsfluxmask.compressed() - synthfluxmask.compressed())
-	else:
-		return (obsfluxmask.compressed() - synthfluxmask.compressed())/np.sqrt(ivarmask.compressed())
+	resid = (obsfluxmask.compressed() - synthfluxmask.compressed())/np.sqrt(ivarmask.compressed())
+	print('Residual = ', np.sum(resid))
 
-def minimize_scipy(mn, obsfilename, starnum, temp, logg, fe, alpha):
+	return(resid)
+
+def minimize_scipy(obsfilename, starnum, mn):
 	"""Minimize residual using scipy.optimize Levenberg-Marquardt.
 
     Inputs:
@@ -143,10 +152,6 @@ def minimize_scipy(mn, obsfilename, starnum, temp, logg, fe, alpha):
     starnum     -- nth star from the file (where n = starnum)
 
     For synthetic spectrum --
-    temp 	 -- effective temperature (K)
-    logg 	 -- surface gravity
-    fe 		 -- [Fe/H]
-    alpha 	 -- [alpha/Fe]
     mn 		 -- [Mn/H] abundance
 
     Outputs:
@@ -154,14 +159,22 @@ def minimize_scipy(mn, obsfilename, starnum, temp, logg, fe, alpha):
     rchisq	  -- reduced chi-squared
     """
 
-    # Define parameters to vary
-    params = [mn]
+	# Get measured parameters from observed spectrum
+	temp, temperr, logg, loggerr, fe, feerr, alpha, alphaerr = open_obs_file(obsfilename, starnum, specparams=True)
+
+	# Define parameters to vary
+	params = mn
 
 	# Do minimization
-	fitparams, cov = leastsq(residual_scipy, params, args=(obsfilename, starnum, temp, logg, fe, alpha))
+	print('Starting minimization!')
+	result = least_squares(residual_scipy, params, args=(obsfilename, starnum, temp, logg, fe, alpha))
+
+	print('Made it here')
+
+	print('Answer: ', result.x)
 
 	# Compute reduced chi-squared
-	finalresid = residual_scipy(obsfilename, starnum, mn=fitparams[0], temp=temp, logg=logg, fe=fe, alpha=alpha)
+	finalresid = residual_scipy(result.x, obsfilename, starnum, temp, logg, fe, alpha)
 	rchisq = np.sum(np.power(finalresid,2.))/(len(finalresid) - 1.)
 	
 	# Compute standard error
@@ -172,7 +185,7 @@ def minimize_scipy(mn, obsfilename, starnum, temp, logg, fe, alpha):
 	#	except:
 	#		error.append( 0.0 )
 
-	return fitparams, rchisq
+	return result.x
 
-fitparams_lmfit, rchisq_lmfit = minimize_lmfit('/raid/caltech/moogify/bscl1/moogify.fits.gz', starnum=0, temp=3500, logg=3.0, fe=-3.3, alpha=1.2, mn=0, method='leastsq')
-fitparams_scipy, rchisq_scipy = minimize_scipy('/raid/caltech/moogify/bscl1/moogify.fits.gz', starnum=0, temp=3500, logg=3.0, fe=-3.3, alpha=1.2, mn=0)
+#fitparams_lmfit, rchisq_lmfit = minimize_lmfit('/raid/caltech/moogify/bscl1/moogify.fits.gz', starnum=0, temp=3500, logg=3.0, fe=-3.3, alpha=1.2, mn=0, method='leastsq')
+minimize_scipy('/raid/caltech/moogify/bscl1/moogify.fits.gz', starnum=3, mn=0)

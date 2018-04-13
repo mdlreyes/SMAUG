@@ -223,7 +223,7 @@ def interpolateAtm(temp, logg, fe, alpha, griddir='/raid/grid7/atmospheres/'):
 	alphaUp = round_to(alphanew, 1, 'up')/10.
 	alphaDown = round_to(alphanew, 1, 'down')/10.
 
-	print(tempUp, tempDown, loggUp, loggDown, feUp, feDown, alphaUp, alphaDown)
+	print('Interpolation parameters: ', tempUp, tempDown, loggUp, loggDown, feUp, feDown, alphaUp, alphaDown)
 
 	# Check that points are within range of grid
 	if tempError:
@@ -253,11 +253,11 @@ def interpolateAtm(temp, logg, fe, alpha, griddir='/raid/grid7/atmospheres/'):
 
 	# If within grid, interpolate
 	else:
-		print('Interpolating: ')
-		print('temp = ', tempUp, tempDown)
-		print('logg = ', loggUp, loggDown)
-		print('fe = ', feUp, feDown)
-		print('alpha = ', alphaUp, alphaDown)
+		#print('Interpolating atmosphere using parameters:')
+		#print('temp = ', tempUp, tempDown)
+		#print('logg = ', loggUp, loggDown)
+		#print('fe = ', feUp, feDown)
+		#print('alpha = ', alphaUp, alphaDown)
 
 		# Comment out for actual run
 		#return

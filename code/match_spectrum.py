@@ -16,7 +16,7 @@ import math
 from astropy.io import fits
 from smooth_gauss import smooth_gauss
 
-def open_obs_file(filename, retrievespec=None):
+def open_obs_file(filename, retrievespec=None, specparams=False):
 	"""Open .fits.gz files with observed spectra.
 
     Inputs:
@@ -26,12 +26,16 @@ def open_obs_file(filename, retrievespec=None):
     retrievespec - if None (default), output number of stars in file; 
                     else, retrieve spectrum of nth star from the file (where n = retrievespec)
 
+    specparams	 - if True, output temp, logg, fe, alpha of nth star in file 
+    				(only works when retrievespec is not None)
+
     Outputs:
     wvl  - rest wavelength array for nth star
     flux - flux array for nth star
     ivar - inverse variance array for nth star
     """
 
+	print(filename)
 	hdu1 = fits.open(filename)
 	data = hdu1[1].data
 
@@ -41,18 +45,37 @@ def open_obs_file(filename, retrievespec=None):
 
 	if retrievespec is not None:
 
-		# Get spectrum of a single star
-		wvl  = wavearray[retrievespec]
-		flux = fluxarray[retrievespec] 
-		ivar = ivararray[retrievespec]
+		# If don't need to return other parameters, just return spectrum
+		if not specparams:
 
-		# Correct for wavelength
-		zrest = data['ZREST'][retrievespec]
-		if zrest > 0:
-			wvl = wvl / (1. + zrest)
-			print('Redshift: ', zrest)
+			# Get spectrum of a single star
+			wvl  = wavearray[retrievespec]
+			flux = fluxarray[retrievespec] 
+			ivar = ivararray[retrievespec]
 
-		return wvl, flux, ivar
+			# Correct for wavelength
+			zrest = data['ZREST'][retrievespec]
+			if zrest > 0:
+				wvl = wvl / (1. + zrest)
+				print('Redshift: ', zrest)
+
+			return wvl, flux, ivar
+
+		# Else, return other parameters
+		else:
+
+			temp 	= int(data['TEFF'][retrievespec])
+			temperr = data['TEFFERR'][retrievespec]
+			logg 	= data['LOGG'][retrievespec]
+			loggerr = data['LOGGERR'][retrievespec]
+			fe 		= data['FEH'][retrievespec]
+			feerr 	= data['FEHERR'][retrievespec]
+			alpha 	= data['ALPHAFE'][retrievespec]
+			alphaerr = data['ALPHAFEERR'][retrievespec]
+
+			print('parameters: ', temp, temperr, logg, loggerr, fe, feerr, alpha, alphaerr)
+
+			return temp, temperr, logg, loggerr, fe, feerr, alpha, alphaerr
 
 	# Else, return number of stars in file
 	else:

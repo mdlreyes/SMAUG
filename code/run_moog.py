@@ -10,13 +10,15 @@
 ###################################################################
 
 import os
+import sys
+import glob
 import numpy as np
 import math
 from interp_atmosphere import checkFile, getAtm, writeAtm
 import subprocess
 import pandas
 	
-def createPar(name, linelist, atmfile='', directory=''):
+def createPar(name, atmfile='', linelist='', directory=''):
 	"""Create *.par file using *.atm file and linelist.
 	"""
 
@@ -78,15 +80,17 @@ def runMoog(temp, logg, fe, alpha, directory='/raid/madlr/moogspectra/', element
     """
 
 	# Clean out the output directories
-	subprocess.Popen(['rm', '-rf', '*'], cwd='/raid/madlr/moogout/')
-	subprocess.Popen(['rm', '-rf', '*'], cwd='/raid/madlr/par/')
+	for fl in glob.glob('/raid/madlr/moogout/*'):
+		os.remove(fl)
+	for fl in glob.glob('/raid/madlr/par/*'):
+		os.remove(fl)
 
 	# Define list of Mn linelists
 	linelists = np.array(['linelist_Mn4754','linelist_Mn4783','linelist_Mn4823','linelist_Mn5394','linelist_Mn5537','linelist_Mn60136021']) 
 
 	# Create identifying filename (including all parameters + linelist used)
 	name = getAtm(temp, logg, fe, alpha, directory='') # Add all parameters to name
-	name = name[:-4] # remove .atm
+	#name = name[:-4] # remove .atm
 
 	# Add the new elements to filename, if any
 	if elements is not None:
@@ -106,6 +110,12 @@ def runMoog(temp, logg, fe, alpha, directory='/raid/madlr/moogspectra/', element
 			name = name + elementstr
 
 	# Create *.atm file (for use with each linelist)
+	print('Running MOOG with parameters: ')
+	print('temp = ', temp)
+	print('logg = ', logg)
+	print('fe = ', fe)
+	print('alpha = ', alpha)
+	print('extra elements: ', elements, ' with abundances ', abunds)
 	atmfile = writeAtm(temp, logg, fe, alpha, elements=elements, abunds=abunds, solar=solar)
 
 	# Loop over all linelists
@@ -116,10 +126,15 @@ def runMoog(temp, logg, fe, alpha, directory='/raid/madlr/moogspectra/', element
 		parfile, wavelengthrange = createPar(parname, atmfile, '/raid/madlr/linelists/'+linelists[i], directory='/raid/madlr/par/')
 
 		# Run MOOG
-		subprocess.Popen(['MOOG', parfile], cwd='/raid/madlr/moog17scat/')
+		p = subprocess.Popen(['MOOG', parfile], cwd='/raid/madlr/moog17scat/', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+		
+		# Wait for MOOG to finish running
+		p.communicate()
 
 		# Create arrays of wavelengths and fluxes
 		outfile = '/raid/madlr/moogout/'+parname+'.out2'
+
+		# Try opening this file
 		
 		if i > 0:
 			wavelength = np.hstack((wavelength,np.arange(wavelengthrange[0],wavelengthrange[1],0.02)))
@@ -127,7 +142,7 @@ def runMoog(temp, logg, fe, alpha, directory='/raid/madlr/moogspectra/', element
 			data = pandas.read_csv(outfile, skiprows=2, delimiter=' ').as_matrix()
 			flux = np.hstack((flux,data[~np.isnan(data)][:-1]))
 
-		if i ==0:
+		if i == 0:
 			wavelength = np.linspace(wavelengthrange[0],wavelengthrange[1],math.ceil((wavelengthrange[1]-wavelengthrange[0])/0.02), endpoint=True)
 
 			data = pandas.read_csv(outfile, skiprows=[0,1,-1], delimiter=' ').as_matrix()
