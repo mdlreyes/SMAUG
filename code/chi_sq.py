@@ -19,7 +19,7 @@ import numpy as np
 import math
 from run_moog import runMoog
 from match_spectrum import open_obs_file
-from continuum_div import get_synth, mask_obs, divide_spec
+from continuum_div import get_synth, divide_spec, mask_obs_for_abundance
 import subprocess
 from astropy.io import fits
 import pandas
@@ -109,83 +109,79 @@ def minimize_lmfit(obsfilename, starnum, temp, logg, fe, alpha, mn, method='leas
 
 	return fitparams, rchisq
 
-def residual_scipy(mn, *args):
-	"""Compute residual for scipy.optimize.
+# Observed spectrum
+class obsSpectrum(filename, starnum):
 
-    Inputs:
-    For observed spectrum --
-    obsfilename -- filename of observed spectrum
-    starnum     -- nth star from the file (where n = starnum)
+	def __init__(self):
 
-	For synthetic spectrum --
-    [mn, temp, logg, fe, alpha] -- the usual parameters
+		# Observed star
+		self.obsfilename = filename # File with observed spectra
+		self.starnum = starnum	# Star number
 
-    Outputs:
-    residual -- residual (weighted by measurement uncertainties)
-    obsflux  -- observed flux
-    ivar 	 -- inverse variance
-    """
+		# Open observed spectrum
+		self.obswvl, self.obsflux, self.ivar = open_obs_file(self.obsfilename, retrievespec=self.starnum)
 
-	# Unpack arguments
-	obsfilename, starnum, temp, logg, fe, alpha = args
+		# Get measured parameters from observed spectrum
+		self.temp, self.temperr, self.logg, self.loggerr, self.fe, self.feerr, self.alpha, self.alphaerr = open_obs_file(obsfilename, starnum, specparams=True)
 
-	# Compute synthetic spectrum
-	print('Computing synthetic spectrum...')
-	synth = runMoog(temp=temp, logg=logg, fe=fe, alpha=alpha, elements=[25], abunds=[mn], solar=[5.43])
+		# Compute continuum_normalized observed spectrum
+		self.obsflux_norm, self.ivar_norm = divide_spec(self.obswvl, self.obsflux, self.ivar, temp=self.temp, logg=self.logg, fe=self.fe, alpha=self.alpha)
 
-	# Get observed spectrum and smooth the synthetic spectrum to match it
-	print('Getting observed spectrum...')
-	synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask = mask_obs(obsfilename, starnum, synth=synth, mnlines=True, temp=temp, logg=logg, fe=fe, alpha=alpha)
+		# Mask out parts of the observed spectrum
+		self.obsflux_fit, self.obswvl_fit, self.ivar_fit = mask_obs_for_abundance(self.obswvl, self.obsflux_norm, self.ivar_norm)
 
-	# Calculate residual
-	resid = (obsfluxmask.compressed() - synthfluxmask.compressed())/np.sqrt(ivarmask.compressed())
-	print('Residual = ', np.sum(resid))
+	def synthetic(self, mn):
+		"""Get synthetic spectrum for fitting.
 
-	return(resid)
+		Inputs:
+		mn -- argument to vary (Mn abundance)
 
-def minimize_scipy(obsfilename, starnum, mn):
-	"""Minimize residual using scipy.optimize Levenberg-Marquardt.
+	    Outputs:
+	    synthflux -- array-like, 
+	    """
 
-    Inputs:
-    For observed spectrum --
-    obsfilename -- filename of observed spectrum
-    starnum     -- nth star from the file (where n = starnum)
+		# Compute synthetic spectrum
+		print('Computing synthetic spectrum...')
+		synth = runMoog(temp=self.temp, logg=self.logg, fe=self.fe, alpha=self.alpha, elements=[25], abunds=[mn], solar=[5.43])
 
-    For synthetic spectrum --
-    mn 		 -- [Mn/H] abundance
+		# Smooth synthetic spectrum to match continuum-normalized observed spectrum
+		print('Smoothing to match observed spectrum...')
+		synthflux = get_synth(self.obswvl_fit, self.obsflux_fit, self.ivar_fit, synth=synth)
 
-    Outputs:
-    fitparams -- best fit parameters
-    rchisq	  -- reduced chi-squared
-    """
+		return synthflux
 
-	# Get measured parameters from observed spectrum
-	temp, temperr, logg, loggerr, fe, feerr, alpha, alphaerr = open_obs_file(obsfilename, starnum, specparams=True)
+	def minimize_scipy(self, mn0):
+		"""Minimize residual using scipy.optimize Levenberg-Marquardt.
 
-	# Define parameters to vary
-	params = mn
+	    Inputs:
+	    mn0 -- initial guess for Mn abundance
 
-	# Do minimization
-	print('Starting minimization!')
-	result = least_squares(residual_scipy, params, args=(obsfilename, starnum, temp, logg, fe, alpha))
+	    Outputs:
+	    fitparams -- best fit parameters
+	    rchisq	  -- reduced chi-squared
+	    """
 
-	print('Made it here')
+		# Do minimization
+		print('Starting minimization!')
+		best_mn, covar = curve_fit(self.synthetic, self.obswvl_fit, self.obsflux_fit, p0=mn0, sigma=self.ivar_fit**(-0.5))
 
-	print('Answer: ', result.x)
+		print('Made it here')
 
-	# Compute reduced chi-squared
-	finalresid = residual_scipy(result.x, obsfilename, starnum, temp, logg, fe, alpha)
-	rchisq = np.sum(np.power(finalresid,2.))/(len(finalresid) - 1.)
-	
-	# Compute standard error
-	#error = []
-	#for i in range(len(params)):
-	#	try:
-	#		error.append( np.absolute((cov[i][i] * rchisq)**2.) )
-	#	except:
-	#		error.append( 0.0 )
+		print('Answer: ', best_mn)
 
-	return result.x
+		# Compute reduced chi-squared
+		#finalresid = residual_scipy(result.x, obsfilename, starnum, temp, logg, fe, alpha)
+		#rchisq = np.sum(np.power(finalresid,2.))/(len(finalresid) - 1.)
+		
+		# Compute standard error
+		#error = []
+		#for i in range(len(params)):
+		#	try:
+		#		error.append( np.absolute((cov[i][i] * rchisq)**2.) )
+		#	except:
+		#		error.append( 0.0 )
 
-#fitparams_lmfit, rchisq_lmfit = minimize_lmfit('/raid/caltech/moogify/bscl1/moogify.fits.gz', starnum=0, temp=3500, logg=3.0, fe=-3.3, alpha=1.2, mn=0, method='leastsq')
-minimize_scipy('/raid/caltech/moogify/bscl1/moogify.fits.gz', starnum=3, mn=0)
+		return best_mn
+
+filename = '/raid/caltech/moogify/bscl1/moogify.fits.gz'
+test = obsSpectrum(filename, 3).minimize_scipy(0.)
