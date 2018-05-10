@@ -228,24 +228,24 @@ def interpolateAtm(temp, logg, fe, alpha, griddir='/raid/grid7/atmospheres/'):
 	# Check that points are within range of grid
 	if tempError:
 		print('Error: T = ' + str(temp) + ' is out of range!')
-		return
+		raise
 
 	if loggUp > 5.0 or loggDown < 0:
 		print('Error: log(g) = ' + str(logg) + ' is out of range!')
-		return
+		raise
 
 	elif feUp > 0 or feDown < -5.0:
 		print('Error: [Fe/H] = ' + str(fe) + ' is out of range!')
-		return
+		raise
 
 	elif alphaUp > 1.2 or alphaDown < -0.8:
 		print('Error: [alpha/Fe] = ' + str(alpha) + ' is out of range!')
-		return
+		raise
 
 	# Grid isn't uniform, so do additional checks to make sure points are within range of grid
 	elif ((loggUp < 0.5) or (loggDown < 0.5)) and ((tempUp >= 7000) or (tempDown >= 7000)):
 		print('Error: T = ' + str(temp) + ' and log(g) = ' + str(logg) + ' out of range!')
-		return
+		raise
 
 	#elif (temp > 3700) & (temp < 4200) & (logg > 40) & (fe <= -4.8):
 	#	print('Error: Out of range!') 
@@ -253,15 +253,6 @@ def interpolateAtm(temp, logg, fe, alpha, griddir='/raid/grid7/atmospheres/'):
 
 	# If within grid, interpolate
 	else:
-		#print('Interpolating atmosphere using parameters:')
-		#print('temp = ', tempUp, tempDown)
-		#print('logg = ', loggUp, loggDown)
-		#print('fe = ', feUp, feDown)
-		#print('alpha = ', alphaUp, alphaDown)
-
-		# Comment out for actual run
-		#return
-		
 		# Calculate intervals for each variable
 		# (quantities needed for interpolation)
 		#######################################
@@ -398,8 +389,8 @@ def writeAtm(temp, logg, fe, alpha, dir='/raid/madlr/atm/', elements=None, abund
 
 		# If adding elements, first make sure that number of elements matches number of abundances
 		elif len(elements) != len(abunds):
-			print('ERROR: length of element array doesn\'t match length of abundances array')
-			return
+			print('Error: length of element array doesn\'t match length of abundances array')
+			raise
 
 		else:
 			natoms = 6 + len(elements)

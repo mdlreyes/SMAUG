@@ -148,6 +148,7 @@ class obsSpectrum():
 		plt.axvspan(5532, 5542, alpha=0.5, color='blue')
 		plt.axvspan(6008, 6018, alpha=0.5, color='blue')
 		plt.axvspan(6016, 6026, alpha=0.5, color='blue')
+		plt.xlim((4856, 4866))
 		plt.savefig('obs.png')
 
 		# Get synthetic spectrum, split both obs and synth spectra into red and blue parts
@@ -166,11 +167,10 @@ class obsSpectrum():
 		plt.axvspan(5532, 5542, alpha=0.5, color='blue')
 		plt.axvspan(6008, 6018, alpha=0.5, color='blue')
 		plt.axvspan(6016, 6026, alpha=0.5, color='blue')
+		#plt.xlim((4856, 4866))
 		plt.xlim((4300, 6100))
-		plt.ylim((0,2))
+		plt.ylim((0,1.5))
 		plt.savefig('obs_normalized.png')
-
-		sys.exit()
 
 		# Crop observed spectrum into regions around Mn lines
 		self.obsflux_fit, self.obswvl_fit, self.ivar_fit, self.dlam_fit = mask_obs_for_abundance(self.obswvl, self.obsflux_norm, self.ivar_norm, self.dlam)
@@ -196,17 +196,16 @@ class obsSpectrum():
 		synth = runMoog(temp=self.temp, logg=self.logg, fe=self.fe, alpha=self.alpha, elements=[25], abunds=[mn], solar=[5.43])
 
 		# Smooth synthetic spectrum to match continuum-normalized observed spectrum
-		print('Smoothing to match observed spectrum...')
+		#print('Smoothing to match observed spectrum...')
 
 		# Loop over all lines
 		for i in range(len(synth)):
 
-			'''
 			# For testing purposes
 
 			# Smooth each region of synthetic spectrum to match each region of observed spectrum
 			synthflux = get_synth(self.obswvl_fit[i], self.obsflux_fit[i], self.ivar_fit[i], self.dlam_fit[i], synth=synth[i])
-			print(i, synthflux)
+			#print(i, synthflux)
 
 			plt.figure()
 			plt.plot(self.obswvl_fit[i], self.obsflux_fit[i], 'k-', label='Observed')
@@ -214,14 +213,17 @@ class obsSpectrum():
 			plt.legend(loc='best')
 			plt.savefig('final_obs_'+str(i)+'.png')
 			plt.close()
-			'''
 
-			# Smooth each region of synthetic spectrum to match each region of observed spectrum
-			if i == 0:
-				synthflux = get_synth(self.obswvl_fit[i], self.obsflux_fit[i], self.ivar_fit[i], self.dlam_fit[i], synth=synth[i])
-			else:
-				# Splice synthflux together
-				synthflux = np.hstack((synthflux, get_synth(self.obswvl_fit[i], self.obsflux_fit[i], self.ivar_fit[i], self.dlam_fit[i], synth=synth[i])))
+		sys.exit()
+
+		'''
+		# Smooth each region of synthetic spectrum to match each region of observed spectrum
+		if i == 0:
+			synthflux = get_synth(self.obswvl_fit[i], self.obsflux_fit[i], self.ivar_fit[i], self.dlam_fit[i], synth=synth[i])
+		else:
+			# Splice synthflux together
+			synthflux = np.hstack((synthflux, get_synth(self.obswvl_fit[i], self.obsflux_fit[i], self.ivar_fit[i], self.dlam_fit[i], synth=synth[i])))
+		'''
 
 		return synthflux
 
@@ -238,9 +240,8 @@ class obsSpectrum():
 
 		# Do minimization
 		print('Starting minimization!')
-		best_mn, covar = curve_fit(self.synthetic, self.obswvl_final, self.obsflux_final, p0=mn0, sigma=np.power(self.ivar_final,-0.5))
-
-		print('Made it here')
+		params = [mn0]
+		best_mn, covar = curve_fit(self.synthetic, self.obswvl_final, self.obsflux_final, p0=params, sigma=np.power(self.ivar_final,-0.5), absolute_sigma=True, method='lm')
 
 		print('Answer: ', best_mn)
 
@@ -260,7 +261,11 @@ class obsSpectrum():
 
 def main():
 	filename = '/raid/caltech/moogify/bscl1/moogify.fits.gz'
-	test = obsSpectrum(filename, 62).minimize_scipy(0.)
+	#test = obsSpectrum(filename, 65).minimize_scipy(0.)
+	#test = obsSpectrum(filename, 28).minimize_scipy(0.)
+	#test = obsSpectrum(filename, 30).minimize_scipy(0.)
+	#test = obsSpectrum(filename, 32).minimize_scipy(0.)
+	test = obsSpectrum(filename, 39).minimize_scipy(-0.5)
 
 if __name__ == "__main__":
 	main()

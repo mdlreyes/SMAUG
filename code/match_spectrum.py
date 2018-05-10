@@ -78,12 +78,13 @@ def open_obs_file(filename, retrievespec=None, specparams=False, objname=None):
 			index 	  = np.where(namearray==objname)
 
 			# Check that such an entry exists
-			if index.size > 0:
+			if len(index[0]) > 0:
+				print(index[0])
 
-				temp 	= int(data['TEFF'][index])
-				logg 	= data['LOGG'][index]
-				fe 		= data['FEH'][index]
-				alpha 	= data['ALPHAFE'][index]
+				temp 	= int(data['TEFF'][index[0]])
+				logg 	= data['LOGG'][index[0]]
+				fe 		= data['FEH'][index[0]]
+				alpha 	= data['ALPHAFE'][index[0]]
 
 				print('Parameters: ', temp, logg, fe, alpha)
 
@@ -91,7 +92,7 @@ def open_obs_file(filename, retrievespec=None, specparams=False, objname=None):
 
 			# If not, then missing best-fit parameters; just end the program
 			else:
-				print('ERROR: Spectrum not properly reduced!')
+				print('Error: Spectrum not properly reduced!')
 				raise
 
 	# Else, return number of stars in file
