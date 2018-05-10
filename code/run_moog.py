@@ -87,6 +87,7 @@ def runMoog(temp, logg, fe, alpha, directory='/raid/madlr/moogspectra/', element
 
 	# Define list of Mn linelists
 	linelists = np.array(['linelist_Mn4754','linelist_Mn4783','linelist_Mn4823','linelist_Mn5394','linelist_Mn5537','linelist_Mn60136021']) 
+	spectrum  = []
 
 	# Create identifying filename (including all parameters + linelist used)
 	name = getAtm(temp, logg, fe, alpha, directory='') # Add all parameters to name
@@ -148,11 +149,12 @@ def runMoog(temp, logg, fe, alpha, directory='/raid/madlr/moogspectra/', element
 			data = pandas.read_csv(outfile, skiprows=[0,1,-1], delimiter=' ').as_matrix()
 			flux = data[~np.isnan(data)][:-1]
 
+		spectrum.append([1.-flux, wavelength])
+
 	#spectrum = np.vstack((wavelength, flux)).T
 	#np.savetxt(directory+parname, spectrum)
 
 	# Output synthetic spectrum in a format that continuum_div functions will understand (list of arrays) 
-	spectrum = [flux, wavelength]
 
 	return spectrum
 

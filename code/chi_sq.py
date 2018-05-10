@@ -14,17 +14,23 @@
 # Updated 10 Apr 18
 ###################################################################
 
+#Backend for python3 on mahler
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
 import os
+import sys
 import numpy as np
 import math
 from run_moog import runMoog
 from match_spectrum import open_obs_file
-from continuum_div import get_synth, divide_spec, mask_obs_for_abundance
+from continuum_div import get_synth, mask_obs_for_division, divide_spec, mask_obs_for_abundance
 import subprocess
 from astropy.io import fits
 import pandas
 #import lmfit
-from scipy.optimize import least_squares
+from scipy.optimize import curve_fit
 
 def residual_lmfit(obsfilename, starnum, params):
 	"""Compute residual for lmfit.
@@ -110,31 +116,76 @@ def minimize_lmfit(obsfilename, starnum, temp, logg, fe, alpha, mn, method='leas
 	return fitparams, rchisq
 
 # Observed spectrum
-class obsSpectrum(filename, starnum):
+class obsSpectrum():
 
-	def __init__(self):
+	def __init__(self, filename, starnum):
 
 		# Observed star
 		self.obsfilename = filename # File with observed spectra
 		self.starnum = starnum	# Star number
 
 		# Open observed spectrum
-		self.obswvl, self.obsflux, self.ivar = open_obs_file(self.obsfilename, retrievespec=self.starnum)
+		self.specname, self.obswvl, self.obsflux, self.ivar, self.dlam = open_obs_file(self.obsfilename, retrievespec=self.starnum)
+
+		'''
+		# Plot first Mn line region of observed spectrum
+		testmask = np.where((self.obswvl > 4749) & (self.obswvl < 4759))
+		plt.figure()
+		plt.plot(self.obswvl[testmask], self.obsflux[testmask], 'k-') #, yerr=np.power(self.ivar[testmask], 0.5))
+		plt.savefig('obs_singleline.png')
+		'''
 
 		# Get measured parameters from observed spectrum
-		self.temp, self.temperr, self.logg, self.loggerr, self.fe, self.feerr, self.alpha, self.alphaerr = open_obs_file(obsfilename, starnum, specparams=True)
+		self.temp, self.logg, self.fe, self.alpha = open_obs_file('/raid/m31/dsph/scl/scl1/moogify7_flexteff.fits.gz', self.starnum, specparams=True, objname=self.specname)
 
-		# Compute continuum_normalized observed spectrum
-		self.obsflux_norm, self.ivar_norm = divide_spec(self.obswvl, self.obsflux, self.ivar, temp=self.temp, logg=self.logg, fe=self.fe, alpha=self.alpha)
+		# Plot observed spectrum
+		plt.figure()
+		plt.plot(self.obswvl, self.obsflux, 'k-')
+		plt.axvspan(4749, 4759, alpha=0.5, color='blue')
+		plt.axvspan(4778, 4788, alpha=0.5, color='blue')
+		plt.axvspan(4818, 4828, alpha=0.5, color='blue')
+		plt.axvspan(5389, 5399, alpha=0.5, color='blue')
+		plt.axvspan(5532, 5542, alpha=0.5, color='blue')
+		plt.axvspan(6008, 6018, alpha=0.5, color='blue')
+		plt.axvspan(6016, 6026, alpha=0.5, color='blue')
+		plt.savefig('obs.png')
 
-		# Mask out parts of the observed spectrum
-		self.obsflux_fit, self.obswvl_fit, self.ivar_fit = mask_obs_for_abundance(self.obswvl, self.obsflux_norm, self.ivar_norm)
+		# Get synthetic spectrum, split both obs and synth spectra into red and blue parts
+		synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask = mask_obs_for_division(self.obswvl, self.obsflux, self.ivar, temp=self.temp, logg=self.logg, fe=self.fe, alpha=self.alpha, dlam=self.dlam)
 
-	def synthetic(self, mn):
+		# Compute continuum-normalized observed spectrum
+		self.obsflux_norm, self.ivar_norm = divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask)
+
+		# Plot continuum-normalized observed spectrum
+		plt.figure()
+		plt.plot(self.obswvl, self.obsflux_norm, 'k-')
+		plt.axvspan(4749, 4759, alpha=0.5, color='blue')
+		plt.axvspan(4778, 4788, alpha=0.5, color='blue')
+		plt.axvspan(4818, 4828, alpha=0.5, color='blue')
+		plt.axvspan(5389, 5399, alpha=0.5, color='blue')
+		plt.axvspan(5532, 5542, alpha=0.5, color='blue')
+		plt.axvspan(6008, 6018, alpha=0.5, color='blue')
+		plt.axvspan(6016, 6026, alpha=0.5, color='blue')
+		plt.xlim((4300, 6100))
+		plt.ylim((0,2))
+		plt.savefig('obs_normalized.png')
+
+		sys.exit()
+
+		# Crop observed spectrum into regions around Mn lines
+		self.obsflux_fit, self.obswvl_fit, self.ivar_fit, self.dlam_fit = mask_obs_for_abundance(self.obswvl, self.obsflux_norm, self.ivar_norm, self.dlam)
+
+		# Splice together Mn line regions of observed spectra
+		self.obsflux_final = np.hstack((self.obsflux_fit[:]))
+		self.obswvl_final = np.hstack((self.obswvl_fit[:]))
+		self.ivar_final = np.hstack((self.ivar_fit[:]))
+
+	def synthetic(self, obswvl, mn):
 		"""Get synthetic spectrum for fitting.
 
 		Inputs:
-		mn -- argument to vary (Mn abundance)
+		obswvl -- independent variable (wavelength)
+		mn -- parameter to fit (Mn abundance)
 
 	    Outputs:
 	    synthflux -- array-like, 
@@ -146,7 +197,31 @@ class obsSpectrum(filename, starnum):
 
 		# Smooth synthetic spectrum to match continuum-normalized observed spectrum
 		print('Smoothing to match observed spectrum...')
-		synthflux = get_synth(self.obswvl_fit, self.obsflux_fit, self.ivar_fit, synth=synth)
+
+		# Loop over all lines
+		for i in range(len(synth)):
+
+			'''
+			# For testing purposes
+
+			# Smooth each region of synthetic spectrum to match each region of observed spectrum
+			synthflux = get_synth(self.obswvl_fit[i], self.obsflux_fit[i], self.ivar_fit[i], self.dlam_fit[i], synth=synth[i])
+			print(i, synthflux)
+
+			plt.figure()
+			plt.plot(self.obswvl_fit[i], self.obsflux_fit[i], 'k-', label='Observed')
+			plt.plot(self.obswvl_fit[i], synthflux, 'r--', label='Synthetic')
+			plt.legend(loc='best')
+			plt.savefig('final_obs_'+str(i)+'.png')
+			plt.close()
+			'''
+
+			# Smooth each region of synthetic spectrum to match each region of observed spectrum
+			if i == 0:
+				synthflux = get_synth(self.obswvl_fit[i], self.obsflux_fit[i], self.ivar_fit[i], self.dlam_fit[i], synth=synth[i])
+			else:
+				# Splice synthflux together
+				synthflux = np.hstack((synthflux, get_synth(self.obswvl_fit[i], self.obsflux_fit[i], self.ivar_fit[i], self.dlam_fit[i], synth=synth[i])))
 
 		return synthflux
 
@@ -163,7 +238,7 @@ class obsSpectrum(filename, starnum):
 
 		# Do minimization
 		print('Starting minimization!')
-		best_mn, covar = curve_fit(self.synthetic, self.obswvl_fit, self.obsflux_fit, p0=mn0, sigma=self.ivar_fit**(-0.5))
+		best_mn, covar = curve_fit(self.synthetic, self.obswvl_final, self.obsflux_final, p0=mn0, sigma=np.power(self.ivar_final,-0.5))
 
 		print('Made it here')
 
@@ -183,5 +258,9 @@ class obsSpectrum(filename, starnum):
 
 		return best_mn
 
-filename = '/raid/caltech/moogify/bscl1/moogify.fits.gz'
-test = obsSpectrum(filename, 3).minimize_scipy(0.)
+def main():
+	filename = '/raid/caltech/moogify/bscl1/moogify.fits.gz'
+	test = obsSpectrum(filename, 62).minimize_scipy(0.)
+
+if __name__ == "__main__":
+	main()
