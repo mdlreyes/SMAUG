@@ -84,6 +84,8 @@ def runMoog(temp, logg, fe, alpha, directory='/raid/madlr/moogspectra/', element
 		os.remove(fl)
 	for fl in glob.glob('/raid/madlr/par/*'):
 		os.remove(fl)
+	for fl in glob.glob('/raid/madlr/atm/*'):
+		os.remove(fl)
 
 	# Define list of Mn linelists
 	linelists = np.array(['linelist_Mn4754','linelist_Mn4783','linelist_Mn4823','linelist_Mn5394','linelist_Mn5537','linelist_Mn60136021']) 
@@ -135,19 +137,9 @@ def runMoog(temp, logg, fe, alpha, directory='/raid/madlr/moogspectra/', element
 		# Create arrays of wavelengths and fluxes
 		outfile = '/raid/madlr/moogout/'+parname+'.out2'
 
-		# Try opening this file
-		
-		if i > 0:
-			wavelength = np.hstack((wavelength,np.arange(wavelengthrange[0],wavelengthrange[1],0.02)))
-
-			data = pandas.read_csv(outfile, skiprows=2, delimiter=' ').as_matrix()
-			flux = np.hstack((flux,data[~np.isnan(data)][:-1]))
-
-		if i == 0:
-			wavelength = np.linspace(wavelengthrange[0],wavelengthrange[1],math.ceil((wavelengthrange[1]-wavelengthrange[0])/0.02), endpoint=True)
-
-			data = pandas.read_csv(outfile, skiprows=[0,1,-1], delimiter=' ').as_matrix()
-			flux = data[~np.isnan(data)][:-1]
+		wavelength = np.linspace(wavelengthrange[0],wavelengthrange[1],math.ceil((wavelengthrange[1]-wavelengthrange[0])/0.02), endpoint=True)
+		data = pandas.read_csv(outfile, skiprows=[0,1,-1], delimiter=' ').as_matrix()
+		flux = data[~np.isnan(data)][:-1]
 
 		spectrum.append([1.-flux, wavelength])
 

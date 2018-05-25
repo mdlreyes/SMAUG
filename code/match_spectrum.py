@@ -85,10 +85,12 @@ def open_obs_file(filename, retrievespec=None, specparams=False, objname=None):
 				logg 	= data['LOGG'][index[0]]
 				fe 		= data['FEH'][index[0]]
 				alpha 	= data['ALPHAFE'][index[0]]
+				#zrest = data['ZREST'][index[0]]
 
 				print('Parameters: ', temp, logg, fe, alpha)
+				#print('Redshift: ', zrest)
 
-				return temp, logg, fe, alpha
+				return temp, logg, fe, alpha #, zrest
 
 			# If not, then missing best-fit parameters; just end the program
 			else:

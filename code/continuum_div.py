@@ -141,15 +141,15 @@ def mask_obs_for_division(obswvl, obsflux, ivar, temp=None, logg=None, fe=None, 
 	# Mask out pixels around Na D doublet (5890, 5896 A)
 	mask[np.where((obswvl > 5884.) & (obswvl < 5904.))] = True
 
-	# Mask out pixels in regions around Mn lines (+/- 5A) 
+	# Mask out pixels in regions around Mn lines (+/- 10A) 
 	mnmask = np.zeros(len(synthflux), dtype=bool)
-	mnmask[np.where((obswvl > 4749.) & (obswvl < 4759.))] = True
-	mnmask[np.where((obswvl > 4778.) & (obswvl < 4788.))] = True
-	mnmask[np.where((obswvl > 4818.) & (obswvl < 4828.))] = True
-	mnmask[np.where((obswvl > 5389.) & (obswvl < 5399.))] = True
-	mnmask[np.where((obswvl > 5532.) & (obswvl < 5542.))] = True
-	mnmask[np.where((obswvl > 6008.) & (obswvl < 6018.))] = True
-	mnmask[np.where((obswvl > 6016.) & (obswvl < 6026.))] = True
+	mnmask[np.where((obswvl > 4744.) & (obswvl < 4764.))] = True
+	mnmask[np.where((obswvl > 4773.) & (obswvl < 4793.))] = True
+	mnmask[np.where((obswvl > 4813.) & (obswvl < 4833.))] = True
+	mnmask[np.where((obswvl > 5384.) & (obswvl < 5404.))] = True
+	mnmask[np.where((obswvl > 5527.) & (obswvl < 5547.))] = True
+	mnmask[np.where((obswvl > 6003.) & (obswvl < 6023.))] = True
+	mnmask[np.where((obswvl > 6011.) & (obswvl < 6031.))] = True
 	mask[mnmask] = True
 
 	# Create masked arrays
@@ -398,12 +398,12 @@ def mask_obs_for_abundance(obswvl, obsflux_norm, ivar_norm, dlam):
 	arraylist 	= [obsflux_norm, obswvl, ivar_norm, dlam]
 
 	for i in range(len(masklist)):
-		masklist[i].append( arraylist[i][np.where(((obswvl > 4749.) & (obswvl < 4759.) & (~mask)))] )
-		masklist[i].append( arraylist[i][np.where(((obswvl > 4778.) & (obswvl < 4788.) & (~mask)))] )
-		masklist[i].append( arraylist[i][np.where(((obswvl > 4818.) & (obswvl < 4828.) & (~mask)))] )
-		masklist[i].append( arraylist[i][np.where(((obswvl > 5389.) & (obswvl < 5399.) & (~mask)))] )
-		masklist[i].append( arraylist[i][np.where(((obswvl > 5532.) & (obswvl < 5542.) & (~mask)))] )
-		masklist[i].append( arraylist[i][np.where(((obswvl > 6008.) & (obswvl < 6026.) & (~mask)))] )
+		masklist[i].append( arraylist[i][np.where(((obswvl > 4744.) & (obswvl < 4764.) & (~mask)))] )
+		masklist[i].append( arraylist[i][np.where(((obswvl > 4773.) & (obswvl < 4793.) & (~mask)))] )
+		masklist[i].append( arraylist[i][np.where(((obswvl > 4813.) & (obswvl < 4833.) & (~mask)))] )
+		masklist[i].append( arraylist[i][np.where(((obswvl > 5384.) & (obswvl < 5404.) & (~mask)))] )
+		masklist[i].append( arraylist[i][np.where(((obswvl > 5527.) & (obswvl < 5547.) & (~mask)))] )
+		masklist[i].append( arraylist[i][np.where(((obswvl > 6003.) & (obswvl < 6031.) & (~mask)))] )
 
 	#mnmask[np.where((obswvl > 4749.) & (obswvl < 4759.))] = True
 	#mnmask[np.where((obswvl > 4778.) & (obswvl < 4788.))] = True
