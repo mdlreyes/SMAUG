@@ -7,7 +7,7 @@
 #	    smooths and interpolates synth spectrum to match observed
 # 
 # Created 9 Feb 18
-# Updated 9 Feb 18
+# Updated 25 May 18
 ###################################################################
 
 import os

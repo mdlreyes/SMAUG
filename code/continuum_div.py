@@ -4,7 +4,7 @@
 # - divides obs/synth, fits spline, and divides obs/spline (divide_spec)
 # 
 # Created 22 Feb 18
-# Updated 10 Apr 18
+# Updated 25 May 18
 ###################################################################
 
 import os
@@ -143,7 +143,7 @@ def mask_obs_for_division(obswvl, obsflux, ivar, temp=None, logg=None, fe=None, 
 
 	# Mask out pixels in regions around Mn lines (+/- 10A) 
 	mnmask = np.zeros(len(synthflux), dtype=bool)
-	mnmask[np.where((obswvl > 4744.) & (obswvl < 4764.))] = True
+	mnmask[np.where((obswvl > 4744.) & (obswvl < 4772.))] = True
 	mnmask[np.where((obswvl > 4773.) & (obswvl < 4793.))] = True
 	mnmask[np.where((obswvl > 4813.) & (obswvl < 4833.))] = True
 	mnmask[np.where((obswvl > 5384.) & (obswvl < 5404.))] = True
@@ -398,7 +398,7 @@ def mask_obs_for_abundance(obswvl, obsflux_norm, ivar_norm, dlam):
 	arraylist 	= [obsflux_norm, obswvl, ivar_norm, dlam]
 
 	for i in range(len(masklist)):
-		masklist[i].append( arraylist[i][np.where(((obswvl > 4744.) & (obswvl < 4764.) & (~mask)))] )
+		masklist[i].append( arraylist[i][np.where(((obswvl > 4744.) & (obswvl < 4772.) & (~mask)))] )
 		masklist[i].append( arraylist[i][np.where(((obswvl > 4773.) & (obswvl < 4793.) & (~mask)))] )
 		masklist[i].append( arraylist[i][np.where(((obswvl > 4813.) & (obswvl < 4833.) & (~mask)))] )
 		masklist[i].append( arraylist[i][np.where(((obswvl > 5384.) & (obswvl < 5404.) & (~mask)))] )
