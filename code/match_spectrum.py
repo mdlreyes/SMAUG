@@ -18,7 +18,7 @@ from astropy.io import fits
 from smooth_gauss import smooth_gauss
 import matplotlib.pyplot as plt
 
-def open_obs_file(filename, retrievespec=None, specparams=False, objname=None):
+def open_obs_file(filename, retrievespec=None, specparams=False, objname=None, coords=False):
 	"""Open .fits.gz files with observed spectra.
 
     Inputs:
@@ -33,6 +33,8 @@ def open_obs_file(filename, retrievespec=None, specparams=False, objname=None):
 
     objname 	 - if not None, finds parameters for spectrum of objname
     				(only works when specparams=True)
+
+    coords 		 - if True, output the coordinates of the stars in file
 
     Outputs:
     wvl  - rest wavelength array for nth star
@@ -73,34 +75,53 @@ def open_obs_file(filename, retrievespec=None, specparams=False, objname=None):
 		# Else, return other parameters
 		else:
 
-			# Get index of entry that matches object name of spectrum
-			namearray = data['OBJNAME']
-			index 	  = np.where(namearray==objname)
+			# If necessary, match object name from other output file
+			if objname is not None:
+				# Get index of entry that matches object name of spectrum
+				namearray = data['OBJNAME']
+				index 	  = np.where(namearray==objname)
 
-			# Check that such an entry exists
-			if len(index[0]) > 0:
-				print(index[0])
+				# Check that such an entry exists
+				if len(index[0]) > 0:
+					print(index[0])
 
-				temp 	= int(data['TEFF'][index[0]])
-				logg 	= data['LOGG'][index[0]]
-				fe 		= data['FEH'][index[0]]
-				alpha 	= data['ALPHAFE'][index[0]]
+					temp 	= int(data['TEFF'][index[0]])
+					logg 	= data['LOGG'][index[0]]
+					fe 		= data['FEH'][index[0]]
+					alpha 	= data['ALPHAFE'][index[0]]
+					#zrest = data['ZREST'][index[0]]
+
+					print('Parameters: ', temp, logg, fe, alpha)
+					#print('Redshift: ', zrest)
+
+				# If not, then missing best-fit parameters; just end the program
+				else:
+					print('Error: Spectrum not properly reduced!')
+					raise
+
+			else:
+				temp 	= int(data['TEFF'][retrievespec])
+				logg 	= data['LOGG'][retrievespec]
+				fe 		= data['FEH'][retrievespec]
+				alpha 	= data['ALPHAFE'][retrievespec]
 				#zrest = data['ZREST'][index[0]]
 
 				print('Parameters: ', temp, logg, fe, alpha)
-				#print('Redshift: ', zrest)
 
-				return temp, logg, fe, alpha #, zrest
+			return temp, logg, fe, alpha #, zrest
 
-			# If not, then missing best-fit parameters; just end the program
-			else:
-				print('Error: Spectrum not properly reduced!')
-				raise
-
-	# Else, return number of stars in file
+	# Else, return number of stars in file (if coords=False) or coordinates of stars in file (if coords = True)
 	else:
-		wavearray = data['LAMBDA']
-		return len(wavearray)
+
+		if coords:
+			RA = data['RA']
+			dec = data['DEC']
+
+			return RA, dec
+
+		else:
+			wavearray = data['LAMBDA']
+			return len(wavearray)
 
 def smooth_gauss_wrapper(lambda1, spec1, lambda2, dlam_in):
 	"""
