@@ -2,7 +2,7 @@
 # Gets Mn abundances for a list of stars
 # 
 # Created 5 June 18
-# Updated 5 June 18
+# Updated 15 June 18
 ###################################################################
 
 #Backend for python3 on mahler
@@ -31,7 +31,15 @@ def run_chisq(filename):
 	Nstars = open_obs_file(filename)
 
 	# Run chi-sq fitting for all stars in file
-	#for i in range(Nstars):
+	for i in range(Nstars):
+		try:
+			# Get metallicity of star to use for initial guess
+			temp, logg, fe, alpha = open_obs_file(filename, retrievespec=i, specparams=True)
+			
+		except:
+
+
+		test = chi_sq.obsSpectrum(filename, i).minimize_scipy(fe)
 
 	pass
 
@@ -87,7 +95,7 @@ def match_hires(hiresfile, obsfile):
 	return medresMn, medresMnerror, hiresMn, hiresMnerror, sep.arcsec
 
 def main():
-	medresMn, medresMnerror, hiresMn, hiresMnerror, sep.arcsec = match_hires('Sculptor_hires.tsv','/raid/caltech/moogify/bscl1/moogify.fits.gz')
+	#medresMn, medresMnerror, hiresMn, hiresMnerror, sep.arcsec = match_hires('Sculptor_hires.tsv','/raid/caltech/moogify/bscl1/moogify.fits.gz')
 
 if __name__ == "__main__":
 	main()

@@ -51,7 +51,7 @@ def open_obs_file(filename, retrievespec=None, specparams=False, objname=None, c
 		# If don't need to return other parameters, just return spectrum
 		if not specparams:
 
-			namearray  = data['OBJNAME']
+			namearray = data['OBJNAME']
 			wavearray = data['LAMBDA']
 			fluxarray = data['SPEC']
 			ivararray = data['IVAR']
@@ -66,9 +66,8 @@ def open_obs_file(filename, retrievespec=None, specparams=False, objname=None, c
 
 			# Correct for wavelength
 			zrest = data['ZREST'][retrievespec]
-			if zrest > 0:
-				wvl = wvl / (1. + zrest)
-				print('Redshift: ', zrest)
+			wvl = wvl / (1. + zrest)
+			print('Redshift: ', zrest)
 
 			return name, wvl, flux, ivar, dlam
 
@@ -104,7 +103,7 @@ def open_obs_file(filename, retrievespec=None, specparams=False, objname=None, c
 				logg 	= data['LOGG'][retrievespec]
 				fe 		= data['FEH'][retrievespec]
 				alpha 	= data['ALPHAFE'][retrievespec]
-				#zrest = data['ZREST'][index[0]]
+				#zrest = data['ZREST'][retrievespec]
 
 				print('Parameters: ', temp, logg, fe, alpha)
 

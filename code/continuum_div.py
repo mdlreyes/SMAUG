@@ -143,13 +143,9 @@ def mask_obs_for_division(obswvl, obsflux, ivar, temp=None, logg=None, fe=None, 
 
 	# Mask out pixels in regions around Mn lines (+/- 10A) 
 	mnmask = np.zeros(len(synthflux), dtype=bool)
-	mnmask[np.where((obswvl > 4744.) & (obswvl < 4772.))] = True
-	mnmask[np.where((obswvl > 4773.) & (obswvl < 4793.))] = True
-	mnmask[np.where((obswvl > 4813.) & (obswvl < 4833.))] = True
-	mnmask[np.where((obswvl > 5384.) & (obswvl < 5404.))] = True
-	mnmask[np.where((obswvl > 5527.) & (obswvl < 5547.))] = True
-	mnmask[np.where((obswvl > 6003.) & (obswvl < 6023.))] = True
-	mnmask[np.where((obswvl > 6011.) & (obswvl < 6031.))] = True
+	lines  = np.array([[4744.,4772.],[4773.,4793.],[4813.,4833.],[5384,5404.],[5527.,5547.],[6003.,6031.]])
+	for line in range(len(lines)):
+		mnmask[np.where((obswvl > lines[line][0]) & (obswvl < lines[line][1]))] = True
 	mask[mnmask] = True
 
 	# Create masked arrays
@@ -369,6 +365,7 @@ def mask_obs_for_abundance(obswvl, obsflux_norm, ivar_norm, dlam):
     obswvlmask    -- (masked!) wavelength array
     ivarmask 	  -- (masked!) inverse variance array
     dlammask	  -- (masked!) FWHM array
+    skip 		  -- list of lines to NOT skip
     """
 
 	# Make a mask
@@ -397,13 +394,19 @@ def mask_obs_for_abundance(obswvl, obsflux_norm, ivar_norm, dlam):
 	masklist 	= [obsfluxmask, obswvlmask, ivarmask, dlammask]
 	arraylist 	= [obsflux_norm, obswvl, ivar_norm, dlam]
 
+	lines  = np.array([[4744.,4772.],[4773.,4793.],[4813.,4833.],[5384,5404.],[5527.,5547.],[6003.,6031.]])
+
 	for i in range(len(masklist)):
+		for line in range(len(lines)):
+			masklist[i].append( arraylist[i][np.where(((obswvl > lines[line][0]) & (obswvl < lines[line][1]) & (~mask)))] )
+		'''
 		masklist[i].append( arraylist[i][np.where(((obswvl > 4744.) & (obswvl < 4772.) & (~mask)))] )
 		masklist[i].append( arraylist[i][np.where(((obswvl > 4773.) & (obswvl < 4793.) & (~mask)))] )
 		masklist[i].append( arraylist[i][np.where(((obswvl > 4813.) & (obswvl < 4833.) & (~mask)))] )
 		masklist[i].append( arraylist[i][np.where(((obswvl > 5384.) & (obswvl < 5404.) & (~mask)))] )
 		masklist[i].append( arraylist[i][np.where(((obswvl > 5527.) & (obswvl < 5547.) & (~mask)))] )
 		masklist[i].append( arraylist[i][np.where(((obswvl > 6003.) & (obswvl < 6031.) & (~mask)))] )
+		'''
 
 	#mnmask[np.where((obswvl > 4749.) & (obswvl < 4759.))] = True
 	#mnmask[np.where((obswvl > 4778.) & (obswvl < 4788.))] = True
@@ -424,7 +427,14 @@ def mask_obs_for_abundance(obswvl, obsflux_norm, ivar_norm, dlam):
 	#obswvlmask	  = obswvl[~mask]
 	#ivarmask	  = ivar_norm[~mask]
 
-	return obsfluxmask, obswvlmask, ivarmask, dlammask
+	skip = np.arange(len(lines))
+	for line in range(len(lines)):
+		if (obswvl[chipgap + 5] > lines[line][0]) and (obswvl[chipgap + 5] < lines[line][1]):
+			skip = np.delete(skip, np.where(skip==line))
+		elif (obswvl[chipgap - 5] > lines[line][0]) and (obswvl[chipgap - 5] < lines[line][1]):
+			skip = np.delete(skip, np.where(skip==line))
+
+	return np.asarray(obsfluxmask), np.asarray(obswvlmask), np.asarray(ivarmask), np.asarray(dlammask), np.asarray(skip)
 
 #synthflux, obsflux, _, ivar = get_synth('/raid/caltech/moogify/bscl1/moogify.fits.gz', starnum=0, temp=3500, logg=3.0, fe=-3.3, alpha=1.2)
 #synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask = mask_obs('/raid/caltech/moogify/bscl1/moogify.fits.gz', starnum=0, temp=3500, logg=3.0, fe=-3.3, alpha=1.2)
