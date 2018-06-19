@@ -95,8 +95,7 @@ def open_obs_file(filename, retrievespec=None, specparams=False, objname=None, c
 
 				# If not, then missing best-fit parameters; just end the program
 				else:
-					print('Error: Spectrum not properly reduced!')
-					raise
+					raise ValueError('Spectrum not properly reduced! No best-fit parameters')
 
 			else:
 				temp 	= int(data['TEFF'][retrievespec])

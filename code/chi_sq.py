@@ -8,7 +8,7 @@
 
 #Backend for python3 on mahler
 import matplotlib
-matplotlib.use('Agg')
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 
 import os
@@ -26,7 +26,7 @@ import scipy.optimize
 # Observed spectrum
 class obsSpectrum:
 
-	def __init__(self, filename, starnum):
+	def __init__(self, filename, starnum, plot=False):
 
 		# Observed star
 		self.obsfilename = filename # File with observed spectra
@@ -50,19 +50,20 @@ class obsSpectrum:
 		# Correct observed spectrum for redshift
 		#self.obswvl = self.obswvl/(1. + self.zrest)
 
-		# Plot observed spectrum
-		plt.figure()
-		plt.plot(self.obswvl, self.obsflux, 'k-')
-		plt.axvspan(4749, 4759, alpha=0.5, color='blue')
-		plt.axvspan(4778, 4788, alpha=0.5, color='blue')
-		plt.axvspan(4818, 4828, alpha=0.5, color='blue')
-		plt.axvspan(5389, 5399, alpha=0.5, color='blue')
-		plt.axvspan(5532, 5542, alpha=0.5, color='blue')
-		plt.axvspan(6008, 6018, alpha=0.5, color='blue')
-		plt.axvspan(6016, 6026, alpha=0.5, color='blue')
-		plt.axvspan(4856, 4866, alpha=0.5, color='red')
-		plt.xlim((4500, 5000))
-		plt.savefig('obs.png')
+		if plot:
+			# Plot observed spectrum
+			plt.figure()
+			plt.plot(self.obswvl, self.obsflux, 'k-')
+			plt.axvspan(4749, 4759, alpha=0.5, color='blue')
+			plt.axvspan(4778, 4788, alpha=0.5, color='blue')
+			plt.axvspan(4818, 4828, alpha=0.5, color='blue')
+			plt.axvspan(5389, 5399, alpha=0.5, color='blue')
+			plt.axvspan(5532, 5542, alpha=0.5, color='blue')
+			plt.axvspan(6008, 6018, alpha=0.5, color='blue')
+			plt.axvspan(6016, 6026, alpha=0.5, color='blue')
+			plt.axvspan(4856, 4866, alpha=0.5, color='red')
+			plt.xlim((4500, 5000))
+			plt.savefig('obs.png')
 
 		# Get synthetic spectrum, split both obs and synth spectra into red and blue parts
 		synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask = mask_obs_for_division(self.obswvl, self.obsflux, self.ivar, temp=self.temp, logg=self.logg, fe=self.fe, alpha=self.alpha, dlam=self.dlam)
@@ -72,20 +73,21 @@ class obsSpectrum:
 
 		#print('Test', self.obsflux_norm, self.ivar_norm)
 
-		# Plot continuum-normalized observed spectrum
-		plt.figure()
-		plt.plot(self.obswvl, self.obsflux_norm, 'k-')
-		plt.axvspan(4749, 4759, alpha=0.5, color='blue')
-		plt.axvspan(4778, 4788, alpha=0.5, color='blue')
-		plt.axvspan(4818, 4828, alpha=0.5, color='blue')
-		plt.axvspan(5389, 5399, alpha=0.5, color='blue')
-		plt.axvspan(5532, 5542, alpha=0.5, color='blue')
-		plt.axvspan(6008, 6018, alpha=0.5, color='blue')
-		plt.axvspan(6016, 6026, alpha=0.5, color='blue')
-		plt.axvspan(4859, 4863, alpha=0.5, color='red')
-		plt.xlim((4800, 4900))
-		plt.ylim((0,1.5))
-		plt.savefig('obs_normalized.png')
+		if plot:
+			# Plot continuum-normalized observed spectrum
+			plt.figure()
+			plt.plot(self.obswvl, self.obsflux_norm, 'k-')
+			plt.axvspan(4749, 4759, alpha=0.5, color='blue')
+			plt.axvspan(4778, 4788, alpha=0.5, color='blue')
+			plt.axvspan(4818, 4828, alpha=0.5, color='blue')
+			plt.axvspan(5389, 5399, alpha=0.5, color='blue')
+			plt.axvspan(5532, 5542, alpha=0.5, color='blue')
+			plt.axvspan(6008, 6018, alpha=0.5, color='blue')
+			plt.axvspan(6016, 6026, alpha=0.5, color='blue')
+			plt.axvspan(4859, 4863, alpha=0.5, color='red')
+			plt.xlim((4800, 4900))
+			plt.ylim((0,1.5))
+			plt.savefig('obs_normalized.png')
 
 		# Crop observed spectrum into regions around Mn lines
 		self.obsflux_fit, self.obswvl_fit, self.ivar_fit, self.dlam_fit, self.skip = mask_obs_for_abundance(self.obswvl, self.obsflux_norm, self.ivar_norm, self.dlam)
@@ -193,21 +195,25 @@ class obsSpectrum:
 		print('Answer: ', best_mn)
 		print('Error: ', error)
 
-		# Compute reduced chi-squared
-		'''
+		# Do some checks
 		finalsynth = self.synthetic(self.obswvl_final, best_mn, full=False)
 		for i in range(len(finalsynth)):
-			chisq = np.sum(np.power(self.obsflux_fit[i] - finalsynth[i], 2.) * self.ivar_fit[i]) / (len(self.obsflux_fit[i]) - 1.)
+
+			# Index for self arrays
+			idx = self.skip[i]
+
+			# Compute reduced chi-squared
+			chisq = np.sum(np.power(self.obsflux_fit[idx] - finalsynth[i], 2.) * self.ivar_fit[idx]) / (len(self.obsflux_fit[idx]) - 1.)
 			print('Reduced chisq = ', chisq)
 
 			# Plot for testing
 			plt.figure()
-			plt.errorbar(self.obswvl_fit[i], self.obsflux_fit[i], yerr=np.power(self.ivar_fit[i],-0.5), color='k', fmt='o', label='Observed')
-			plt.plot(self.obswvl_fit[i], finalsynth[i], 'r--', label='Synthetic')
+			plt.errorbar(self.obswvl_fit[idx], self.obsflux_fit[idx], yerr=np.power(self.ivar_fit[idx],-0.5), color='k', fmt='o', label='Observed')
+			plt.plot(self.obswvl_fit[idx], finalsynth[i], 'r--', label='Synthetic')
 			plt.legend(loc='best')
-			plt.savefig('final_obs_'+str(i)+'.png')
-			plt.close()
-		'''
+			plt.show()
+			#plt.savefig('final_obs_'+str(i)+'.png')
+			#plt.close()
 
 		return best_mn, error
 
@@ -243,8 +249,8 @@ class obsSpectrum:
 
 def main():
 	filename = '/raid/caltech/moogify/bscl1/moogify.fits.gz'
-	#test = obsSpectrum(filename, 57).minimize_scipy(-2.1661300692266998)
-	test = obsSpectrum(filename, 57).plot_chisq(-2.1661300692266998)
+	test = obsSpectrum(filename, 57).minimize_scipy(-2.1661300692266998)
+	#test = obsSpectrum(filename, 57).plot_chisq(-2.1661300692266998)
 
 if __name__ == "__main__":
 	main()

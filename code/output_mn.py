@@ -7,7 +7,7 @@
 
 #Backend for python3 on mahler
 import matplotlib
-matplotlib.use('Agg')
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 
 import os
@@ -27,21 +27,39 @@ import chi_sq
 
 def run_chisq(filename):
 
+	# Output filename
+	outputname = 'moogify.csv'
+	with open(outputname, 'w+') as f:
+		f.write('Name\tTemp\tlog(g)\t[Fe/H]\t[alpha/Fe]\t[Mn/H]\terror([Mn/H])\n')
+
 	# Get number of stars in file
 	Nstars = open_obs_file(filename)
 
 	# Run chi-sq fitting for all stars in file
-	for i in range(Nstars):
+	starname = []
+	startemp = []
+	starlogg = []
+	starfe	 = []
+	staralpha = []
+	starmn 	 = []
+	starmnerr = []
+	for i in range(2):
+
 		try:
 			# Get metallicity of star to use for initial guess
 			temp, logg, fe, alpha = open_obs_file(filename, retrievespec=i, specparams=True)
-			
+
+			# Run optimization code
+			star = chi_sq.obsSpectrum(filename, i)
+			best_mn, error = star.minimize_scipy(fe)
+
 		except:
+			continue
 
+		with open(outputname, 'a') as f:
+			f.write(star.specname+'\t'+str(star.temp)+'\t'+str(star.logg[0])+'\t'+str(star.fe[0])+'\t'+str(star.alpha[0])+'\t'+str(best_mn[0])+'\t'+str(error[0])+'\n')
 
-		test = chi_sq.obsSpectrum(filename, i).minimize_scipy(fe)
-
-	pass
+	return
 
 
 def match_hires(hiresfile, obsfile):
@@ -96,6 +114,7 @@ def match_hires(hiresfile, obsfile):
 
 def main():
 	#medresMn, medresMnerror, hiresMn, hiresMnerror, sep.arcsec = match_hires('Sculptor_hires.tsv','/raid/caltech/moogify/bscl1/moogify.fits.gz')
+	run_chisq('/raid/caltech/moogify/bscl1/moogify.fits.gz')
 
 if __name__ == "__main__":
 	main()
