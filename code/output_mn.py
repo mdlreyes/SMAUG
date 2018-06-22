@@ -25,12 +25,28 @@ import pandas
 import scipy.optimize
 import chi_sq
 
-def run_chisq(filename):
+def run_chisq(filename, paramfilename, galaxyname, clustername, startstar=0):
+	""" Measure Mn abundances from a FITS file.
+
+	Inputs:
+	filename 		-- file with observed spectra
+	paramfilename 	-- file with parameters of observed spectra
+	galaxyname		-- galaxy name, options: 'scl'
+	clustername 	-- cluster name, options: 'scl1'
+
+	Keywords:
+	startstar		-- if 0 (default), start at beginning of file and write new datafile;
+						else, start at #startstar and just append to datafile
+
+	"""
 
 	# Output filename
-	outputname = '/raid/madlr/dsph/scl/moogify/moogify.csv'
-	with open(outputname, 'w+') as f:
-		f.write('Name\tTemp\tlog(g)\t[Fe/H]\t[alpha/Fe]\t[Mn/H]\terror([Mn/H])\n')
+	outputname = '/raid/madlr/dsph/'+galaxyname+'/moogify/'+clustername+'.csv'
+
+	# Open new file
+	if startstar<1:
+		with open(outputname, 'w+') as f:
+			f.write('Name\tTemp\tlog(g)\t[Fe/H]\t[alpha/Fe]\t[Mn/H]\terror([Mn/H])\n')
 
 	# Get number of stars in file
 	Nstars = open_obs_file(filename)
@@ -43,20 +59,21 @@ def run_chisq(filename):
 	staralpha = []
 	starmn 	 = []
 	starmnerr = []
-	for i in range(Nstars):
+	for i in range(startstar, Nstars):
 
 		try:
 			# Get metallicity of star to use for initial guess
 			temp, logg, fe, alpha = open_obs_file(filename, retrievespec=i, specparams=True)
 
 			# Run optimization code
-			star = chi_sq.obsSpectrum(filename, i, True)
+			star = chi_sq.obsSpectrum(filename, paramfilename, i, True, galaxyname, clustername)
 			best_mn, error = star.minimize_scipy(fe)
 
 		except:
+			print('Skipped star #'+str(i+1)+'/'+str(Nstars)+' stars')
 			continue
 
-		print('Finished star '+star.specname, '#'+str(i)+'/'+str(Nstars)+' stars')
+		print('Finished star '+star.specname, '#'+str(i+1)+'/'+str(Nstars)+' stars')
 
 		with open(outputname, 'a') as f:
 			f.write(star.specname+'\t'+str(star.temp)+'\t'+str(star.logg[0])+'\t'+str(star.fe[0])+'\t'+str(star.alpha[0])+'\t'+str(best_mn[0])+'\t'+str(error[0])+'\n')
@@ -65,6 +82,12 @@ def run_chisq(filename):
 
 
 def match_hires(hiresfile, obsfile):
+	"""Measure Mn abundances for stars that have hi-resolution measurements.
+
+	Inputs:
+	hiresfile 	-- name of hi-resolution catalog
+	obsfile 	-- name of not-hi-res catalog
+	"""
 
 	# Output filename
 	outputname = hiresfile[:-4]+'_matched.csv'
@@ -116,7 +139,7 @@ def match_hires(hiresfile, obsfile):
 
 def main():
 	#medresMn, medresMnerror, hiresMn, hiresMnerror, sep.arcsec = match_hires('Sculptor_hires.tsv','/raid/caltech/moogify/bscl1/moogify.fits.gz')
-	run_chisq('/raid/caltech/moogify/bscl1/moogify.fits.gz')
+	run_chisq('/raid/caltech/moogify/bscl1/moogify.fits.gz', '/raid/m31/dsph/scl/scl1/moogify7_flexteff.fits.gz', 'scl', 'scl1', startstar=0)
 
 if __name__ == "__main__":
 	main()

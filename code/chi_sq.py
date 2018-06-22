@@ -27,17 +27,20 @@ from wvl_corr import fit_wvl
 # Observed spectrum
 class obsSpectrum:
 
-	def __init__(self, filename, starnum, wvlcorr, plot=False):
+	def __init__(self, obsfilename, paramfilename, starnum, wvlcorr, galaxyname, clustername, plot=False):
 
 		# Observed star
-		self.obsfilename = filename # File with observed spectra
-		self.starnum = starnum	# Star number
+		self.obsfilename 	= obsfilename 	# File with observed spectra
+		self.paramfilename  = paramfilename # File with parameters of observed spectra
+		self.starnum 		= starnum		# Star number
+		self.galaxyname 	= galaxyname 	# Name of galaxy
+		self.clustername 	= clustername 	# Name of cluster
 
 		# Open observed spectrum
 		self.specname, self.obswvl, self.obsflux, self.ivar, self.dlam, self.zrest = open_obs_file(self.obsfilename, retrievespec=self.starnum)
 
 		# Get measured parameters from observed spectrum
-		self.temp, self.logg, self.fe, self.alpha = open_obs_file('/raid/m31/dsph/scl/scl1/moogify7_flexteff.fits.gz', self.starnum, specparams=True, objname=self.specname)
+		self.temp, self.logg, self.fe, self.alpha = open_obs_file(self.paramfile, self.starnum, specparams=True, objname=self.specname)
 		#self.temp, self.logg, self.fe, self.alpha, self.zrest = open_obs_file('/raid/m31/dsph/scl/scl1/moogify7_flexteff.fits.gz', self.starnum, specparams=True, objname=self.specname)
 
 		# Correct observed spectrum for redshift
@@ -57,7 +60,7 @@ class obsSpectrum:
 			plt.axvspan(4335, 4345, alpha=0.5, color='red')
 			plt.axvspan(4856, 4866, alpha=0.5, color='red')
 			plt.axvspan(6558, 6568, alpha=0.5, color='red')
-			plt.savefig('/raid/madlr/dsph/scl/moogify/'+self.specname+'_obs.png')
+			plt.savefig('/raid/madlr/dsph/'+self.galaxyname+'/moogify/'+self.clustername+'/'+self.specname+'_obs.png')
 			plt.close()
 
 		# Get synthetic spectrum, split both obs and synth spectra into red and blue parts
@@ -82,7 +85,7 @@ class obsSpectrum:
 			plt.axvspan(6558, 6568, alpha=0.5, color='red')
 			plt.ylim((0,5))
 			plt.xlim((6553,6573))
-			plt.savefig('/raid/madlr/dsph/scl/moogify/'+self.specname+'_obsnormalized.png')
+			plt.savefig('/raid/madlr/dsph/'+self.galaxyname+'/moogify/'+self.clustername+'/'+self.specname+'_obsnormalized.png')
 			plt.close()
 
 		if wvlcorr:
@@ -92,7 +95,7 @@ class obsSpectrum:
 
 			# Wavelength correction
 			self.obswvl_corr = fit_wvl(self.obswvl, self.obsflux_norm, contdivstd, self.dlam, 
-				self.temp, self.logg, self.fe, self.alpha, self.specname, '/raid/madlr/dsph/scl/moogify/')
+				self.temp, self.logg, self.fe, self.alpha, self.specname, '/raid/madlr/dsph/'+self.galaxyname+'/moogify/'+self.clustername+'/')
 
 		# Crop observed spectrum into regions around Mn lines
 		self.obsflux_fit, self.obswvl_fit, self.ivar_fit, self.dlam_fit, self.skip = mask_obs_for_abundance(self.obswvl, self.obsflux_norm, self.ivar_norm, self.dlam)
@@ -180,7 +183,7 @@ class obsSpectrum:
 			plt.plot(self.obswvl_fit[idx], finalsynth[i], 'r--', label='Synthetic')
 			#plt.legend(loc='best')
 
-		plt.savefig('/raid/madlr/dsph/scl/moogify/'+self.specname+'_finalfits.png')
+		plt.savefig('/raid/madlr/dsph/'+self.galaxyname+'/moogify/'+self.clustername+'/'+self.specname+'_finalfits.png')
 		plt.show()
 
 		return best_mn, error
@@ -217,7 +220,10 @@ class obsSpectrum:
 
 def main():
 	filename = '/raid/caltech/moogify/bscl1/moogify.fits.gz'
-	test = obsSpectrum(filename, 57, True, plot=False).minimize_scipy(-2.1661300692266998)
+	paramfilename = '/raid/m31/dsph/scl/scl1/moogify7_flexteff.fits.gz'
+	galaxyname = 'scl'
+	clustername = 'scl1'
+	test = obsSpectrum(filename, paramfilename, 57, True, galaxyname, clustername, plot=False).minimize_scipy(-2.1661300692266998)
 	#print('we done')
 	#test = obsSpectrum(filename, 57).plot_chisq(-2.1661300692266998)
 

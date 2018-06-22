@@ -243,25 +243,20 @@ def interpolateAtm(temp, logg, fe, alpha, hgrid=False, griddir='/raid/grid7/atmo
 
 		# Check that points are within range of grid
 		if tempError:
-			print('Error: T = ' + str(temp) + ' is out of range!')
-			raise
+			raise ValueError('T = ' + str(temp) + ' is out of range!')
 
 		if loggUp > 5.0 or loggDown < 0:
-			print('Error: log(g) = ' + str(logg) + ' is out of range!')
-			raise
+			raise ValueError('log(g) = ' + str(logg) + ' is out of range!')
 
 		elif feUp > 0 or feDown < -5.0:
-			print('Error: [Fe/H] = ' + str(fe) + ' is out of range!')
-			raise
+			raise ValueError('[Fe/H] = ' + str(fe) + ' is out of range!')
 
 		elif alphaUp > 1.2 or alphaDown < -0.8:
-			print('Error: [alpha/Fe] = ' + str(alpha) + ' is out of range!')
-			raise
+			raise ValueError('[alpha/Fe] = ' + str(alpha) + ' is out of range!')
 
 		# Grid isn't uniform, so do additional checks to make sure points are within range of grid
 		elif ((loggUp < 0.5) or (loggDown < 0.5)) and ((tempUp >= 7000) or (tempDown >= 7000)):
-			print('Error: T = ' + str(temp) + ' and log(g) = ' + str(logg) + ' out of range!')
-			raise
+			raise ValueError('T = ' + str(temp) + ' and log(g) = ' + str(logg) + ' out of range!')
 
 	else:
 		# Get nearest gridpoints for each parameter
