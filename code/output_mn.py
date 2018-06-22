@@ -2,7 +2,7 @@
 # Gets Mn abundances for a list of stars
 # 
 # Created 5 June 18
-# Updated 15 June 18
+# Updated 20 June 18
 ###################################################################
 
 #Backend for python3 on mahler
@@ -28,7 +28,7 @@ import chi_sq
 def run_chisq(filename):
 
 	# Output filename
-	outputname = 'moogify.csv'
+	outputname = '/raid/madlr/dsph/scl/moogify/moogify.csv'
 	with open(outputname, 'w+') as f:
 		f.write('Name\tTemp\tlog(g)\t[Fe/H]\t[alpha/Fe]\t[Mn/H]\terror([Mn/H])\n')
 
@@ -43,18 +43,20 @@ def run_chisq(filename):
 	staralpha = []
 	starmn 	 = []
 	starmnerr = []
-	for i in range(2):
+	for i in range(Nstars):
 
 		try:
 			# Get metallicity of star to use for initial guess
 			temp, logg, fe, alpha = open_obs_file(filename, retrievespec=i, specparams=True)
 
 			# Run optimization code
-			star = chi_sq.obsSpectrum(filename, i)
+			star = chi_sq.obsSpectrum(filename, i, True)
 			best_mn, error = star.minimize_scipy(fe)
 
 		except:
 			continue
+
+		print('Finished star '+star.specname, '#'+str(i)+'/'+str(Nstars)+' stars')
 
 		with open(outputname, 'a') as f:
 			f.write(star.specname+'\t'+str(star.temp)+'\t'+str(star.logg[0])+'\t'+str(star.fe[0])+'\t'+str(star.alpha[0])+'\t'+str(best_mn[0])+'\t'+str(error[0])+'\n')

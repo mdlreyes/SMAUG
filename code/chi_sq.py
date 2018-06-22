@@ -3,7 +3,7 @@
 # and finds parameters that minimze chisq measure
 # 
 # Created 5 Feb 18
-# Updated 15 June 18
+# Updated 20 June 18
 ###################################################################
 
 #Backend for python3 on mahler
@@ -22,26 +22,19 @@ import subprocess
 from astropy.io import fits
 import pandas
 import scipy.optimize
+from wvl_corr import fit_wvl
 
 # Observed spectrum
 class obsSpectrum:
 
-	def __init__(self, filename, starnum, plot=False):
+	def __init__(self, filename, starnum, wvlcorr, plot=False):
 
 		# Observed star
 		self.obsfilename = filename # File with observed spectra
 		self.starnum = starnum	# Star number
 
 		# Open observed spectrum
-		self.specname, self.obswvl, self.obsflux, self.ivar, self.dlam = open_obs_file(self.obsfilename, retrievespec=self.starnum)
-
-		'''
-		# Plot first Mn line region of observed spectrum
-		testmask = np.where((self.obswvl > 4749) & (self.obswvl < 4759))
-		plt.figure()
-		plt.plot(self.obswvl[testmask], self.obsflux[testmask], 'k-') #, yerr=np.power(self.ivar[testmask], 0.5))
-		plt.savefig('obs_singleline.png')
-		'''
+		self.specname, self.obswvl, self.obsflux, self.ivar, self.dlam, self.zrest = open_obs_file(self.obsfilename, retrievespec=self.starnum)
 
 		# Get measured parameters from observed spectrum
 		self.temp, self.logg, self.fe, self.alpha = open_obs_file('/raid/m31/dsph/scl/scl1/moogify7_flexteff.fits.gz', self.starnum, specparams=True, objname=self.specname)
@@ -61,17 +54,17 @@ class obsSpectrum:
 			plt.axvspan(5532, 5542, alpha=0.5, color='blue')
 			plt.axvspan(6008, 6018, alpha=0.5, color='blue')
 			plt.axvspan(6016, 6026, alpha=0.5, color='blue')
+			plt.axvspan(4335, 4345, alpha=0.5, color='red')
 			plt.axvspan(4856, 4866, alpha=0.5, color='red')
-			plt.xlim((4500, 5000))
-			plt.savefig('obs.png')
+			plt.axvspan(6558, 6568, alpha=0.5, color='red')
+			plt.savefig('/raid/madlr/dsph/scl/moogify/'+self.specname+'_obs.png')
+			plt.close()
 
 		# Get synthetic spectrum, split both obs and synth spectra into red and blue parts
 		synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask = mask_obs_for_division(self.obswvl, self.obsflux, self.ivar, temp=self.temp, logg=self.logg, fe=self.fe, alpha=self.alpha, dlam=self.dlam)
 
 		# Compute continuum-normalized observed spectrum
 		self.obsflux_norm, self.ivar_norm = divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask)
-
-		#print('Test', self.obsflux_norm, self.ivar_norm)
 
 		if plot:
 			# Plot continuum-normalized observed spectrum
@@ -84,10 +77,22 @@ class obsSpectrum:
 			plt.axvspan(5532, 5542, alpha=0.5, color='blue')
 			plt.axvspan(6008, 6018, alpha=0.5, color='blue')
 			plt.axvspan(6016, 6026, alpha=0.5, color='blue')
-			plt.axvspan(4859, 4863, alpha=0.5, color='red')
-			plt.xlim((4800, 4900))
-			plt.ylim((0,1.5))
-			plt.savefig('obs_normalized.png')
+			plt.axvspan(4335, 4345, alpha=0.5, color='red')
+			plt.axvspan(4856, 4866, alpha=0.5, color='red')
+			plt.axvspan(6558, 6568, alpha=0.5, color='red')
+			plt.ylim((0,5))
+			plt.xlim((6553,6573))
+			plt.savefig('/raid/madlr/dsph/scl/moogify/'+self.specname+'_obsnormalized.png')
+			plt.close()
+
+		if wvlcorr:
+			# Compute standard deviation
+			contdivstd = np.zeros(len(self.ivar_norm))+np.inf
+			contdivstd[self.ivar_norm > 0] = np.sqrt(np.reciprocal(self.ivar_norm[self.ivar_norm > 0]))
+
+			# Wavelength correction
+			self.obswvl_corr = fit_wvl(self.obswvl, self.obsflux_norm, contdivstd, self.dlam, 
+				self.temp, self.logg, self.fe, self.alpha, self.specname, '/raid/madlr/dsph/scl/moogify/')
 
 		# Crop observed spectrum into regions around Mn lines
 		self.obsflux_fit, self.obswvl_fit, self.ivar_fit, self.dlam_fit, self.skip = mask_obs_for_abundance(self.obswvl, self.obsflux_norm, self.ivar_norm, self.dlam)
@@ -98,8 +103,8 @@ class obsSpectrum:
 		self.ivar_final = np.hstack((self.ivar_fit[self.skip]))
 		self.dlam_final = np.hstack((self.dlam_fit[self.skip]))
 
-		print('Skip: ', self.skip)
-		print(len(self.obswvl_final))
+		#print('Skip: ', self.skip)
+		#print(len(self.obswvl_final))
 
 	# Define function to minimize
 	def synthetic(self, obswvl, mn, full=True):
@@ -112,30 +117,23 @@ class obsSpectrum:
 		Keywords:
 		full 	-- if True, splice together all Mn line regions; else, keep as array
 
-	    Outputs:
-	    synthflux -- array-like, output synthetic spectrum
-	    """
+		Outputs:
+		synthflux -- array-like, output synthetic spectrum
+		"""
 
 		# Compute synthetic spectrum
 		print('Computing synthetic spectrum...')
 		synth = runMoog(temp=self.temp, logg=self.logg, fe=self.fe, alpha=self.alpha, elements=[25], abunds=[mn], solar=[5.43])
 
-		'''
-		# Testing: smooth synthetic spectrum to match continuum-normalized observed spectrum
-		i = 0
-		synthflux = get_synth(self.obswvl_fit[i], self.obsflux_fit[i], self.ivar_fit[i], self.dlam_fit[i], synth=synth[i])
-
-		chisq = np.sum(np.power(self.obsflux_fit[i] - synthflux, 2.) * self.ivar_fit[i]) / (len(self.obsflux_fit[i]) - 1.)
-		print('Chisq = ', chisq)
-
-		'''
-
 		# Loop over each line
 		synthflux = []
+		#a = [a0, a1, a2, a3, a4, a5]
 		for i in self.skip:
 
+			synthregion = synth[i]
+
 			# Smooth each region of synthetic spectrum to match each region of continuum-normalized observed spectrum
-			newsynth = get_synth(self.obswvl_fit[i], self.obsflux_fit[i], self.ivar_fit[i], self.dlam_fit[i], synth=synth[i])
+			newsynth = get_synth(self.obswvl_fit[i], self.obsflux_fit[i], self.ivar_fit[i], self.dlam_fit[i], synth=synthregion)
 			synthflux.append(newsynth)
 
 		# If necessary, splice everything together
@@ -147,49 +145,17 @@ class obsSpectrum:
 	def minimize_scipy(self, mn0):
 		"""Minimize residual using scipy.optimize Levenberg-Marquardt.
 
-	    Inputs:
-	    mn0 -- initial guess for Mn abundance
+		Inputs:
+		mn0 -- initial guess for Mn abundance
 
-	    Outputs:
-	    fitparams -- best fit parameters
-	    rchisq	  -- reduced chi-squared
-	    """
-
-		# Testing
-		'''		
-		#synth0 = synthetic(self.obswvl_final, 0.0)
-		synth1 = synthetic(self.obswvl_final, -1.91)
-		synth2 = synthetic(self.obswvl_final, -2.04)
-		synth3 = synthetic(self.obswvl_final, -10.0)
-		synth4 = synthetic(self.obswvl_final, -2.17)
-
-		i = 0
-		plt.figure()
-		#plt.title(r'T = 4345K, log(g) = 0.83, [Fe/H] = -1.59, [$\alpha$/Fe] = 0.06')
-		plt.errorbar(self.obswvl_fit[i], self.obsflux_fit[i], yerr=np.power(self.ivar_fit[i],-0.5), color='k', fmt='o')
-		#plt.plot(self.obswvl_fit[0], synth0, color='red', linestyle='-', label='[Mn/H]=0.0')
-		plt.fill_between(self.obswvl_fit[i], synth1, synth4, color='red', alpha=0.25)
-		plt.plot(self.obswvl_fit[i], synth2, color='red', linestyle='-', label=r'[Mn/H] = -2.04$\pm$0.13')
-		plt.plot(self.obswvl_fit[i], synth3, color='blue', linestyle='--', label='No Mn')
-		plt.axvspan(4753, 4755, facecolor='g', alpha=0.25)
-		plt.axvspan(4761, 4764, facecolor='g', alpha=0.25)
-		plt.axvspan(4765, 4768, facecolor='g', alpha=0.25)
-		plt.ylabel('Relative flux', fontsize=18)
-		plt.xlabel(r'$\lambda (\AA)$', fontsize=18)
-		plt.xlim((4744,4772))
-		plt.ylim((0.75,1.05))
-		plt.legend(loc='best', fontsize=16)
-		plt.savefig('final_obs.png', bbox_inches='tight')
-		plt.close()
-
-		chisq = np.sum(np.power(self.obsflux_fit[0] - synth2, 2.) * self.ivar_fit[0]) / (len(self.obsflux_fit[0]) - 1.)
-		print('Chisq = ', chisq)
-		'''
+		Outputs:
+		fitparams -- best fit parameters
+		rchisq	  -- reduced chi-squared
+		"""
 
 		# Do minimization
 		print('Starting minimization!')
-		best_mn, covar = scipy.optimize.curve_fit(self.synthetic, self.obswvl_final, self.obsflux_final, p0=[mn0], sigma=np.sqrt(np.reciprocal(self.ivar_final)), epsfcn=0.001)
-
+		best_mn, covar = scipy.optimize.curve_fit(self.synthetic, self.obswvl_final, self.obsflux_final, p0=[mn0], sigma=np.sqrt(np.reciprocal(self.ivar_final)), epsfcn=0.01)
 		error = np.sqrt(np.diag(covar))
 
 		print('Answer: ', best_mn)
@@ -197,6 +163,7 @@ class obsSpectrum:
 
 		# Do some checks
 		finalsynth = self.synthetic(self.obswvl_final, best_mn, full=False)
+		plt.figure(figsize=(12,8))
 		for i in range(len(finalsynth)):
 
 			# Index for self arrays
@@ -204,29 +171,30 @@ class obsSpectrum:
 
 			# Compute reduced chi-squared
 			chisq = np.sum(np.power(self.obsflux_fit[idx] - finalsynth[i], 2.) * self.ivar_fit[idx]) / (len(self.obsflux_fit[idx]) - 1.)
-			print('Reduced chisq = ', chisq)
+			#print('Reduced chisq = ', chisq)
 
 			# Plot for testing
-			plt.figure()
+			plotindex = 230+idx+1
+			plt.subplot(plotindex)
 			plt.errorbar(self.obswvl_fit[idx], self.obsflux_fit[idx], yerr=np.power(self.ivar_fit[idx],-0.5), color='k', fmt='o', label='Observed')
 			plt.plot(self.obswvl_fit[idx], finalsynth[i], 'r--', label='Synthetic')
-			plt.legend(loc='best')
-			plt.show()
-			#plt.savefig('final_obs_'+str(i)+'.png')
-			#plt.close()
+			#plt.legend(loc='best')
+
+		plt.savefig('/raid/madlr/dsph/scl/moogify/'+self.specname+'_finalfits.png')
+		plt.show()
 
 		return best_mn, error
 
 	def plot_chisq(self, mn0):
 		"""Plot chi-sq as a function of [Mn/H].
 
-	    Inputs:
-	    mn0 -- initial guess for Mn abundance
+		Inputs:
+		mn0 -- initial guess for Mn abundance
 
-	    Outputs:
-	    fitparams -- best fit parameters
-	    rchisq	  -- reduced chi-squared
-	    """
+		Outputs:
+		fitparams -- best fit parameters
+		rchisq	  -- reduced chi-squared
+		"""
 
 		mn_result, mn_error = self.minimize_scipy(mn0)
 
@@ -249,7 +217,8 @@ class obsSpectrum:
 
 def main():
 	filename = '/raid/caltech/moogify/bscl1/moogify.fits.gz'
-	test = obsSpectrum(filename, 57).minimize_scipy(-2.1661300692266998)
+	test = obsSpectrum(filename, 57, True, plot=False).minimize_scipy(-2.1661300692266998)
+	#print('we done')
 	#test = obsSpectrum(filename, 57).plot_chisq(-2.1661300692266998)
 
 if __name__ == "__main__":

@@ -114,10 +114,12 @@ def runMoog(temp, logg, fe, alpha, directory='/raid/madlr/moogspectra/', element
 
 	# Create *.atm file (for use with each linelist)
 	print('Running MOOG with parameters: ')
+	'''
 	print('temp = ', temp)
 	print('logg = ', logg)
 	print('fe = ', fe)
 	print('alpha = ', alpha)
+	'''
 	print('extra elements: ', elements, ' with abundances ', abunds)
 	atmfile = writeAtm(temp, logg, fe, alpha, elements=elements, abunds=abunds, solar=solar)
 

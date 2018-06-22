@@ -4,7 +4,7 @@
 # Contains the following functions: 
 # - checkFile: check if input file exists and is non-empty
 # - round_to: round either up/down to a given precision
-# - find_nearest_temp: find nearest temperatures above/below an 
+# - find_nearest: find nearest temperatures above/below an 
 #						input temp, given uneven temp array
 # - getAtm: get path to a *.atm file
 # - readAtm: read in a *.atm file and put contents into a list
@@ -76,58 +76,71 @@ def round_to(n, precision, updown):
     
 	return roundn
 
-def find_nearest_temp(temp):
-	"""Given a temperature, find nearest temperature (both up and down) in grid."""
+def find_nearest(temp, array=None):
+	""" Given a value ("temp"), find nearest value in grid.
+		If array == None, use normal temperature array and find nearest temp (both up and down) in grid; 
+		else, use given array and just return nearest value.
+	"""
 
 	# Array of temperatures in grid
-	tarray = np.array([3500, 3600, 3700, 3800, 3900,
-				4000, 4100, 4200, 4300, 4400,
-				4500, 4600, 4700, 4800, 4900,
-				5000, 5100, 5200, 5300, 5400,
-				5500, 5600, 5800, 6000, 6200,
-				6400, 6600, 6800, 7000, 7200,
-				7400, 7600, 7800, 8000])
+	if array is not None:
+		tarray = array
 
-	# Find what grid temp is closest to the input temp
-	idx = (np.abs(tarray-temp)).argmin()
-	neartemp 	= tarray[idx]
+		# Find what grid value is closest to input value
+		idx = (np.abs(tarray-temp)).argmin()
+		neartemp 	= tarray[idx]
 
-	# Define output variables
-	uptemp 		= 0
-	downtemp	= 0
-	error 		= False
+		return neartemp
 
-	# If the closest grid temp is **lower** than input temp
-	if neartemp < temp:
-
-		# Check to make sure the input temp isn't outside the grid
-		if idx == len(tarray) - 1:
-			error = True
-
-		# If ok, then can find the closest grid temp that's **higher** than input temp
-		else:
-			downtemp = neartemp
-			uptemp 	 = tarray[idx+1]
-
-	# If the closest grid temp is **higher** than input temp
-	elif neartemp > temp:
-
-		# Check to make sure the input temp isn't outside the grid
-		if idx == 0:
-			error = True 
-
-		# If ok, then can find the closest grid temp that's **lower** than input temp
-		else:
-			downtemp = tarray[idx-1]
-			uptemp	 = neartemp
-
-	# Check if input temp is equal to one of the grid temps
 	else:
-		uptemp	 = neartemp
-		downtemp = neartemp 
+		tarray = np.array([3500, 3600, 3700, 3800, 3900,
+					4000, 4100, 4200, 4300, 4400,
+					4500, 4600, 4700, 4800, 4900,
+					5000, 5100, 5200, 5300, 5400,
+					5500, 5600, 5800, 6000, 6200,
+					6400, 6600, 6800, 7000, 7200,
+					7400, 7600, 7800, 8000])
 
-	# Return temperatures and error message if input temp is outside grid range
-	return uptemp, downtemp, error
+		# Find what grid temp is closest to the input temp
+		idx = (np.abs(tarray-temp)).argmin()
+		neartemp 	= tarray[idx]
+
+		# Define output variables
+		uptemp 		= 0
+		downtemp	= 0
+		error 		= False
+
+		# If the closest grid temp is **lower** than input temp
+		if neartemp < temp:
+
+			# Check to make sure the input temp isn't outside the grid
+			if idx == len(tarray) - 1:
+				error = True
+
+			# If ok, then can find the closest grid temp that's **higher** than input temp
+			else:
+				downtemp = neartemp
+				uptemp 	 = tarray[idx+1]
+
+		# If the closest grid temp is **higher** than input temp
+		elif neartemp > temp:
+
+			# Check to make sure the input temp isn't outside the grid
+			if idx == 0:
+				error = True 
+
+			# If ok, then can find the closest grid temp that's **lower** than input temp
+			else:
+				downtemp = tarray[idx-1]
+				uptemp	 = neartemp
+
+		# Check if input temp is equal to one of the grid temps
+		else:
+			uptemp	 = neartemp
+			downtemp = neartemp 
+
+		# Return temperatures and error message if input temp is outside grid range
+		return uptemp, downtemp, error
 
 def getAtm(temp, logg, fe, alpha, directory):
 	"""Get path of grid file."""
@@ -183,25 +196,27 @@ def readAtm(temp, logg, fe, alpha, inputdir='/raid/grid7/atmospheres/'):
 		filestr = getAtm(temp, logg, fe, alpha, directory) + '.atm'
 		contents = np.genfromtxt(filestr, skip_header=3, max_rows=72, usecols=None, autostrip=True)
 
-	elif inputdir == '/raid/gridie/bin/':
+	else: #if inputdir == '/raid/gridie/bin/':
 		filestr = getAtm(temp, logg, fe, alpha, directory) + '.bin.gz' 
 		with gzip.open(filestr, 'rb') as f:
 			bstring = f.read()
 			contents = np.fromstring(bstring, dtype=np.float32)
 			f.close()
-		#subprocess.Popen(['gunzip', '-c', filestr+'.gz', '>', 'synthspec.bin'])
-		#contents = np.fromfile('synthspec.bin')
 
 	return contents
 
-def interpolateAtm(temp, logg, fe, alpha, griddir='/raid/grid7/atmospheres/'):
+def interpolateAtm(temp, logg, fe, alpha, hgrid=False, griddir='/raid/grid7/atmospheres/'):
 	"""Interpolate atmosphere from grid of atmospheres.
 
     Inputs:
-    temp -- effective temperature (K)
-    logg -- surface gravity
-    fe -- [Fe/H]
-    alpha -- [alpha/Fe]
+    temp 	-- effective temperature (K)
+    logg 	-- surface gravity
+    fe 	  	-- [Fe/H]
+    alpha 	-- [alpha/Fe]
+
+    Keywords:
+    hgrid 	-- if 'True', use hydrogen grids; else use normal grids for temp
+    griddir -- where to get atmospheres from
     """
 
 	# Change input parameters to correct format for filenames
@@ -210,131 +225,139 @@ def interpolateAtm(temp, logg, fe, alpha, griddir='/raid/grid7/atmospheres/'):
 	fenew 	 = fe*10
 	alphanew = alpha*10
 
-	# Get nearest gridpoints for each parameter
-	tempUp, tempDown, tempError = find_nearest_temp(tempnew)
+	if hgrid == False:
+		# Get nearest gridpoints for each parameter
+		tempUp, tempDown, tempError = find_nearest(tempnew)
 
-	loggUp = round_to(loggnew, 5, 'up')/10.
-	loggDown = round_to(loggnew, 5, 'down')/10.
+		loggUp = round_to(loggnew, 5, 'up')/10.
+		loggDown = round_to(loggnew, 5, 'down')/10.
 
-	feUp = round_to(fenew, 1, 'up')/10.
-	feDown = round_to(fenew, 1, 'down')/10.
+		feUp = round_to(fenew, 1, 'up')/10.
+		feDown = round_to(fenew, 1, 'down')/10.
 
 
-	alphaUp = round_to(alphanew, 1, 'up')/10.
-	alphaDown = round_to(alphanew, 1, 'down')/10.
+		alphaUp = round_to(alphanew, 1, 'up')/10.
+		alphaDown = round_to(alphanew, 1, 'down')/10.
 
-	print('Interpolation parameters: ', tempUp, tempDown, loggUp, loggDown, feUp, feDown, alphaUp, alphaDown)
+		#print('Interpolation parameters: ', tempUp, tempDown, loggUp, loggDown, feUp, feDown, alphaUp, alphaDown)
 
-	# Check that points are within range of grid
-	if tempError:
-		print('Error: T = ' + str(temp) + ' is out of range!')
-		raise
+		# Check that points are within range of grid
+		if tempError:
+			print('Error: T = ' + str(temp) + ' is out of range!')
+			raise
 
-	if loggUp > 5.0 or loggDown < 0:
-		print('Error: log(g) = ' + str(logg) + ' is out of range!')
-		raise
+		if loggUp > 5.0 or loggDown < 0:
+			print('Error: log(g) = ' + str(logg) + ' is out of range!')
+			raise
 
-	elif feUp > 0 or feDown < -5.0:
-		print('Error: [Fe/H] = ' + str(fe) + ' is out of range!')
-		raise
+		elif feUp > 0 or feDown < -5.0:
+			print('Error: [Fe/H] = ' + str(fe) + ' is out of range!')
+			raise
 
-	elif alphaUp > 1.2 or alphaDown < -0.8:
-		print('Error: [alpha/Fe] = ' + str(alpha) + ' is out of range!')
-		raise
+		elif alphaUp > 1.2 or alphaDown < -0.8:
+			print('Error: [alpha/Fe] = ' + str(alpha) + ' is out of range!')
+			raise
 
-	# Grid isn't uniform, so do additional checks to make sure points are within range of grid
-	elif ((loggUp < 0.5) or (loggDown < 0.5)) and ((tempUp >= 7000) or (tempDown >= 7000)):
-		print('Error: T = ' + str(temp) + ' and log(g) = ' + str(logg) + ' out of range!')
-		raise
+		# Grid isn't uniform, so do additional checks to make sure points are within range of grid
+		elif ((loggUp < 0.5) or (loggDown < 0.5)) and ((tempUp >= 7000) or (tempDown >= 7000)):
+			print('Error: T = ' + str(temp) + ' and log(g) = ' + str(logg) + ' out of range!')
+			raise
+
+	else:
+		# Get nearest gridpoints for each parameter
+		tempUp = tempDown = find_nearest(tempnew, array=np.array([4500, 5000, 5500, 6000]))
+		loggUp = loggDown = find_nearest(loggnew, array=np.array([0.5, 1.0, 1.5, 2.0, 2.5]))
+		feUp = feDown = find_nearest(loggnew, array=np.array([-2.0, -1.0]))
+		alphaUp = alphaDown = find_nearest(alphanew, array=np.array([0.0]))
 
 	#elif (temp > 3700) & (temp < 4200) & (logg > 40) & (fe <= -4.8):
 	#	print('Error: Out of range!') 
 	#	return
 
-	# If within grid, interpolate
+	# If within grid, interpolate!
+
+	# Calculate intervals for each variable
+	# (quantities needed for interpolation)
+	#######################################
+
+	# Temperature interval
+	## Check if input temp exactly matches one of the grid points
+	if tempUp == tempDown:
+
+		# If so, interpolation interval is just one point,
+		# so interval is just one point, and delta(T) and n(T) are both 1
+		tempInterval = np.array([temp])
+		tempDelta 	 = np.array([1])
+		nTemp 		 = 1
+
+	## If not, then input temp is between two grid points
 	else:
-		# Calculate intervals for each variable
-		# (quantities needed for interpolation)
-		#######################################
+		tempInterval = np.array([tempDown, tempUp])
+		tempDelta	 = np.absolute(np.array([tempUp, tempDown]) - temp)
+		nTemp 		 = 2
 
-		# Temperature interval
-		## Check if input temp exactly matches one of the grid points
-		if tempUp == tempDown:
+	# Repeat for other variables:
+	if loggUp == loggDown:
+		loggInterval = np.array([logg])
+		loggDelta 	 = np.array([1])
+		nLogg		 = 1
+	else:
+		loggInterval = np.array([loggDown, loggUp])
+		loggDelta	 = np.absolute(np.array([loggUp, loggDown]) - logg)
+		nLogg 		 = 2
 
-			# If so, interpolation interval is just one point,
-			# so interval is just one point, and delta(T) and n(T) are both 1
-			tempInterval = np.array([temp])
-			tempDelta 	 = np.array([1])
-			nTemp 		 = 1
+	if feUp == feDown:
+		feInterval	= np.array([fe])
+		feDelta 	= np.array([1])
+		nFe		 	= 1
+	else:
+		feInterval	= np.array([feDown, feUp])
+		feDelta		= np.absolute(np.array([feUp, feDown]) - fe)
+		nFe 		= 2
 
-		## If not, then input temp is between two grid points
-		else:
-			tempInterval = np.array([tempDown, tempUp])
-			tempDelta	 = np.absolute(np.array([tempUp, tempDown]) - temp)
-			nTemp 		 = 2
+	if alphaUp == alphaDown:
+		alphaInterval	= np.array([alpha])
+		alphaDelta 		= np.array([1])
+		nAlpha	 		= 1
+	else:
+		alphaInterval	= np.array([alphaDown, alphaUp])
+		alphaDelta		= np.absolute(np.array([alphaUp, alphaDown]) - alpha)
+		nAlpha 			= 2
 
-		# Repeat for other variables:
-		if loggUp == loggDown:
-			loggInterval = np.array([logg])
-			loggDelta 	 = np.array([1])
-			nLogg		 = 1
-		else:
-			loggInterval = np.array([loggDown, loggUp])
-			loggDelta	 = np.absolute(np.array([loggUp, loggDown]) - logg)
-			nLogg 		 = 2
+	# Do interpolation!
+	###################
+	for i in range(nTemp):
+		for j in range(nLogg):
+			for m in range(nFe):
+				for n in range(nAlpha):
 
-		if feUp == feDown:
-			feInterval	= np.array([fe])
-			feDelta 	= np.array([1])
-			nFe		 	= 1
-		else:
-			feInterval	= np.array([feDown, feUp])
-			feDelta		= np.absolute(np.array([feUp, feDown]) - fe)
-			nFe 		= 2
+					# Read in grid point (atmosphere file)
+					iflux = readAtm(tempInterval[i],loggInterval[j],feInterval[m],alphaInterval[n],inputdir=griddir) #[:,0]
+					#print(iflux)
 
-		if alphaUp == alphaDown:
-			alphaInterval	= np.array([alpha])
-			alphaDelta 		= np.array([1])
-			nAlpha	 		= 1
-		else:
-			alphaInterval	= np.array([alphaDown, alphaUp])
-			alphaDelta		= np.absolute(np.array([alphaUp, alphaDown]) - alpha)
-			nAlpha 			= 2
+					# Compute weighted sum of grid points
+					## If first iteration, initialize flux as weighted value of lowest grid point 
+					if (i==0) & (j==0) & (m==0) & (n==0):
+						flux = tempDelta[i]*loggDelta[j]*feDelta[m]*alphaDelta[n] * iflux
 
-		# Do interpolation!
-		###################
-		for i in range(nTemp):
-			for j in range(nLogg):
-				for m in range(nFe):
-					for n in range(nAlpha):
+					## Else, start adding weighted values of other grid points
+					else:
+						flux = flux + tempDelta[i]*loggDelta[j]*feDelta[m]*alphaDelta[n] * iflux
 
-						# Read in grid point (atmosphere file)
-						iflux = readAtm(tempInterval[i],loggInterval[j],feInterval[m],alphaInterval[n],inputdir=griddir) #[:,0]
-						#print(iflux)
+	# Normalize by dividing by correct intervals
+	quotient = 1.0
+	if nTemp == 2:
+		quotient = quotient * (tempUp - tempDown)
+	if nLogg == 2:
+		quotient = quotient * (loggUp - loggDown)
+	if nFe == 2:
+		quotient = quotient * (feUp - feDown)
+	if nAlpha == 2:
+		quotient = quotient * (alphaUp - alphaDown)
 
-						# Compute weighted sum of grid points
-						## If first iteration, initialize flux as weighted value of lowest grid point 
-						if (i==0) & (j==0) & (m==0) & (n==0):
-							flux = tempDelta[i]*loggDelta[j]*feDelta[m]*alphaDelta[n] * iflux
+	flux = flux/(quotient*1.0)
 
-						## Else, start adding weighted values of other grid points
-						else:
-							flux = flux + tempDelta[i]*loggDelta[j]*feDelta[m]*alphaDelta[n] * iflux
-
-		# Normalize by dividing by correct intervals
-		quotient = 1.0
-		if nTemp == 2:
-			quotient = quotient * (tempUp - tempDown)
-		if nLogg == 2:
-			quotient = quotient * (loggUp - loggDown)
-		if nFe == 2:
-			quotient = quotient * (feUp - feDown)
-		if nAlpha == 2:
-			quotient = quotient * (alphaUp - alphaDown)
-
-		flux = flux/(quotient*1.0)
-
-		return flux
+	return flux
 
 def writeAtm(temp, logg, fe, alpha, dir='/raid/madlr/atm/', elements=None, abunds=None, solar=None):
 	"""Create *.atm file
@@ -358,9 +381,11 @@ def writeAtm(temp, logg, fe, alpha, dir='/raid/madlr/atm/', elements=None, abund
 	printstr = str(temp) + './' + ('%.2f' % float(logg)) + '/' + ('%5.2f' % float(fe)) + '/' + ('%5.2f' % float(alpha))
 
 	# Check if file already exists
-	exists, readytowrite = checkFile(filestr, overridecheck=False)
-	if readytowrite:
+	exists, readytowrite = checkFile(filestr+'.atm', overridecheck=False)
+	if exists:
+		return filestr+'.atm'
 
+	else:
 		# Get atmosphere data
 		#####################
 		atmosphere = interpolateAtm(temp,logg,fe,alpha)

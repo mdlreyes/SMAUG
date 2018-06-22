@@ -69,7 +69,7 @@ def open_obs_file(filename, retrievespec=None, specparams=False, objname=None, c
 			wvl = wvl / (1. + zrest)
 			print('Redshift: ', zrest)
 
-			return name, wvl, flux, ivar, dlam
+			return name, wvl, flux, ivar, dlam, zrest
 
 		# Else, return other parameters
 		else:
@@ -144,20 +144,6 @@ def smooth_gauss_wrapper(lambda1, spec1, lambda2, dlam_in):
 	spec2: array-like: smoothed and interpolated synthetic spectrum, matching observations
 	"""
 
-	# For debugging
-	'''
-	plt.figure()
-	plt.plot(lambda2, dlam_in)
-	plt.xlabel(r'$\lambda$')
-	plt.ylabel(r'$d\lambda$')
-	plt.savefig('testdlam.png')
-
-	print('Synth spec has NaNs at: ', np.where(np.isnan(spec1)))
-	print('Synth wavl has NaNs at: ', np.where(np.isnan(lambda1)))
-	print('Obs wavl has NaNs at: ', np.where(np.isnan(lambda2)))
-	print('dlam has NaNs at: ', np.where(np.isnan(dlam_in)))
-	'''
-
 	if not isinstance(lambda1, np.ndarray): lambda1 = np.array(lambda1)
 	if not isinstance(lambda2, np.ndarray): lambda2 = np.array(lambda2)
 	if not isinstance(spec1, np.ndarray): spec1 = np.array(spec1)
@@ -196,9 +182,3 @@ def smooth_gauss_wrapper(lambda1, spec1, lambda2, dlam_in):
 	#temp = np.zeros(500); gauss = np.zeros(500)
 
 	return spec2
-
-#print(open_obs_file('/raid/caltech/moogify/bscl1/moogify.fits.gz', retrievespec=None))
-#lambda2, spec2, ivar = open_obs_file('/raid/caltech/moogify/bscl1/moogify.fits.gz', retrievespec=0)
-#testarray = np.array([lambda2, spec2, ivar])
-#np.savetxt('test.txt.gz',testarray)
-#print(spec2)

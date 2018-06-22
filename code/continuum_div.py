@@ -67,6 +67,8 @@ def get_synth(obswvl, obsflux, ivar, dlam, synth=None, temp=None, logg=None, fe=
 		synthflux = synth[0]
 		synthwvl  = synth[1]
 
+	#print(synthwvl, obswvl)
+
 	# Clip synthetic spectrum so it's within range of obs spectrum
 	synthwvl = synthwvl[(np.where((synthwvl > obswvl[0]) & (synthwvl < obswvl[-1])))]
 	synthflux = synthflux[(np.where((synthwvl > obswvl[0]) & (synthwvl < obswvl[-1])))]
@@ -128,12 +130,13 @@ def mask_obs_for_division(obswvl, obsflux, ivar, temp=None, logg=None, fe=None, 
 
 	# Mask out pixels near chip gap
 	chipgap = int(len(mask)/2 - 1)
-	print('wavelength of chip gap: ', obswvl[chipgap])
+	#print('wavelength of chip gap: ', obswvl[chipgap])
+	#print('Chip gap: ', chipgap)
 	mask[(chipgap - 5): (chipgap + 5)] = True
 
 	# Mask out any bad pixels
 	mask[np.where(synthflux <= 0.)] = True
-	#print('Where synthflux < 0: ', synthflux[np.where(synthflux <=0.)])
+	#print('Where synthflux < 0: ', obswvl[np.where(synthflux <=0.)])
 
 	mask[np.where(ivar <= 0.)] = True
 	#print('Where ivar < 0: ', obswvl[np.where(ivar <=0.)])
@@ -399,33 +402,6 @@ def mask_obs_for_abundance(obswvl, obsflux_norm, ivar_norm, dlam):
 	for i in range(len(masklist)):
 		for line in range(len(lines)):
 			masklist[i].append( arraylist[i][np.where(((obswvl > lines[line][0]) & (obswvl < lines[line][1]) & (~mask)))] )
-		'''
-		masklist[i].append( arraylist[i][np.where(((obswvl > 4744.) & (obswvl < 4772.) & (~mask)))] )
-		masklist[i].append( arraylist[i][np.where(((obswvl > 4773.) & (obswvl < 4793.) & (~mask)))] )
-		masklist[i].append( arraylist[i][np.where(((obswvl > 4813.) & (obswvl < 4833.) & (~mask)))] )
-		masklist[i].append( arraylist[i][np.where(((obswvl > 5384.) & (obswvl < 5404.) & (~mask)))] )
-		masklist[i].append( arraylist[i][np.where(((obswvl > 5527.) & (obswvl < 5547.) & (~mask)))] )
-		masklist[i].append( arraylist[i][np.where(((obswvl > 6003.) & (obswvl < 6031.) & (~mask)))] )
-		'''
-
-	#mnmask[np.where((obswvl > 4749.) & (obswvl < 4759.))] = True
-	#mnmask[np.where((obswvl > 4778.) & (obswvl < 4788.))] = True
-	#mnmask[np.where((obswvl > 4818.) & (obswvl < 4828.))] = True
-	#mnmask[np.where((obswvl > 5389.) & (obswvl < 5399.))] = True
-	#mnmask[np.where((obswvl > 5532.) & (obswvl < 5542.))] = True
-	#mnmask[np.where((obswvl > 6008.) & (obswvl < 6018.))] = True
-	#mnmask[np.where((obswvl > 6016.) & (obswvl < 6026.))] = True
-	#mask[~mnmask] = True
-
-	# Create masked arrays
-	#synthfluxmask = ma.masked_array(synthflux, mask)
-	#obsfluxmask   = ma.masked_array(obsflux_norm, mask)
-	#obswvlmask	  = ma.masked_array(obswvl, mask)
-	#ivarmask	  = ma.masked_array(ivar_norm, mask)
-
-	#obsfluxmask   = obsflux_norm[~mask]
-	#obswvlmask	  = obswvl[~mask]
-	#ivarmask	  = ivar_norm[~mask]
 
 	skip = np.arange(len(lines))
 	for line in range(len(lines)):
@@ -435,13 +411,3 @@ def mask_obs_for_abundance(obswvl, obsflux_norm, ivar_norm, dlam):
 			skip = np.delete(skip, np.where(skip==line))
 
 	return np.asarray(obsfluxmask), np.asarray(obswvlmask), np.asarray(ivarmask), np.asarray(dlammask), np.asarray(skip)
-
-#synthflux, obsflux, _, ivar = get_synth('/raid/caltech/moogify/bscl1/moogify.fits.gz', starnum=0, temp=3500, logg=3.0, fe=-3.3, alpha=1.2)
-#synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask = mask_obs('/raid/caltech/moogify/bscl1/moogify.fits.gz', starnum=0, temp=3500, logg=3.0, fe=-3.3, alpha=1.2)
-#synthflux, obsflux_norm, obswvl, ivar_norm = divide_spec('/raid/caltech/moogify/bscl1/moogify.fits.gz', starnum=0, synth=None, temp=3500, logg=3.0, fe=-3.3, alpha=1.2)
-
-#print(obswvl, obswvl[1]-obswvl[0], obswvl[2]-obswvl[1])
-#np.set_printoptions(threshold=np.inf)
-#print(synthflux, synthfluxmask)
-#testarray = np.array([synthflux, obsflux, obswvl, obsflux_norm, ivar_norm])
-#np.savetxt('test.txt.gz',testarray)
