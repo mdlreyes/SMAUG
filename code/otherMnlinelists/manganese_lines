@@ -1,0 +1,51 @@
+file /scr/jlc/elements/manganese/manganese_lines
+
+Oct 2, 2001
+
+
+The reference used by McWilliam is Booth et al (1984a),
+MNRAS, 208, 147
+
+                    NIST       McWilliam       Gratton   Booth   Sum-HFS
+5516.774   2.18   -1.847       ...               ...     -1.847   ...
+5537.76    2.19    ...         ...               ...      ...    -2.017
+6013.510   3.07   -0.252      -0.25             -0.25    -0.251  -0.251
+6016.64    3.07    ...         ...              -0.09    ...     -0.216
+6021.820   3.07    0.035      +0.03             +0.03    +0.034  +0.034
+
+
+All of these, except 5516 A, have HFS from Prochaska/McWilliam.
+Since 5516 is the weakest line of them all, maybe we can get by
+without HFS.
+
+
+So the HFS-sum gf appears consistent with that of Booth et al (1984a),
+which is in turn consistent with NIST (and with Gratton).
+We adopt -1.847 for the 5516 line, and use the HFS calculations for
+the other four Mn I lines.
+
+
+
+5516.774  Mn I  2.18  4  7.79e-3  C+  alu, hfs, on edge of order 
+5537.76   Mn I  2.19  ...       In NIST, but no g or lifetime alu, hfs                  6013.51   Mn I  3.07  6  1.72e-1   sec                        
+6016.64   Mn I  3.07  ...     sec, In NIST, but no g or lifetime alu, hfs
+6021.82   Mn I  3.07  6  3.32e-1    alu 
+
+
+
+
+Line that should be ignored:
+6384.321      15   6384.67    Mn, Ni blend   
+
+
+gf(Gratton) from our analysis of NGC 6528 RHB stars, Carretta, Cohen,
+Gratton and Behr, AJ, 2001
+
+gf(McWilliam) from Prochaska, Naumov, Carney, McWilliam and WOlfe,
+2000, AJ, 120, 2513.
+
+
+There is a major study of Mn abundances in metal poor field and
+globular cluster stars,
+Sobek, Ivans, Simmerer, Sneden...Kraft, 2006
+They use the triplet near 6015 A.

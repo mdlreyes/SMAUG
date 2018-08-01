@@ -4,7 +4,7 @@
 # - divides obs/synth, fits spline, and divides obs/spline (divide_spec)
 # 
 # Created 22 Feb 18
-# Updated 25 May 18
+# Updated 22 June 18
 ###################################################################
 
 import os
@@ -57,10 +57,19 @@ def get_synth(obswvl, obsflux, ivar, dlam, synth=None, temp=None, logg=None, fe=
 	# Get synthetic spectrum from grid
 	if synth is None:
 
-		# Use modified version of interpolateAtm to get synthetic spectrum from Ivanna's grid
-		synthflux = 1. - interpolateAtm(temp,logg,fe,alpha,griddir='/raid/gridie/bin/')
-		wvl_range = np.arange(4100., 6300.+0.14, 0.14)
-		synthwvl  = 0.5*(wvl_range[1:] + wvl_range[:-1])
+		# Use modified version of interpolateAtm to get blue synthetic spectrum from Ivanna's grid
+		synthflux_blue = 1. - interpolateAtm(temp,logg,fe,alpha,griddir='/raid/gridie/bin/')
+		wvl_range_blue = np.arange(4100., 6300.+0.14, 0.14)
+		synthwvl_blue  = 0.5*(wvl_range_blue[1:] + wvl_range_blue[:-1])
+
+		# Also get synthetic spectrum for redder part from Evan's grid
+		synthflux_red = 1. - interpolateAtm(temp,logg,fe,alpha,griddir='/raid/grid7/bin/')
+		synthwvl_red  = np.fromfile('/raid/grid7/bin/lambda.bin')
+		synthwvl_red  = np.around(synthwvl_red,2)
+
+		# Splice blue + red parts together
+		synthflux = np.hstack((synthflux_blue, synthflux_red))
+		synthwvl  = np.hstack((synthwvl_blue, synthwvl_red))
 
 	# Else, use input synthetic spectrum
 	else:

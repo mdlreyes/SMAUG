@@ -13,7 +13,7 @@
 # - writeAtm: given atmosphere, put contents into a *.atm file
 # 
 # Created 2 Nov 17
-# Updated 2 Apr 18
+# Updated 22 June 18
 ###################################################################
 
 import os

@@ -2,7 +2,7 @@
 # Gets Mn abundances for a list of stars
 # 
 # Created 5 June 18
-# Updated 20 June 18
+# Updated 22 June 18
 ###################################################################
 
 #Backend for python3 on mahler
@@ -25,14 +25,14 @@ import pandas
 import scipy.optimize
 import chi_sq
 
-def run_chisq(filename, paramfilename, galaxyname, clustername, startstar=0):
+def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0):
 	""" Measure Mn abundances from a FITS file.
 
 	Inputs:
 	filename 		-- file with observed spectra
 	paramfilename 	-- file with parameters of observed spectra
 	galaxyname		-- galaxy name, options: 'scl'
-	clustername 	-- cluster name, options: 'scl1'
+	slitmaskname 	-- slitmask name, options: 'scl1'
 
 	Keywords:
 	startstar		-- if 0 (default), start at beginning of file and write new datafile;
@@ -41,15 +41,18 @@ def run_chisq(filename, paramfilename, galaxyname, clustername, startstar=0):
 	"""
 
 	# Output filename
-	outputname = '/raid/madlr/dsph/'+galaxyname+'/moogify/'+clustername+'.csv'
+	outputname = '/raid/madlr/dsph/'+galaxyname+'/moogify/'+slitmaskname+'.csv'
 
 	# Open new file
 	if startstar<1:
 		with open(outputname, 'w+') as f:
-			f.write('Name\tTemp\tlog(g)\t[Fe/H]\t[alpha/Fe]\t[Mn/H]\terror([Mn/H])\n')
+			f.write('Name\tRA\tDec\tTemp\tlog(g)\t[Fe/H]\terror([Fe/H])\t[alpha/Fe]\t[Mn/H]\terror([Mn/H])\n')
 
 	# Get number of stars in file
 	Nstars = open_obs_file(filename)
+
+	# Get coordinates of stars in file
+	RA, Dec = open_obs_file(filename, coords=True)
 
 	# Run chi-sq fitting for all stars in file
 	starname = []
@@ -63,10 +66,10 @@ def run_chisq(filename, paramfilename, galaxyname, clustername, startstar=0):
 
 		try:
 			# Get metallicity of star to use for initial guess
-			temp, logg, fe, alpha = open_obs_file(filename, retrievespec=i, specparams=True)
+			temp, logg, fe, alpha, fe_err = open_obs_file(filename, retrievespec=i, specparams=True)
 
 			# Run optimization code
-			star = chi_sq.obsSpectrum(filename, paramfilename, i, True, galaxyname, clustername)
+			star = chi_sq.obsSpectrum(filename, paramfilename, i, True, galaxyname, slitmaskname)
 			best_mn, error = star.minimize_scipy(fe)
 
 		except:
@@ -76,7 +79,7 @@ def run_chisq(filename, paramfilename, galaxyname, clustername, startstar=0):
 		print('Finished star '+star.specname, '#'+str(i+1)+'/'+str(Nstars)+' stars')
 
 		with open(outputname, 'a') as f:
-			f.write(star.specname+'\t'+str(star.temp)+'\t'+str(star.logg[0])+'\t'+str(star.fe[0])+'\t'+str(star.alpha[0])+'\t'+str(best_mn[0])+'\t'+str(error[0])+'\n')
+			f.write(star.specname+'\t'+str(RA[i])+'\t'+str(Dec[i])+'\t'+str(star.temp)+'\t'+str(star.logg[0])+'\t'+str(star.fe[0])+'\t'+str(star.fe_err[0])+'\t'+str(star.alpha[0])+'\t'+str(best_mn[0])+'\t'+str(error[0])+'\n')
 
 	return
 
@@ -124,7 +127,7 @@ def match_hires(hiresfile, obsfile):
 			print('Got one!')
 		
 			# Get metallicity of this matching star to use for initial guess
-			temp, logg, fe, alpha = open_obs_file(obsfile, retrievespec=idx, specparams=True)
+			temp, logg, fe, alpha, fe_err = open_obs_file(obsfile, retrievespec=idx, specparams=True)
 
 			# Measure med-res Mn abundance of the star
 			medresMn[i], medresMnerror[i] = chi_sq.obsSpectrum(obsfile, idx).minimize_scipy(fe)
@@ -138,8 +141,30 @@ def match_hires(hiresfile, obsfile):
 	return medresMn, medresMnerror, hiresMn, hiresMnerror, sep.arcsec
 
 def main():
+	# Match Sculptor hi-res file to bscl1 (for AAS)
 	#medresMn, medresMnerror, hiresMn, hiresMnerror, sep.arcsec = match_hires('Sculptor_hires.tsv','/raid/caltech/moogify/bscl1/moogify.fits.gz')
-	run_chisq('/raid/caltech/moogify/bscl1/moogify.fits.gz', '/raid/m31/dsph/scl/scl1/moogify7_flexteff.fits.gz', 'scl', 'scl1', startstar=0)
+	
+	# Measure Mn abundances for Sculptor
+	#run_chisq('/raid/caltech/moogify/bscl1/moogify.fits.gz', '/raid/gduggan/moogify/bscl1_moogify.fits.gz', 'scl', 'scl1', startstar=0)
+	#run_chisq('/raid/caltech/moogify/bscl2/moogify.fits.gz', '/raid/gduggan/moogify/bscl2_moogify.fits.gz', 'scl', 'scl2', startstar=0)
+	#run_chisq('/raid/caltech/moogify/bscl6/moogify.fits.gz', '/raid/gduggan/moogify/bscl6_moogify.fits.gz', 'scl', 'scl6', startstar=0)
+
+	# Measure Mn abundances for Ursa Minor
+	#run_chisq('/raid/caltech/moogify/bumi1/moogify.fits.gz', '/raid/gduggan/moogify/bumi1_moogify.fits.gz', 'umi', 'umi1', startstar=0)
+	#run_chisq('/raid/caltech/moogify/bumi2/moogify.fits.gz', '/raid/gduggan/moogify/bumi2_moogify.fits.gz', 'umi', 'umi2', startstar=0)
+	#run_chisq('/raid/caltech/moogify/bumi3/moogify.fits.gz', '/raid/gduggan/moogify/bumi3_moogify.fits.gz', 'umi', 'umi3', startstar=0)
+
+	# Measure Mn abundances for Draco
+	#run_chisq('/raid/caltech/moogify/bdra1/moogify.fits.gz', '/raid/gduggan/moogify/bdra1_moogify.fits.gz', 'dra', 'dra1', startstar=0)
+	#run_chisq('/raid/caltech/moogify/bdra2/moogify.fits.gz', '/raid/gduggan/moogify/bdra2_moogify.fits.gz', 'dra', 'dra2', startstar=0)
+	#run_chisq('/raid/caltech/moogify/bdra3/moogify.fits.gz', '/raid/gduggan/moogify/bdra3_moogify.fits.gz', 'dra', 'dra3', startstar=0)
+
+	# Measure Mn abundances for Sextans
+	run_chisq('/raid/caltech/moogify/bsex2/moogify.fits.gz', '/raid/gduggan/moogify/bsex2_moogify.fits.gz', 'sex', 'sex2', startstar=0)
+	run_chisq('/raid/caltech/moogify/bsex3/moogify.fits.gz', '/raid/gduggan/moogify/bsex3_moogify.fits.gz', 'sex', 'sex3', startstar=0)
+
+	# Measure Mn abundances for Fornax
+	run_chisq('/raid/caltech/moogify/bfor6/moogify.fits.gz', '/raid/gduggan/moogify/bfor6_moogify.fits.gz', 'for', 'for6', startstar=0)
 
 if __name__ == "__main__":
 	main()

@@ -7,7 +7,7 @@
 #	    smooths and interpolates synth spectrum to match observed
 # 
 # Created 9 Feb 18
-# Updated 25 May 18
+# Updated 22 June 18
 ###################################################################
 
 import os
@@ -88,6 +88,8 @@ def open_obs_file(filename, retrievespec=None, specparams=False, objname=None, c
 					logg 	= data['LOGG'][index[0]]
 					fe 		= data['FEH'][index[0]]
 					alpha 	= data['ALPHAFE'][index[0]]
+
+					fe_err  = data['FEHERR'][index[0]]
 					#zrest = data['ZREST'][index[0]]
 
 					print('Parameters: ', temp, logg, fe, alpha)
@@ -102,11 +104,13 @@ def open_obs_file(filename, retrievespec=None, specparams=False, objname=None, c
 				logg 	= data['LOGG'][retrievespec]
 				fe 		= data['FEH'][retrievespec]
 				alpha 	= data['ALPHAFE'][retrievespec]
+
+				fe_err 	= data['FEHERR'][retrievespec]
 				#zrest = data['ZREST'][retrievespec]
 
 				print('Parameters: ', temp, logg, fe, alpha)
 
-			return temp, logg, fe, alpha #, zrest
+			return temp, logg, fe, alpha, fe_err #, zrest
 
 	# Else, return number of stars in file (if coords=False) or coordinates of stars in file (if coords = True)
 	else:

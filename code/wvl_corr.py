@@ -2,7 +2,7 @@
 # Functions to do empirical wavelength corrections 
 # 
 # Created 21 June 18
-# Updated 21 June 18
+# Updated 22 June 18
 ###################################################################
 
 #Backend for python3 on mahler
@@ -196,7 +196,7 @@ def find_wvl_offset(wvlh,f_data,f_synth_adj,wvl_radius=10):
 		# Need to move spectra so the absorption is positive and is centered at 0
 		maxpt = np.ceil(max(f_data(wvl_data)))
 		print('CHECK: ', maxpt)
-		conv = np.correlate((maxpt-f_data(wvl_data)),(maxpt-f_synth_adj[i]),'same')
+		conv = np.correlate((1.0-f_data(wvl_data)),(1.0-f_synth_adj[i]),'same')
 		true_synth_wvl = np.median(wvlh[i])
 
 		# Normalize convolution
@@ -318,8 +318,8 @@ def fit_wvl(obs_wvl, obs_flux_norm, obs_flux_std, dlam,
 		else:    
 			axs[i+3].plot([data_interp_wvls[i]]*2,[0,1],'m:',label="uncorrected h-line wvl")
    
-		axs[i].set_ylim([0,3.2])
-		axs[i+3].set_ylim([0,3.2])
+		axs[i].set_ylim([0,1.2])
+		axs[i+3].set_ylim([0,1.2])
 		axs[i+3].set_xlim([h_lines[i]-2*wvl_radius,h_lines[i]+2*wvl_radius])
 		axs[i].set_xlim([h_lines[i]-wvl_radius,h_lines[i]+wvl_radius])
 		xmajorLocator = plt. MultipleLocator (10)
