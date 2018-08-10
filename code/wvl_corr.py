@@ -272,6 +272,7 @@ def fit_wvl(obs_wvl, obs_flux_norm, obs_flux_std, dlam,
 	# Convolve data with synthetic spectra
 	wvl_radius = 10
 	synth_wvls, data_interp_wvls, wvl_data_conv, conv_array = find_wvl_offset(wvlh,f_data,f_synth_adj)
+	print('Nothing wrong with checks')
 
 	# Compute wavelength offset for each H region
 	diff_wvls = synth_wvls - data_interp_wvls
@@ -326,6 +327,8 @@ def fit_wvl(obs_wvl, obs_flux_norm, obs_flux_std, dlam,
 		axs[i+3].xaxis.set_major_locator(xmajorLocator)
 
 	#plt.legend()
+	#print('Directory: ', directory)
+	#print('Outfilename: ', outfilename)
 	plt.savefig(directory+outfilename+'.png')
 	plt.close(fig)
 

@@ -6,7 +6,7 @@
 # - runMoog: runs MOOG for each Mn linelist (calls createPar), splices output spectrum
 # 
 # Created 4 Jan 18
-# Updated 25 May 18
+# Updated 10 Aug 18
 ###################################################################
 
 import os
@@ -88,7 +88,8 @@ def runMoog(temp, logg, fe, alpha, directory='/raid/madlr/moogspectra/', element
 		os.remove(fl)
 
 	# Define list of Mn linelists
-	linelists = np.array(['linelist_Mn47544762','linelist_Mn4783','linelist_Mn4823','linelist_Mn5394','linelist_Mn5537','linelist_Mn60136021']) 
+	#linelists = np.array(['linelist_Mn47544762','linelist_Mn4783','linelist_Mn4823','linelist_Mn5394','linelist_Mn5537','linelist_Mn60136021']) 
+	linelists = np.array(['Mn47394783','Mn4823','Mn53945432','Mn55165537','Mn60136021','Mn6384','Mn6491'])
 	spectrum  = []
 
 	# Create identifying filename (including all parameters + linelist used)
@@ -132,7 +133,7 @@ def runMoog(temp, logg, fe, alpha, directory='/raid/madlr/moogspectra/', element
 
 		# Run MOOG
 		p = subprocess.Popen(['MOOG', parfile], cwd='/raid/madlr/moog17scat/', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-		
+
 		# Wait for MOOG to finish running
 		p.communicate()
 

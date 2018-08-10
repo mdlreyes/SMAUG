@@ -4,7 +4,7 @@
 # - divides obs/synth, fits spline, and divides obs/spline (divide_spec)
 # 
 # Created 22 Feb 18
-# Updated 22 June 18
+# Updated 10 Aug 18
 ###################################################################
 
 import os
@@ -155,7 +155,8 @@ def mask_obs_for_division(obswvl, obsflux, ivar, temp=None, logg=None, fe=None, 
 
 	# Mask out pixels in regions around Mn lines (+/- 10A) 
 	mnmask = np.zeros(len(synthflux), dtype=bool)
-	lines  = np.array([[4744.,4772.],[4773.,4793.],[4813.,4833.],[5384,5404.],[5527.,5547.],[6003.,6031.]])
+	#lines  = np.array([[4744.,4772.],[4773.,4793.],[4813.,4833.],[5384,5404.],[5527.,5547.],[6003.,6031.]])
+	lines = np.array([[4729.,4793.],[4813.,4833.],[5384.,5442.],[5506.,5547.],[6003.,6031.],[6374.,6394.],[6481.,6501.]])
 	for line in range(len(lines)):
 		mnmask[np.where((obswvl > lines[line][0]) & (obswvl < lines[line][1]))] = True
 	mask[mnmask] = True
@@ -406,7 +407,8 @@ def mask_obs_for_abundance(obswvl, obsflux_norm, ivar_norm, dlam):
 	masklist 	= [obsfluxmask, obswvlmask, ivarmask, dlammask]
 	arraylist 	= [obsflux_norm, obswvl, ivar_norm, dlam]
 
-	lines  = np.array([[4744.,4772.],[4773.,4793.],[4813.,4833.],[5384,5404.],[5527.,5547.],[6003.,6031.]])
+	#lines  = np.array([[4744.,4772.],[4773.,4793.],[4813.,4833.],[5384,5404.],[5527.,5547.],[6003.,6031.]])
+	lines = np.array([[4729.,4793.],[4813.,4833.],[5384.,5442.],[5506.,5547.],[6003.,6031.],[6374.,6394.],[6481.,6501.]])
 
 	for i in range(len(masklist)):
 		for line in range(len(lines)):

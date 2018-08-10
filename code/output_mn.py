@@ -25,7 +25,7 @@ import pandas
 import scipy.optimize
 import chi_sq
 
-def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0):
+def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, globular=False):
 	""" Measure Mn abundances from a FITS file.
 
 	Inputs:
@@ -37,11 +37,15 @@ def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0):
 	Keywords:
 	startstar		-- if 0 (default), start at beginning of file and write new datafile;
 						else, start at #startstar and just append to datafile
+	globular 		-- if 'False', put into output path of galaxy; else, put into globular cluster path
 
 	"""
 
 	# Output filename
-	outputname = '/raid/madlr/dsph/'+galaxyname+'/moogify/'+slitmaskname+'.csv'
+	if globular:
+		outputname = '/raid/madlr/glob/'+galaxyname+'.csv'
+	else:
+		outputname = '/raid/madlr/dsph/'+galaxyname+'/'+slitmaskname+'.csv'
 
 	# Open new file
 	if startstar<1:
@@ -66,13 +70,19 @@ def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0):
 
 		try:
 			# Get metallicity of star to use for initial guess
+			print('Getting initial metallicity')
 			temp, logg, fe, alpha, fe_err = open_obs_file(filename, retrievespec=i, specparams=True)
 
+			#if fe_err < 0.000000001:
+			#	print('Fe error '+str(fe_err)+' too low! Skipped star #'+str(i+1)+'/'+str(Nstars)+' stars')
+			#	continue
+
 			# Run optimization code
-			star = chi_sq.obsSpectrum(filename, paramfilename, i, True, galaxyname, slitmaskname)
+			star = chi_sq.obsSpectrum(filename, paramfilename, i, True, galaxyname, slitmaskname, globular)
 			best_mn, error = star.minimize_scipy(fe)
 
-		except:
+		except Exception as e:
+			print(repr(e))
 			print('Skipped star #'+str(i+1)+'/'+str(Nstars)+' stars')
 			continue
 
@@ -143,21 +153,22 @@ def match_hires(hiresfile, obsfile):
 def main():
 	# Match Sculptor hi-res file to bscl1 (for AAS)
 	#medresMn, medresMnerror, hiresMn, hiresMnerror, sep.arcsec = match_hires('Sculptor_hires.tsv','/raid/caltech/moogify/bscl1/moogify.fits.gz')
-	
+
+	'''
 	# Measure Mn abundances for Sculptor
-	#run_chisq('/raid/caltech/moogify/bscl1/moogify.fits.gz', '/raid/gduggan/moogify/bscl1_moogify.fits.gz', 'scl', 'scl1', startstar=0)
-	#run_chisq('/raid/caltech/moogify/bscl2/moogify.fits.gz', '/raid/gduggan/moogify/bscl2_moogify.fits.gz', 'scl', 'scl2', startstar=0)
-	#run_chisq('/raid/caltech/moogify/bscl6/moogify.fits.gz', '/raid/gduggan/moogify/bscl6_moogify.fits.gz', 'scl', 'scl6', startstar=0)
+	run_chisq('/raid/caltech/moogify/bscl1/moogify.fits.gz', '/raid/gduggan/moogify/bscl1_moogify.fits.gz', 'scl', 'scl1', startstar=0)
+	run_chisq('/raid/caltech/moogify/bscl2/moogify.fits.gz', '/raid/gduggan/moogify/bscl2_moogify.fits.gz', 'scl', 'scl2', startstar=0)
+	run_chisq('/raid/caltech/moogify/bscl6/moogify.fits.gz', '/raid/gduggan/moogify/bscl6_moogify.fits.gz', 'scl', 'scl6', startstar=0)
 
 	# Measure Mn abundances for Ursa Minor
-	#run_chisq('/raid/caltech/moogify/bumi1/moogify.fits.gz', '/raid/gduggan/moogify/bumi1_moogify.fits.gz', 'umi', 'umi1', startstar=0)
-	#run_chisq('/raid/caltech/moogify/bumi2/moogify.fits.gz', '/raid/gduggan/moogify/bumi2_moogify.fits.gz', 'umi', 'umi2', startstar=0)
-	#run_chisq('/raid/caltech/moogify/bumi3/moogify.fits.gz', '/raid/gduggan/moogify/bumi3_moogify.fits.gz', 'umi', 'umi3', startstar=0)
+	run_chisq('/raid/caltech/moogify/bumi1/moogify.fits.gz', '/raid/gduggan/moogify/bumi1_moogify.fits.gz', 'umi', 'umi1', startstar=0)
+	run_chisq('/raid/caltech/moogify/bumi2/moogify.fits.gz', '/raid/gduggan/moogify/bumi2_moogify.fits.gz', 'umi', 'umi2', startstar=0)
+	run_chisq('/raid/caltech/moogify/bumi3/moogify.fits.gz', '/raid/gduggan/moogify/bumi3_moogify.fits.gz', 'umi', 'umi3', startstar=0)
 
 	# Measure Mn abundances for Draco
-	#run_chisq('/raid/caltech/moogify/bdra1/moogify.fits.gz', '/raid/gduggan/moogify/bdra1_moogify.fits.gz', 'dra', 'dra1', startstar=0)
-	#run_chisq('/raid/caltech/moogify/bdra2/moogify.fits.gz', '/raid/gduggan/moogify/bdra2_moogify.fits.gz', 'dra', 'dra2', startstar=0)
-	#run_chisq('/raid/caltech/moogify/bdra3/moogify.fits.gz', '/raid/gduggan/moogify/bdra3_moogify.fits.gz', 'dra', 'dra3', startstar=0)
+	run_chisq('/raid/caltech/moogify/bdra1/moogify.fits.gz', '/raid/gduggan/moogify/bdra1_moogify.fits.gz', 'dra', 'dra1', startstar=0)
+	run_chisq('/raid/caltech/moogify/bdra2/moogify.fits.gz', '/raid/gduggan/moogify/bdra2_moogify.fits.gz', 'dra', 'dra2', startstar=0)
+	run_chisq('/raid/caltech/moogify/bdra3/moogify.fits.gz', '/raid/gduggan/moogify/bdra3_moogify.fits.gz', 'dra', 'dra3', startstar=0)
 
 	# Measure Mn abundances for Sextans
 	run_chisq('/raid/caltech/moogify/bsex2/moogify.fits.gz', '/raid/gduggan/moogify/bsex2_moogify.fits.gz', 'sex', 'sex2', startstar=0)
@@ -165,6 +176,10 @@ def main():
 
 	# Measure Mn abundances for Fornax
 	run_chisq('/raid/caltech/moogify/bfor6/moogify.fits.gz', '/raid/gduggan/moogify/bfor6_moogify.fits.gz', 'for', 'for6', startstar=0)
+	'''
+
+	# Measure Mn abundances for a test globular cluster
+	run_chisq('/raid/caltech/moogify/n2419b_blue/moogify.fits.gz', '/raid/gduggan/moogify/n2419b_blue_moogify.fits.gz', 'n2419b_blue', 'n2419b_blue', startstar=0, globular=True)
 
 if __name__ == "__main__":
 	main()
