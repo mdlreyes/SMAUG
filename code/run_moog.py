@@ -88,8 +88,8 @@ def runMoog(temp, logg, fe, alpha, directory='/raid/madlr/moogspectra/', element
 		os.remove(fl)
 
 	# Define list of Mn linelists
-	#linelists = np.array(['linelist_Mn47544762','linelist_Mn4783','linelist_Mn4823','linelist_Mn5394','linelist_Mn5537','linelist_Mn60136021']) 
-	linelists = np.array(['Mn47394783','Mn4823','Mn53945432','Mn55165537','Mn60136021','Mn6384','Mn6491'])
+	linelists = np.array(['linelist_Mn47544762','linelist_Mn4783','linelist_Mn4823','linelist_Mn5394','linelist_Mn5537','linelist_Mn60136021']) 
+	#linelists = np.array(['Mn47394783','Mn4823','Mn53945432','Mn55165537','Mn60136021','Mn6384','Mn6491'])
 	spectrum  = []
 
 	# Create identifying filename (including all parameters + linelist used)
