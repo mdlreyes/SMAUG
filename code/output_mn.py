@@ -1,6 +1,6 @@
 # output_mn.py
 # Gets Mn abundances for a list of stars
-# 
+#
 # Created 5 June 18
 # Updated 22 June 18
 ###################################################################
@@ -79,7 +79,8 @@ def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, gl
 
 			# Run optimization code
 			star = chi_sq.obsSpectrum(filename, paramfilename, i, True, galaxyname, slitmaskname, globular)
-			best_mn, error = star.minimize_scipy(fe)
+			#best_mn, error = star.minimize_scipy(fe)
+			best_mn, error = star.plot_chisq(fe)
 
 		except Exception as e:
 			print(repr(e))
@@ -104,7 +105,7 @@ def match_hires(hiresfile, obsfile):
 
 	# Output filename
 	outputname = hiresfile[:-4]+'_matched.csv'
-	
+
 	# Get RA and Dec of stars from (lit) hi-res datafile
 	hiresRA = np.genfromtxt(hiresfile, skip_header=1, delimiter='\t', usecols=2, dtype='str')
 	hiresDec = np.genfromtxt(hiresfile, skip_header=1, delimiter='\t', usecols=3, dtype='str')
@@ -135,7 +136,7 @@ def match_hires(hiresfile, obsfile):
 
 		if sep.arcsec < 10:
 			print('Got one!')
-		
+
 			# Get metallicity of this matching star to use for initial guess
 			temp, logg, fe, alpha, fe_err = open_obs_file(obsfile, retrievespec=idx, specparams=True)
 

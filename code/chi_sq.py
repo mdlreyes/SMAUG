@@ -199,18 +199,26 @@ class obsSpectrum:
 
 		return best_mn, error
 
-	def plot_chisq(self, mn0):
+	def plot_chisq(self, mn0, minimize=True):
 		"""Plot chi-sq as a function of [Mn/H].
 
 		Inputs:
 		mn0 -- initial guess for Mn abundance
+
+		Keywords:
+		minimize -- if 'True' (default), mn0 is an initial guess, and code will minimize;
+					else, mn0 must be a list containing the best-fit Mn and the error [mn_result, mn_error]
 
 		Outputs:
 		fitparams -- best fit parameters
 		rchisq	  -- reduced chi-squared
 		"""
 
-		mn_result, mn_error = self.minimize_scipy(mn0)
+		if minimize:
+			mn_result, mn_error = self.minimize_scipy(mn0)
+		else:
+			mn_result = mn0[0]
+			mn_error  = mn0[1]
 
 		mn_list = np.array([-3,-2,-1.5,-1,-0.5,-0.1,0,0.1,0.5,1,1.5,2,3])*mn_error + mn_result
 		chisq_list = np.zeros(len(mn_list))
@@ -220,14 +228,14 @@ class obsSpectrum:
 			chisq_list[i] = chisq
 
 		plt.figure()
-		#plt.title(r'T = 4345K, log(g) = 0.83, [Fe/H] = -1.59, [$\alpha$/Fe] = 0.06')
+		plt.title('Star '+self.specname)
 		plt.plot(mn_list, chisq_list, '-o')
 		plt.ylabel(r'$\chi^{2}_{red}$', fontsize=24)
 		plt.xlabel('[Mn/H]', fontsize=24)
-		plt.savefig('redchisq.png')
+		plt.savefig(self.outputname+'/'+self.specname+'_redchisq.png')
 		plt.close()
 
-		return
+		return mn_result, mn_error
 
 def main():
 	filename = '/raid/caltech/moogify/bscl1/moogify.fits.gz'

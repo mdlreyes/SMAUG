@@ -1,8 +1,10 @@
 # phaseA_Mnvalidation.py
 # Runs MOOG on full list of Mn lines, outputs spectrum
 #
-# - plot_mn_spectrum
-# 
+# - runMoog_phaseA		 - produce synthetic spectrum for a single Mn linelist
+# - phaseA_Mnvalidation	 - test which Mn lines are important 
+# 							(i.e., have flux decrement above a certain threshold)
+#
 # Created 31 Jul 18
 # Updated 1 Aug 18
 ###################################################################
