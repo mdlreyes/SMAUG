@@ -181,22 +181,31 @@ def make_chisq_plots(filename, paramfilename, galaxyname, slitmaskname, startsta
 	# Plot chi-sq contours for each star
 	for i in range(startstar, Nstars):
 
-		# Check if parameters are measured
-		temp, logg, fe, alpha, fe_err = open_obs_file(filename, retrievespec=i, specparams=True)
-		if np.isclose(1.5,logg) and np.isclose(fe,-1.5) and np.isclose(fe_err, 0.0):
-			print('Bad parameter measurement! Skipped #'+str(i+1)+'/'+str(Nstars)+' stars')
+		try:
+
+			# Check if parameters are measured
+			temp, logg, fe, alpha, fe_err = open_obs_file(filename, retrievespec=i, specparams=True)
+			if np.isclose(1.5,logg) and np.isclose(fe,-1.5) and np.isclose(fe_err, 0.0):
+				print('Bad parameter measurement! Skipped #'+str(i+1)+'/'+str(Nstars)+' stars')
+				continue
+
+			# Open star
+			star = chi_sq.obsSpectrum(filename, paramfilename, i, False, galaxyname, slitmaskname, globular)
+
+			# Check if star has already had [Mn/H] measured
+			if star.specname in name:
+
+				# If so, plot chi-sq contours if error is < 1 dex
+				idx = np.where(name == star.specname)
+				if mnerr[idx][0] < 1:
+					best_mn, error = star.plot_chisq([mn[idx][0], mnerr[idx][0]], minimize=False)
+
+		except Exception as e:
+			print(repr(e))
+			print('Skipped star #'+str(i+1)+'/'+str(Nstars)+' stars')
 			continue
 
-		# Open star
-		star = chi_sq.obsSpectrum(filename, paramfilename, i, False, galaxyname, slitmaskname, globular)
-
-		# Check if star has already had [Mn/H] measured
-		if star.specname in name:
-
-			# If so, plot chi-sq contours if error is < 1 dex
-			idx = np.where(name == star.specname)
-			if mnerr[idx][0] < 1:
-				best_mn, error = star.plot_chisq([mn[idx][0], mnerr[idx][0]], minimize=False)
+		print('Finished star '+star.specname, '#'+str(i+1)+'/'+str(Nstars)+' stars')
 
 	return
 
@@ -230,7 +239,9 @@ def main():
 
 	# Measure Mn abundances for a test globular cluster
 	#run_chisq('/raid/caltech/moogify/n2419b_blue/moogify.fits.gz', '/raid/gduggan/moogify/n2419b_blue_moogify.fits.gz', 'n2419b_blue', 'n2419b_blue', startstar=0, globular=True)
-	make_chisq_plots('/raid/caltech/moogify/n2419b_blue/moogify.fits.gz', '/raid/gduggan/moogify/n2419b_blue_moogify.fits.gz', 'n2419b_blue', 'n2419b_blue', startstar=0, globular=True)
+	
+	# Plot chi-sq contours for stars that already have [Mn/H] measured
+	make_chisq_plots('/raid/caltech/moogify/n2419b_blue/moogify.fits.gz', '/raid/gduggan/moogify/n2419b_blue_moogify.fits.gz', 'n2419b_blue', 'n2419b_blue', startstar=11, globular=True)
 
 if __name__ == "__main__":
 	main()
