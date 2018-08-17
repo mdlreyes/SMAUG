@@ -73,9 +73,9 @@ def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, gl
 			print('Getting initial metallicity')
 			temp, logg, fe, alpha, fe_err = open_obs_file(filename, retrievespec=i, specparams=True)
 
-			#if fe_err < 0.000000001:
-			#	print('Fe error '+str(fe_err)+' too low! Skipped star #'+str(i+1)+'/'+str(Nstars)+' stars')
-			#	continue
+			if np.isclose(1.5,logg) and np.isclose(fe,-1.5) and np.isclose(fe_err, 0.0):
+				print('Bad parameter measurement! Skipped #'+str(i+1)+'/'+str(Nstars)+' stars')
+				continue
 
 			# Run optimization code
 			star = chi_sq.obsSpectrum(filename, paramfilename, i, True, galaxyname, slitmaskname, globular)
@@ -151,6 +151,55 @@ def match_hires(hiresfile, obsfile):
 
 	return medresMn, medresMnerror, hiresMn, hiresMnerror, sep.arcsec
 
+def make_chisq_plots(filename, paramfilename, galaxyname, slitmaskname, startstar=0, globular=False):
+	""" Plot chisq contours for stars whose [Mn/H] abundances have already been measured.
+
+	Inputs:
+	filename 		-- file with observed spectra
+	paramfilename 	-- file with parameters of observed spectra
+	galaxyname		-- galaxy name, options: 'scl'
+	slitmaskname 	-- slitmask name, options: 'scl1'
+
+	Keywords:
+	globular 		-- if 'False', put into output path of galaxy; else, put into globular cluster path
+
+	"""
+
+	# Input filename
+	if globular:
+		file = '/raid/madlr/glob/'+galaxyname+'.csv'
+	else:
+		file = '/raid/madlr/dsph/'+galaxyname+'/'+slitmaskname+'.csv'
+
+	name  = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=0, dtype='str')
+	mn    = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=8)
+	mnerr = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=9)
+
+	# Get number of stars in file with observed spectra
+	Nstars = open_obs_file(filename)
+
+	# Plot chi-sq contours for each star
+	for i in range(startstar, Nstars):
+
+		# Check if parameters are measured
+		temp, logg, fe, alpha, fe_err = open_obs_file(filename, retrievespec=i, specparams=True)
+		if np.isclose(1.5,logg) and np.isclose(fe,-1.5) and np.isclose(fe_err, 0.0):
+			print('Bad parameter measurement! Skipped #'+str(i+1)+'/'+str(Nstars)+' stars')
+			continue
+
+		# Open star
+		star = chi_sq.obsSpectrum(filename, paramfilename, i, False, galaxyname, slitmaskname, globular)
+
+		# Check if star has already had [Mn/H] measured
+		if star.specname in name:
+
+			# If so, plot chi-sq contours if error is < 1 dex
+			idx = np.where(name == star.specname)
+			if mnerr[idx][0] < 1:
+				best_mn, error = star.plot_chisq([mn[idx][0], mnerr[idx][0]], minimize=False)
+
+	return
+
 def main():
 	# Match Sculptor hi-res file to bscl1 (for AAS)
 	#medresMn, medresMnerror, hiresMn, hiresMnerror, sep.arcsec = match_hires('Sculptor_hires.tsv','/raid/caltech/moogify/bscl1/moogify.fits.gz')
@@ -180,7 +229,8 @@ def main():
 	'''
 
 	# Measure Mn abundances for a test globular cluster
-	run_chisq('/raid/caltech/moogify/n2419b_blue/moogify.fits.gz', '/raid/gduggan/moogify/n2419b_blue_moogify.fits.gz', 'n2419b_blue', 'n2419b_blue', startstar=0, globular=True)
+	#run_chisq('/raid/caltech/moogify/n2419b_blue/moogify.fits.gz', '/raid/gduggan/moogify/n2419b_blue_moogify.fits.gz', 'n2419b_blue', 'n2419b_blue', startstar=0, globular=True)
+	make_chisq_plots('/raid/caltech/moogify/n2419b_blue/moogify.fits.gz', '/raid/gduggan/moogify/n2419b_blue_moogify.fits.gz', 'n2419b_blue', 'n2419b_blue', startstar=0, globular=True)
 
 if __name__ == "__main__":
 	main()

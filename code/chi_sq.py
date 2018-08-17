@@ -3,7 +3,7 @@
 # and finds parameters that minimze chisq measure
 # 
 # Created 5 Feb 18
-# Updated 22 June 18
+# Updated 16 Aug 18
 ###################################################################
 
 #Backend for python3 on mahler
@@ -220,20 +220,21 @@ class obsSpectrum:
 			mn_result = mn0[0]
 			mn_error  = mn0[1]
 
-		mn_list = np.array([-3,-2,-1.5,-1,-0.5,-0.1,0,0.1,0.5,1,1.5,2,3])*mn_error + mn_result
-		chisq_list = np.zeros(len(mn_list))
-		for i in range(len(mn_list)):
-			finalsynth = self.synthetic(self.obswvl_final, mn_list[i])
-			chisq = np.sum(np.power(self.obsflux_final - finalsynth, 2.) * self.ivar_final) / (len(self.obsflux_final) - 1.)
-			chisq_list[i] = chisq
+		if mn_error < 1.0:
+			mn_list = np.array([-3,-2,-1.5,-1,-0.5,-0.1,0,0.1,0.5,1,1.5,2,3])*mn_error + mn_result
+			chisq_list = np.zeros(len(mn_list))
+			for i in range(len(mn_list)):
+				finalsynth = self.synthetic(self.obswvl_final, mn_list[i])
+				chisq = np.sum(np.power(self.obsflux_final - finalsynth, 2.) * self.ivar_final) / (len(self.obsflux_final) - 1.)
+				chisq_list[i] = chisq
 
-		plt.figure()
-		plt.title('Star '+self.specname)
-		plt.plot(mn_list, chisq_list, '-o')
-		plt.ylabel(r'$\chi^{2}_{red}$', fontsize=24)
-		plt.xlabel('[Mn/H]', fontsize=24)
-		plt.savefig(self.outputname+'/'+self.specname+'_redchisq.png')
-		plt.close()
+			plt.figure()
+			plt.title('Star '+self.specname, fontsize=18)
+			plt.plot(mn_list, chisq_list, '-o')
+			plt.ylabel(r'$\chi^{2}_{red}$', fontsize=16)
+			plt.xlabel('[Mn/H]', fontsize=16)
+			plt.savefig(self.outputname+'/'+self.specname+'_redchisq.png')
+			plt.close()
 
 		return mn_result, mn_error
 
