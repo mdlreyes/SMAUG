@@ -27,7 +27,7 @@ from wvl_corr import fit_wvl
 # Observed spectrum
 class obsSpectrum:
 
-	def __init__(self, obsfilename, paramfilename, starnum, wvlcorr, galaxyname, slitmaskname, globular, plot=False):
+	def __init__(self, obsfilename, paramfilename, starnum, wvlcorr, galaxyname, slitmaskname, globular, lines, plot=False):
 
 		# Observed star
 		self.obsfilename 	= obsfilename 	# File with observed spectra
@@ -36,6 +36,7 @@ class obsSpectrum:
 		self.galaxyname 	= galaxyname 	# Name of galaxy
 		self.slitmaskname 	= slitmaskname 	# Name of slitmask
 		self.globular 		= globular		# Parameter marking if globular cluster
+		self.lines 			= lines 		# Parameter marking whether or not to use revised or original linelist
 
 		# Output filename
 		if self.globular:
@@ -71,7 +72,7 @@ class obsSpectrum:
 			plt.close()
 
 		# Get synthetic spectrum, split both obs and synth spectra into red and blue parts
-		synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask = mask_obs_for_division(self.obswvl, self.obsflux, self.ivar, temp=self.temp, logg=self.logg, fe=self.fe, alpha=self.alpha, dlam=self.dlam)
+		synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask = mask_obs_for_division(self.obswvl, self.obsflux, self.ivar, temp=self.temp, logg=self.logg, fe=self.fe, alpha=self.alpha, dlam=self.dlam, lines=self.lines)
 
 		# Compute continuum-normalized observed spectrum
 		self.obsflux_norm, self.ivar_norm = divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask)
@@ -108,7 +109,7 @@ class obsSpectrum:
 		print('Done with wavelength correction!')
 
 		# Crop observed spectrum into regions around Mn lines
-		self.obsflux_fit, self.obswvl_fit, self.ivar_fit, self.dlam_fit, self.skip = mask_obs_for_abundance(self.obswvl, self.obsflux_norm, self.ivar_norm, self.dlam)
+		self.obsflux_fit, self.obswvl_fit, self.ivar_fit, self.dlam_fit, self.skip = mask_obs_for_abundance(self.obswvl, self.obsflux_norm, self.ivar_norm, self.dlam, lines=self.lines)
 
 		# Splice together Mn line regions of observed spectra
 		self.obsflux_final = np.hstack((self.obsflux_fit[self.skip]))
@@ -136,7 +137,7 @@ class obsSpectrum:
 
 		# Compute synthetic spectrum
 		print('Computing synthetic spectrum...')
-		synth = runMoog(temp=self.temp, logg=self.logg, fe=self.fe, alpha=self.alpha, elements=[25], abunds=[mn], solar=[5.43])
+		synth = runMoog(temp=self.temp, logg=self.logg, fe=self.fe, alpha=self.alpha, elements=[25], abunds=[mn], solar=[5.43], lines=self.lines)
 
 		# Loop over each line
 		synthflux = []
@@ -175,7 +176,8 @@ class obsSpectrum:
 		print('Error: ', error)
 
 		# Do some checks
-		finalsynth = self.synthetic(self.obswvl_final, best_mn, full=False)
+		finalsynth = self.synthetic(self.obswvl_final, best_mn, full=True)
+		lines = np.array([4739.,4754,])
 		plt.figure(figsize=(16,8))
 		plt.title('Star '+self.specname)
 		for i in range(len(finalsynth)):
@@ -228,6 +230,10 @@ class obsSpectrum:
 				chisq = np.sum(np.power(self.obsflux_final - finalsynth, 2.) * self.ivar_final) / (len(self.obsflux_final) - 1.)
 				chisq_list[i] = chisq
 
+				# Save final chisq value
+				if i == 6:
+					finalchisq = chisq
+
 			plt.figure()
 			plt.title('Star '+self.specname, fontsize=18)
 			plt.plot(mn_list, chisq_list, '-o')
@@ -236,7 +242,7 @@ class obsSpectrum:
 			plt.savefig(self.outputname+'/'+self.specname+'_redchisq.png')
 			plt.close()
 
-		return mn_result, mn_error
+		return mn_result, mn_error, finalchisq
 
 def main():
 	filename = '/raid/caltech/moogify/bscl1/moogify.fits.gz'

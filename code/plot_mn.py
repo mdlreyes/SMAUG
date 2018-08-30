@@ -18,7 +18,7 @@ import pandas
 from matplotlib.ticker import NullFormatter
 from statsmodels.stats.weightstats import DescrStatsW
 
-def plot_mn_fe(filenames, outfile, title, snr=None):
+def plot_mn_fe(filenames, outfile, title, snr=None, typeii=True, typei=True):
 	"""Plot [Mn/Fe] vs [Fe/H] for all the stars in a set of files.
 
 	Inputs:
@@ -28,6 +28,8 @@ def plot_mn_fe(filenames, outfile, title, snr=None):
 
 	Keywords:
 	snr 		-- if not None, then plot points of different S/N ratios in different colors!
+	typeii 		-- if 'True', plot theoretical Type II yield
+	typei 		-- if 'True', plot theoretical Type II yields
 	"""
 
 	# Get data from files
@@ -66,7 +68,7 @@ def plot_mn_fe(filenames, outfile, title, snr=None):
 
 	# Testing: Label some stuff
 	outlier = np.where(feh > -1)[0]
-	print(name[outlier])
+	#print(name[outlier])
 	notoutlier = np.where(mnfeerr < 1)[0]
 	'''
 	for i in range(len(outlier)):
@@ -96,11 +98,40 @@ def plot_mn_fe(filenames, outfile, title, snr=None):
 	plt.legend(loc='best')
 	'''
 
+	# Create figure
+	fig, ax = plt.subplots(figsize=(10,5))
+
+	# Plot other lines
+	if typeii:
+		typeii_Z  = np.array([0.000000000001, 0.001,0.004,0.02])			# Metallicities from Nomoto+2006 (in total Z)
+		typeii_mn = np.array([8.72e-7, 9.72e-7, 1.16e-6, 1.54e-6])	# Mn yields from Nomoto+2006 (in units of Msun)
+		typeii_fe54 = np.array([7.32e-6, 8.34e-6, 9.03e-6, 1.13e-5]) # Fe-54 yields from Nomoto+2006 (in units of Msun)
+		typeii_fe56 = np.array([3.17e-4, 3.38e-4, 3.22e-4, 3.48e-4]) # Fe-56 yields from Nomoto+2006 (in units of Msun)
+		typeii_fe57 = np.array([4.66e-6, 6.03e-6, 6.79e-6, 9.57e-6]) # Fe-57 yields from Nomoto+2006 (in units of Msun)
+		typeii_fe58 = np.array([6.15e-12, 1.81e-7, 5.26e-7, 2.15e-6]) # Fe-58 yields from Nomoto+2006 (in units of Msun)
+
+		solar_mn = 5.43
+		solar_fe = 7.50
+
+		typeii_mnh = np.log10((typeii_mn/55.) / ((typeii_fe54/54.) + (typeii_fe56/56.) + (typeii_fe57/57.) + (typeii_fe58/58.))) - (solar_mn - solar_fe)
+		typeii_feh = np.log10(typeii_Z/0.0134) # Solar metallicity from Asplund+2009
+
+		ax.plot(typeii_feh, typeii_mnh, 'b-', label='CCSNe yield')
+
+	if typei:
+		#xmin=(-2.34+3)/2.5, 
+		ax.axhline(0.18, color='r', linestyle='dashed', label='DDT(T16)')
+		ax.axhspan(0.01, 0.53, color='g', hatch='\\', alpha=0.2, label='DDT(S13)')
+		ax.axhspan(0.36, 0.52, color='darkorange', hatch='//', alpha=0.3, label='Def(F14)')
+		ax.axhspan(-1.69, -1.21, color='r', alpha=0.2, label='Sub(B)')
+		ax.axhspan(-1.52, -0.68, color='b', hatch='//', alpha=0.2, label='Sub(S18)')
+
+	#if fit == 'scl':
+
 	# Scatter plot
-	fig, ax = plt.subplots(figsize=(10,6))
 	area = 2*np.reciprocal(np.power(mnfeerr,2.))
-	ax.scatter(feh, mnfe, s=area, c='b', alpha=0.5)
-	ax.text(0.025, 0.05, 'N = '+str(len(name)), transform=ax.transAxes, fontsize=14)
+	ax.scatter(feh, mnfe, s=area, c='k', alpha=0.5, zorder=100) #, label='N = '+str(len(name)))
+	ax.text(0.025, 0.9, 'N = '+str(len(name)), transform=ax.transAxes, fontsize=14)
 
 	# Format plot
 	ax.set_title(title, fontsize=18)
@@ -108,6 +139,14 @@ def plot_mn_fe(filenames, outfile, title, snr=None):
 	ax.set_ylabel('[Mn/Fe]', fontsize=16)
 	for label in (ax.get_xticklabels() + ax.get_yticklabels()):
 		label.set_fontsize(14)
+
+	ax.set_xlim([-3,-0.75])
+	plt.legend(loc='best')
+
+	# Print labels
+	for i in range(len(feh)):
+		if feh[i] < -3.5:
+			ax.text(feh[i], mnfe[i], name[i])
 
 	# Output file
 	plt.savefig(outfile, bbox_inches='tight')
@@ -181,7 +220,7 @@ def comparison_plot(filenames, labels, outfile, title, membercheck=None, memberl
 				xerr_new.append(xerr[i])
 				yerr_new.append(yerr[i])
 
-				print(name_final[i], x[i], y[i], xerr[i], yerr[i])
+				#print(name_final[i], x[i], y[i], xerr[i], yerr[i])
 
 		x = x_new
 		y = y_new
@@ -196,7 +235,7 @@ def comparison_plot(filenames, labels, outfile, title, membercheck=None, memberl
 		yerr_new = []
 
 		for i in range(len(x)):
-			if (xerr[i] < maxerror) and (yerr[i] < maxerror):
+			if (xerr[i] < maxerror) and (yerr[i] < maxerror): # and (x[i] < -1.8) and (y[i] < -1.8):
 				x_new.append(x[i])
 				y_new.append(y[i])
 				xerr_new.append(xerr[i])
@@ -233,6 +272,36 @@ def comparison_plot(filenames, labels, outfile, title, membercheck=None, memberl
 	axScatter.set_xlabel(labels[0], fontsize=16)
 	axScatter.set_ylabel(labels[1], fontsize=16)
 
+	textx_left = -2.85
+	textx_right = 1
+	texty_up = 5.
+	texty_down = -1.2
+	texty_down_adjscatter = 0.1
+
+	axScatter.text(textx_left, texty_down + texty_down_adjscatter, 'N = '+str(len(x)), fontsize=13)
+
+	# Compute values
+	if weighted:
+		weighted_stats_x = DescrStatsW(x, weights=np.reciprocal(np.asarray(xerr)**2.), ddof=0)
+		weighted_stats_y = DescrStatsW(y, weights=np.reciprocal(np.asarray(yerr)**2.), ddof=0)
+
+		axHistx.text(textx_left, texty_up, 'Mean: '+"{:.2f}".format(weighted_stats_x.mean)+'\n'+r'$\sigma$: '+"{:.2f}".format(weighted_stats_x.std), fontsize=13)
+		axHisty.text(textx_right, texty_down, 'Mean: '+"{:.2f}".format(weighted_stats_y.mean)+'\n'+r'$\sigma$: '+"{:.2f}".format(weighted_stats_y.std), fontsize=13)
+
+		meanx = weighted_stats_x.mean
+		meany = weighted_stats_y.mean
+		stdx  = weighted_stats_x.std
+		stdy  = weighted_stats_y.std
+
+	else:
+		axHistx.text(textx_left, texty_up, 'Mean: '+"{:.2f}".format(np.average(x))+'\n'+r'$\sigma$: '+"{:.2f}".format(np.std(x)), fontsize=13)
+		axHisty.text(textx_right, texty_down, 'Mean: '+"{:.2f}".format(np.average(y))+'\n'+r'$\sigma$: '+"{:.2f}".format(np.std(y)), fontsize=13)
+
+		meanx = np.average(x)
+		meany = np.average(y)
+		stdx  = np.std(x)
+		stdy  = np.std(y)
+
 	# The scatter plot
 	axScatter.errorbar(x, y, xerr=xerr, yerr=yerr, marker='o', linestyle='none')
 	axScatter.plot(axScatter.get_xlim(), axScatter.get_xlim(), 'k-')
@@ -241,33 +310,14 @@ def comparison_plot(filenames, labels, outfile, title, membercheck=None, memberl
 	axHistx.set_xlim(axScatter.get_xlim())
 	axHisty.set_ylim(axScatter.get_ylim())
 
-	axHistx.axvline(np.average(x), color='r', linestyle='--')
-	axHisty.axhline(np.average(y), color='r', linestyle='--')
+	axHistx.axvline(meanx, color='r', linestyle='--')
+	axHisty.axhline(meany, color='r', linestyle='--')
 
-	axHistx.axvspan(np.average(x) - np.std(x), np.average(x) + np.std(x), color='r', alpha=0.25)
-	axHisty.axhspan(np.average(y) - np.std(y), np.average(y) + np.std(y), color='r', alpha=0.25)
+	axHistx.axvspan(meanx - stdx, meanx + stdx, color='r', alpha=0.25)
+	axHisty.axhspan(meany - stdy, meany + stdy, color='r', alpha=0.25)
 
-	axHistx.hist(x, bins=15)
-	axHisty.hist(y, bins=15, orientation='horizontal')
-
-	textx_left = -2.85
-	textx_right = 1
-	texty_up = 3.75
-	texty_down = -1.4
-	texty_down_adjscatter = 0.1
-
-	axScatter.text(textx_left, texty_down + texty_down_adjscatter, 'N = '+str(len(x)), fontsize=13)
-
-	if weighted:
-		weighted_stats_x = DescrStatsW(x, weights=np.reciprocal(np.asarray(xerr)**2.), ddof=0)
-		weighted_stats_y = DescrStatsW(y, weights=np.reciprocal(np.asarray(yerr)**2.), ddof=0)
-
-		axHistx.text(textx_left, texty_up, 'Mean: '+"{:.2f}".format(weighted_stats_x.mean)+'\n'+r'$\sigma$: '+"{:.2f}".format(weighted_stats_x.std), fontsize=13)
-		axHisty.text(textx_right, texty_down, 'Mean: '+"{:.2f}".format(weighted_stats_y.mean)+'\n'+r'$\sigma$: '+"{:.2f}".format(weighted_stats_y.std), fontsize=13)
-
-	else:
-		axHistx.text(textx_left, texty_up, 'Mean: '+"{:.2f}".format(np.average(x))+'\n'+r'$\sigma$: '+"{:.2f}".format(np.std(x)), fontsize=13)
-		axHisty.text(textx_right, texty_down, 'Mean: '+"{:.2f}".format(np.average(y))+'\n'+r'$\sigma$: '+"{:.2f}".format(np.std(y)), fontsize=13)
+	axHistx.hist(x, bins=10)
+	axHisty.hist(y, bins=10, orientation='horizontal')
 
 	print('Median x: '+str(np.median(x)))
 	print('Median y: '+str(np.median(y)))
@@ -278,12 +328,12 @@ def comparison_plot(filenames, labels, outfile, title, membercheck=None, memberl
 
 	return
 
-def plot_mn_vs_something(filename, quantity, outfile, title, membercheck=None, memberlist=None, maxerror=None):
+def plot_mn_vs_something(filename, quantity, outfile, title, membercheck=None, memberlist=None, maxerror=None, weighted=True):
 	"""Compare [Mn/H] vs another quantity for two different files.
 
 	Inputs:
 	filename 	-- list of input filename
-	quantity 	-- quantity against which to plot [Mn/H]; options: 'temp'
+	quantity 	-- quantity against which to plot [Mn/H]; options: 'temp', 'feh'
 	outfile 	-- name of output file
 	title 		-- title of graph
 
@@ -291,6 +341,7 @@ def plot_mn_vs_something(filename, quantity, outfile, title, membercheck=None, m
 	membercheck -- do membership check for this object
 	memberlist	-- member list
 	maxerror	-- if not 'None', throw out any objects with measurement error > maxerror
+	weighted 	-- if 'True', compute weighted mean/std; else, compute unweighted mean/std
 	"""
 
 	# Get data
@@ -300,7 +351,11 @@ def plot_mn_vs_something(filename, quantity, outfile, title, membercheck=None, m
 
 	if quantity=='temp':
 		x 	= np.genfromtxt(filename, delimiter='\t', skip_header=1, usecols=3)
-		xlabel = 'Temp (K)'
+		xlabel = r'$T_{eff}$' + ' (K)'
+
+	if quantity=='feh':
+		x = np.genfromtxt(filename, delimiter='\t', skip_header=1, usecols=5)
+		xlabel = '[Fe/H]'
 
 	# Do membership check
 	if membercheck is not None:
@@ -346,10 +401,25 @@ def plot_mn_vs_something(filename, quantity, outfile, title, membercheck=None, m
 
 	# Plot stuff
 	# Scatter plot
-	fig, ax = plt.subplots(figsize=(10,6))
+	fig, ax = plt.subplots(figsize=(8,6))
 	#area = 2*np.reciprocal(np.power(mnfeerr,2.))
 	ax.errorbar(x, mnh, yerr=mnherr, marker='o', linestyle='None')
-	ax.text(0.025, 0.05, 'N = '+str(len(x)), transform=ax.transAxes, fontsize=14)
+
+	if weighted:
+		stats = DescrStatsW(mnh, weights=np.reciprocal(np.asarray(mnherr)**2.), ddof=0)
+
+		mean = stats.mean
+		std  = stats.std
+
+	else:
+		mean = np.average(mnh)
+		std  = np.std(mnh)
+
+	ax.axhline(mean, color='r', linestyle='--')
+	ax.axhspan(mean - std, mean + std, color='r', alpha=0.25)
+
+	string = 'N = '+str(len(x))+'\n'+'Mean: '+"{:.2f}".format(mean)+'\n'+r'$\sigma$: '+"{:.2f}".format(std)
+	ax.text(0.05, 0.8, string, transform=ax.transAxes, fontsize=14)
 
 	# Format plot
 	ax.set_title(title, fontsize=18)
@@ -357,11 +427,12 @@ def plot_mn_vs_something(filename, quantity, outfile, title, membercheck=None, m
 	ax.set_ylabel('[Mn/H]', fontsize=16)
 	for label in (ax.get_xticklabels() + ax.get_yticklabels()):
 		label.set_fontsize(14)
+	ax.set_ylim([-3.3,-1.1])
 
 	# Print labels
-	for i in range(len(x)):
-		if mnh[i] > -1.75:
-			ax.text(x[i], mnh[i], name[i])
+	#for i in range(len(x)):
+	#	if mnh[i] > -1.75:
+	#		ax.text(x[i], mnh[i], name[i])
 
 	# Output file
 	plt.savefig(outfile, bbox_inches='tight')
@@ -420,7 +491,7 @@ def plot_spectrum(filename, starname, outfile, lines):
 
 def main():
 	# Sculptor
-	#plot_mn_fe(['data/scl1_final.csv','data/scl2_final.csv','data/scl6_final.csv'],'figures/mnfe_scltotal.png','Sculptor',snr=[3,5])
+	plot_mn_fe(['data/newlinelist_data/scl1_final.csv','data/newlinelist_data/scl2_final.csv','data/newlinelist_data/scl6_final.csv'],'figures/mnfe_scltotal_newlinelist.png','Sculptor',typeii=False) #,snr=[3,5])
 
 	# Ursa Minor
 	#plot_mn_fe(['data/umi1_final.csv','data/umi2_final.csv','data/umi3_final.csv'],'figures/mnfe_umitotal.png','Ursa Minor',snr=[3,5])
@@ -429,8 +500,10 @@ def main():
 	#plot_mn_fe(['data/dra1_final.csv','data/dra2_final.csv','data/dra3_final.csv'],'figures/mnfe_dratotal.png','Draco',snr=[3,5])
 
 	# Linelist check using globular cluster
-	comparison_plot(['data/newlinelist_data/n2419b_blue_final.csv','data/oldlinelist_data/n2419b_blue_final.csv'],['New linelist [Mn/H]', 'Old linelist [Mn/H]'],'figures/gc_checks/n2419b_linelistcheck.png','NGC 2419', membercheck='NGC 2419', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=False)
-	#plot_mn_vs_something('data/newlinelist_data/n2419b_blue_final.csv', 'temp', 'figures/n2419b_mnh_temp.png','NGC 2419', membercheck='NGC 2419', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.5)
+	#comparison_plot(['data/newlinelist_data/n2419b_blue_final.csv','data/oldlinelist_data/n2419b_blue_final.csv'],['New linelist [Mn/H]', 'Old linelist [Mn/H]'],'figures/gc_checks/n2419b_linelistcheck.png','NGC 2419', membercheck='NGC 2419', memberlist='data/gc_checks/table_catalog.dat', maxerror=1) #, weighted=False)
+	#plot_mn_fe(['data/newlinelist_data/n2419b_blue_final.csv',],'figures/gc_checks/mnfe_n2419total.png','NGC 2419') #,snr=[3,5])
+	#plot_mn_vs_something('data/newlinelist_data/n2419b_blue_final.csv', 'feh', 'figures/gc_checks/n2419b_mnh_temp.png','NGC 2419', membercheck='NGC 2419', memberlist='data/gc_checks/table_catalog.dat', maxerror=1, weighted=True)
+	#plot_mn_vs_something('data/newlinelist_data/n2419b_blue_final.csv', 'temp', 'figures/gc_checks/n2419b_mnh_temp.png','NGC 2419', membercheck='NGC 2419', memberlist='data/gc_checks/table_catalog.dat', maxerror=1, weighted=True)
 
 	'''
 	newlinelist = [4739.087, 4754.042, 4761.512, 4762.367, 4765.846, 

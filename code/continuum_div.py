@@ -99,7 +99,7 @@ def get_synth(obswvl, obsflux, ivar, dlam, synth=None, temp=None, logg=None, fe=
 
 	return synthfluxnew
 
-def mask_obs_for_division(obswvl, obsflux, ivar, temp=None, logg=None, fe=None, alpha=None, dlam=None):
+def mask_obs_for_division(obswvl, obsflux, ivar, temp=None, logg=None, fe=None, alpha=None, dlam=None, lines='new'):
 	"""Make a mask for synthetic and observed spectra.
 	Mask out Mn lines for continuum division.
 	Split spectra into red and blue parts.
@@ -117,7 +117,9 @@ def mask_obs_for_division(obswvl, obsflux, ivar, temp=None, logg=None, fe=None, 
     fe 	  -- [Fe/H]
     alpha -- [alpha/Fe]
 
-    dlam -- FWHM of observed spectrum
+    dlam  -- FWHM of observed spectrum
+
+    lines -- if 'new', use new revised linelist; else, use original linelist from Judy's code
 
     Outputs:
     synthfluxmask -- (masked!) synthetic flux array
@@ -155,8 +157,11 @@ def mask_obs_for_division(obswvl, obsflux, ivar, temp=None, logg=None, fe=None, 
 
 	# Mask out pixels in regions around Mn lines (+/- 10A) 
 	mnmask = np.zeros(len(synthflux), dtype=bool)
-	#lines  = np.array([[4744.,4772.],[4773.,4793.],[4813.,4833.],[5384,5404.],[5527.,5547.],[6003.,6031.]])
-	lines = np.array([[4729.,4793.],[4813.,4833.],[5384.,5442.],[5506.,5547.],[6003.,6031.],[6374.,6394.],[6481.,6501.]])
+	if lines == 'old':
+		lines  = np.array([[4744.,4772.],[4773.,4793.],[4813.,4833.],[5384,5404.],[5527.,5547.],[6003.,6031.]])
+	elif lines=='new':
+		lines = np.array([[4729.,4793.],[4813.,4833.],[5384.,5442.],[5506.,5547.],[6003.,6031.],[6374.,6394.],[6481.,6501.]])
+
 	for line in range(len(lines)):
 		mnmask[np.where((obswvl > lines[line][0]) & (obswvl < lines[line][1]))] = True
 	mask[mnmask] = True
@@ -356,7 +361,7 @@ def divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask, sigmacli
 
 	return obsflux_norm_final, ivar_norm_final
 
-def mask_obs_for_abundance(obswvl, obsflux_norm, ivar_norm, dlam):
+def mask_obs_for_abundance(obswvl, obsflux_norm, ivar_norm, dlam, lines = 'new'):
 	"""Make a mask for synthetic and observed spectra.
 	Mask out bad stuff + EVERYTHING BUT Mn lines (for actual abundance measurements)
 
@@ -372,6 +377,7 @@ def mask_obs_for_abundance(obswvl, obsflux_norm, ivar_norm, dlam):
     synthflux -- flux array of synthetic spectrum
 
     Keywords:
+    lines -- if 'new', use new revised linelist; else, use original linelist from Judy's code
 
     Outputs:
     obsfluxmask   -- (masked!) observed flux array
@@ -407,8 +413,10 @@ def mask_obs_for_abundance(obswvl, obsflux_norm, ivar_norm, dlam):
 	masklist 	= [obsfluxmask, obswvlmask, ivarmask, dlammask]
 	arraylist 	= [obsflux_norm, obswvl, ivar_norm, dlam]
 
-	#lines  = np.array([[4744.,4772.],[4773.,4793.],[4813.,4833.],[5384,5404.],[5527.,5547.],[6003.,6031.]])
-	lines = np.array([[4729.,4793.],[4813.,4833.],[5384.,5442.],[5506.,5547.],[6003.,6031.],[6374.,6394.],[6481.,6501.]])
+	if lines == 'old':
+		lines  = np.array([[4744.,4772.],[4773.,4793.],[4813.,4833.],[5384,5404.],[5527.,5547.],[6003.,6031.]])
+	elif lines == 'new':
+		lines = np.array([[4729.,4793.],[4813.,4833.],[5384.,5442.],[5506.,5547.],[6003.,6031.],[6374.,6394.],[6481.,6501.]])
 
 	for i in range(len(masklist)):
 		for line in range(len(lines)):
