@@ -424,9 +424,15 @@ def mask_obs_for_abundance(obswvl, obsflux_norm, ivar_norm, dlam, lines = 'new')
 
 	skip = np.arange(len(lines))
 	for line in range(len(lines)):
+
+		# Skip spectral regions where the chip gap falls
 		if (obswvl[chipgap + 5] > lines[line][0]) and (obswvl[chipgap + 5] < lines[line][1]):
 			skip = np.delete(skip, np.where(skip==line))
 		elif (obswvl[chipgap - 5] > lines[line][0]) and (obswvl[chipgap - 5] < lines[line][1]):
+			skip = np.delete(skip, np.where(skip==line))
+
+		# Skip spectral regions that are outside the observed wavelength
+		if (lines[line][0] < obswvl[0]) or (lines[line][1] > obswvl[-1]):
 			skip = np.delete(skip, np.where(skip==line))
 
 	return np.asarray(obsfluxmask), np.asarray(obswvlmask), np.asarray(ivarmask), np.asarray(dlammask), np.asarray(skip)

@@ -47,6 +47,8 @@ class obsSpectrum:
 		# Open observed spectrum
 		self.specname, self.obswvl, self.obsflux, self.ivar, self.dlam, self.zrest = open_obs_file(self.obsfilename, retrievespec=self.starnum)
 
+		#print(self.specname, self.obswvl, self.obsflux, self.ivar, self.dlam, self.zrest)
+
 		# Get measured parameters from observed spectrum
 		self.temp, self.logg, self.fe, self.alpha, self.fe_err = open_obs_file(self.paramfilename, self.starnum, specparams=True, objname=self.specname)
 		#self.temp, self.logg, self.fe, self.alpha, self.zrest = open_obs_file('/raid/m31/dsph/scl/scl1/moogify7_flexteff.fits.gz', self.starnum, specparams=True, objname=self.specname)
@@ -143,6 +145,7 @@ class obsSpectrum:
 		# Compute synthetic spectrum
 		print('Computing synthetic spectrum...')
 		synth = runMoog(temp=self.temp, logg=self.logg, fe=self.fe, alpha=self.alpha, elements=[25], abunds=[mn], solar=[5.43], lines=self.lines)
+		#print('Ran synthetic spectrum.')
 
 		# Loop over each line
 		synthflux = []
@@ -150,10 +153,13 @@ class obsSpectrum:
 		for i in self.skip:
 
 			synthregion = synth[i]
+			#print(len(synthregion), len(self.obswvl_fit[i]),len(self.obsflux_fit[i]),len(self.ivar_fit[i]), len(self.dlam_fit[i]))
 
 			# Smooth each region of synthetic spectrum to match each region of continuum-normalized observed spectrum
 			newsynth = get_synth(self.obswvl_fit[i], self.obsflux_fit[i], self.ivar_fit[i], self.dlam_fit[i], synth=synthregion)
 			synthflux.append(newsynth)
+
+		print('Finished smoothing synthetic spectrum!')
 
 		# If necessary, splice everything together
 		if full:
@@ -189,9 +195,9 @@ class obsSpectrum:
 								 5407.,5420.,5432.,5516.,5537.,6013.,6016.,6021.,6384.,6491.])
 			linewidth = np.array([1.,1.,1.5,1.5,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.])
 
-			nrows = 4
-			ncols = 5
-			figsize = (20,16)
+			nrows = 3
+			ncols = 6
+			figsize = (24,12)
 
 		elif self.lines == 'old':
 			linelist = np.array([4739.,4783.,4823.,5394.,5432.,5516.,5537.,6013.,6021.,6384.,6491.])
@@ -262,10 +268,6 @@ class obsSpectrum:
 				chisq = np.sum(np.power(self.obsflux_final - finalsynth, 2.) * self.ivar_final) / (len(self.obsflux_final) - 1.)
 				chisq_list[i] = chisq
 
-			# Save final reduced chi square value
-			if i == 6:
-				finalchisq = chisq
-
 			plt.figure()
 			plt.title('Star '+self.specname, fontsize=18)
 			plt.plot(mn_list, chisq_list, '-o')
@@ -274,7 +276,7 @@ class obsSpectrum:
 			plt.savefig(self.outputname+'/'+self.specname+'_redchisq.png')
 			plt.close()
 
-		return mn_result, mn_error, finalchisq
+		return mn_result, mn_error, chisq_list[6]
 
 def main():
 	filename = '/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz'
