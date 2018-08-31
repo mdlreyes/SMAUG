@@ -98,15 +98,20 @@ class obsSpectrum:
 
 		if wvlcorr:
 			print('Doing wavelength correction...')
-			# Compute standard deviation
-			contdivstd = np.zeros(len(self.ivar_norm))+np.inf
-			contdivstd[self.ivar_norm > 0] = np.sqrt(np.reciprocal(self.ivar_norm[self.ivar_norm > 0]))
 
-			# Wavelength correction
-			self.obswvl_corr = fit_wvl(self.obswvl, self.obsflux_norm, contdivstd, self.dlam, 
-				self.temp, self.logg, self.fe, self.alpha, self.specname, self.outputname+'/')
+			try:
+				# Compute standard deviation
+				contdivstd = np.zeros(len(self.ivar_norm))+np.inf
+				contdivstd[self.ivar_norm > 0] = np.sqrt(np.reciprocal(self.ivar_norm[self.ivar_norm > 0]))
 
-		print('Done with wavelength correction!')
+				# Wavelength correction
+				self.obswvl = fit_wvl(self.obswvl, self.obsflux_norm, contdivstd, self.dlam, 
+					self.temp, self.logg, self.fe, self.alpha, self.specname, self.outputname+'/')
+
+				print('Done with wavelength correction!')
+
+			except:
+				print('Couldn\'t complete wavelength correction for some reason.')
 
 		# Crop observed spectrum into regions around Mn lines
 		self.obsflux_fit, self.obswvl_fit, self.ivar_fit, self.dlam_fit, self.skip = mask_obs_for_abundance(self.obswvl, self.obsflux_norm, self.ivar_norm, self.dlam, lines=self.lines)
@@ -177,26 +182,53 @@ class obsSpectrum:
 
 		# Do some checks
 		finalsynth = self.synthetic(self.obswvl_final, best_mn, full=True)
-		lines = np.array([4739.,4754,])
-		plt.figure(figsize=(16,8))
+
+		# Define lines to plot
+		if self.lines == 'new':
+			linelist = np.array([4739.,4754.,4761.5,4765.5,4783.,4823.,4394.,4399.,
+								 5407.,5420.,5432.,5516.,5537.,6013.,6016.,6021.,6384.,6491.])
+			linewidth = np.array([1.,1.,1.5,1.5,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.])
+
+			nrows = 4
+			ncols = 5
+			figsize = (20,16)
+
+		elif self.lines == 'old':
+			linelist = np.array([4739.,4783.,4823.,5394.,5432.,5516.,5537.,6013.,6021.,6384.,6491.])
+			linewidth = np.ones(len(linelist))
+
+			nrows = 3
+			ncols = 4
+			figsize = (16,12)
+
+		# Make plot showing fits
+		plt.figure(figsize=figsize)
 		plt.title('Star '+self.specname)
-		for i in range(len(finalsynth)):
 
-			# Index for self arrays
-			idx = self.skip[i]
+		for i in range(len(linelist)):
 
-			# Compute reduced chi-squared
-			chisq = np.sum(np.power(self.obsflux_fit[idx] - finalsynth[i], 2.) * self.ivar_fit[idx]) / (len(self.obsflux_fit[idx]) - 1.)
-			#print('Reduced chisq = ', chisq)
+			# Range over which to plot
+			lolim = linelist[i] - 5
+			uplim = linelist[i] + 5
 
-			# Plot for testing
-			plotindex = 240+idx+1
-			plt.subplot(plotindex)
-			plt.errorbar(self.obswvl_fit[idx], self.obsflux_fit[idx], yerr=np.power(self.ivar_fit[idx],-0.5), color='k', fmt='o', label='Observed')
-			plt.plot(self.obswvl_fit[idx], finalsynth[i], 'r--', label='Synthetic')
-			#plt.legend(loc='best')
+			# Make mask for wavelength
+			try:
+				mask = np.where((self.obswvl_final > lolim) & (self.obswvl_final < uplim))
 
-		plt.savefig(self.outputname+'/'+self.specname+'_finalfits.png')
+				if len(mask[0]) > 0:
+
+					plt.subplot(nrows,ncols,i+1)
+
+					# Plot stuff
+					plt.axvspan(linelist[i] - linewidth[i], linelist[i] + linewidth[i], color='green', alpha=0.25)
+					plt.errorbar(self.obswvl_final[mask], self.obsflux_final[mask], yerr=np.power(self.ivar_final[mask],-0.5), color='k', fmt='o', label='Observed')
+					plt.plot(self.obswvl_final[mask], finalsynth[mask], 'r-', label='Synthetic')
+
+			except:
+				continue
+
+		plt.legend(loc='best')
+		plt.savefig(self.outputname+'/'+self.specname+'_finalfits.png',bbox_inches='tight')
 		plt.close()
 
 		return best_mn, error
@@ -230,9 +262,9 @@ class obsSpectrum:
 				chisq = np.sum(np.power(self.obsflux_final - finalsynth, 2.) * self.ivar_final) / (len(self.obsflux_final) - 1.)
 				chisq_list[i] = chisq
 
-				# Save final chisq value
-				if i == 6:
-					finalchisq = chisq
+			# Save final reduced chi square value
+			if i == 6:
+				finalchisq = chisq
 
 			plt.figure()
 			plt.title('Star '+self.specname, fontsize=18)
@@ -245,12 +277,12 @@ class obsSpectrum:
 		return mn_result, mn_error, finalchisq
 
 def main():
-	filename = '/raid/caltech/moogify/bscl1/moogify.fits.gz'
+	filename = '/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz'
 	#paramfilename = '/raid/m31/dsph/scl/scl1/moogify7_flexteff.fits.gz'
-	paramfilename = '/raid/gduggan/moogify/bscl1_moogify.fits.gz'
+	paramfilename = '/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz'
 	galaxyname = 'scl'
-	slitmaskname = 'scl1'
-	test = obsSpectrum(filename, paramfilename, 57, True, galaxyname, slitmaskname, plot=True).minimize_scipy(-2.1661300692266998)
+	slitmaskname = 'scl5_1200B'
+	test = obsSpectrum(filename, paramfilename, 0, True, galaxyname, slitmaskname, False, 'new', plot=True).minimize_scipy(-1.1)
 	#print('we done')
 	#test = obsSpectrum(filename, 57).plot_chisq(-2.1661300692266998)
 
