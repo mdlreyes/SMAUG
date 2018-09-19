@@ -40,7 +40,7 @@ class obsSpectrum:
 
 		# Output filename
 		if self.globular:
-			self.outputname = '/raid/madlr/glob/'+galaxyname
+			self.outputname = '/raid/madlr/glob/'+galaxyname+'/'+slitmaskname
 		else:
 			self.outputname = '/raid/madlr/dsph/'+galaxyname+'/'+slitmaskname
 
@@ -207,8 +207,14 @@ class obsSpectrum:
 			ncols = 4
 			figsize = (16,12)
 
-		# Make plot showing fits
-		plt.figure(figsize=figsize)
+		# Make plots
+
+		# Plot showing fits
+		plt.figure(num=1, figsize=figsize)
+		plt.title('Star '+self.specname)
+
+		# Plot showing residuals
+		plt.figure(num=2, figsize=figsize)
 		plt.title('Star '+self.specname)
 
 		for i in range(len(linelist)):
@@ -223,19 +229,33 @@ class obsSpectrum:
 
 				if len(mask[0]) > 0:
 
+					# Plot fits
+					plt.figure(1)
 					plt.subplot(nrows,ncols,i+1)
-
-					# Plot stuff
 					plt.axvspan(linelist[i] - linewidth[i], linelist[i] + linewidth[i], color='green', alpha=0.25)
 					plt.errorbar(self.obswvl_final[mask], self.obsflux_final[mask], yerr=np.power(self.ivar_final[mask],-0.5), color='k', fmt='o', label='Observed')
 					plt.plot(self.obswvl_final[mask], finalsynth[mask], 'r-', label='Synthetic')
 
+					# Plot residuals
+					plt.figure(2)
+					plt.subplot(nrows,ncols,i+1)
+					plt.axvspan(linelist[i] - linewidth[i], linelist[i] + linewidth[i], color='green', alpha=0.25)
+					plt.errorbar(self.obswvl_final[mask], self.obsflux_final[mask] - finalsynth[mask], yerr=np.power(self.ivar_final[mask],-0.5), color='k', fmt='o', label='Residuals')
+					plt.axhline(0, color='r', linestyle='solid', label='Zero')
+
 			except:
 				continue
 
+		# Legend for plot showing fits
+		plt.figure(1)
 		plt.legend(loc='best')
 		plt.savefig(self.outputname+'/'+self.specname+'_finalfits.png',bbox_inches='tight')
-		plt.close()
+		plt.close(1)
+
+		plt.figure(2)
+		plt.legend(loc='best')
+		plt.savefig(self.outputname+'/'+self.specname+'_resids.png',bbox_inches='tight')
+		plt.close(2)
 
 		return best_mn, error
 
@@ -260,14 +280,14 @@ class obsSpectrum:
 			mn_result = mn0[0]
 			mn_error  = mn0[1]
 
-		if mn_error < 1.0:
-			mn_list = np.array([-3,-2,-1.5,-1,-0.5,-0.1,0,0.1,0.5,1,1.5,2,3])*mn_error + mn_result
-			chisq_list = np.zeros(len(mn_list))
-			for i in range(len(mn_list)):
-				finalsynth = self.synthetic(self.obswvl_final, mn_list[i])
-				chisq = np.sum(np.power(self.obsflux_final - finalsynth, 2.) * self.ivar_final) / (len(self.obsflux_final) - 1.)
-				chisq_list[i] = chisq
+		mn_list = np.array([-3,-2,-1.5,-1,-0.5,-0.1,0,0.1,0.5,1,1.5,2,3])*mn_error + mn_result
+		chisq_list = np.zeros(len(mn_list))
+		for i in range(len(mn_list)):
+			finalsynth = self.synthetic(self.obswvl_final, mn_list[i])
+			chisq = np.sum(np.power(self.obsflux_final - finalsynth, 2.) * self.ivar_final) / (len(self.obsflux_final) - 1.)
+			chisq_list[i] = chisq
 
+		if mn_error < 1.0:
 			plt.figure()
 			plt.title('Star '+self.specname, fontsize=18)
 			plt.plot(mn_list, chisq_list, '-o')

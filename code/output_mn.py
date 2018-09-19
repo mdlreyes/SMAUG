@@ -46,7 +46,7 @@ def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, gl
 
 	# Output filename
 	if globular:
-		outputname = '/raid/madlr/glob/'+galaxyname+'.csv'
+		outputname = '/raid/madlr/glob/'+galaxyname+'/'+slitmaskname+'.csv'
 	else:
 		outputname = '/raid/madlr/dsph/'+galaxyname+'/'+slitmaskname+'.csv'
 
@@ -174,7 +174,7 @@ def make_chisq_plots(filename, paramfilename, galaxyname, slitmaskname, startsta
 
 	# Input filename
 	if globular:
-		file = '/raid/madlr/glob/'+galaxyname+'.csv'
+		file = '/raid/madlr/glob/'+galaxyname+'/'+slitmaskname+'.csv'
 	else:
 		file = '/raid/madlr/dsph/'+galaxyname+'/'+slitmaskname+'.csv'
 
@@ -220,15 +220,13 @@ def main():
 	# Match Sculptor hi-res file to bscl1 (for AAS)
 	#medresMn, medresMnerror, hiresMn, hiresMnerror, sep.arcsec = match_hires('Sculptor_hires.tsv','/raid/caltech/moogify/bscl1/moogify.fits.gz')
 
-	'''
 	# Measure Mn abundances for Sculptor
-	run_chisq('/raid/caltech/moogify/bscl1/moogify.fits.gz', '/raid/gduggan/moogify/bscl1_moogify.fits.gz', 'scl', 'scl1', startstar=0)
-	run_chisq('/raid/caltech/moogify/bscl2/moogify.fits.gz', '/raid/gduggan/moogify/bscl2_moogify.fits.gz', 'scl', 'scl2', startstar=0)
-	run_chisq('/raid/caltech/moogify/bscl6/moogify.fits.gz', '/raid/gduggan/moogify/bscl6_moogify.fits.gz', 'scl', 'scl6', startstar=0)
-	'''
+	#run_chisq('/raid/caltech/moogify/bscl1/moogify.fits.gz', '/raid/gduggan/moogify/bscl1_moogify.fits.gz', 'scl', 'scl1', startstar=0, lines='new')
+	#run_chisq('/raid/caltech/moogify/bscl2/moogify.fits.gz', '/raid/gduggan/moogify/bscl2_moogify.fits.gz', 'scl', 'scl2', startstar=0, lines='new')
+	#run_chisq('/raid/caltech/moogify/bscl6/moogify.fits.gz', '/raid/gduggan/moogify/bscl6_moogify.fits.gz', 'scl', 'scl6', startstar=0, lines='new')
 
 	# Measure Mn abundances for Sculptor using new 1200B data
-	run_chisq('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', '/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'scl5_1200B', startstar=0, lines='new')
+	#run_chisq('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', '/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'scl5_1200B', startstar=0, lines='new')
 
 	'''
 	# Measure Mn abundances for Ursa Minor
@@ -249,8 +247,11 @@ def main():
 	run_chisq('/raid/caltech/moogify/bfor6/moogify.fits.gz', '/raid/gduggan/moogify/bfor6_moogify.fits.gz', 'for', 'for6', startstar=0)
 	'''
 
-	# Measure Mn abundances for a test globular cluster
-	#run_chisq('/raid/caltech/moogify/n2419b_blue/moogify.fits.gz', '/raid/gduggan/moogify/n2419b_blue_moogify.fits.gz', 'n2419b_blue', 'n2419b_blue', startstar=0, globular=True)
+	# Measure Mn abundances for a test globular cluster (NGC 2419)
+	#run_chisq('/raid/caltech/moogify/n2419b_blue/moogify.fits.gz', '/raid/gduggan/moogify/n2419b_blue_moogify.fits.gz', 'n2419', 'n2419b_blue', startstar=0, globular=True, lines='new')
+
+	# Measure Mn abundances for a test globular cluster (M15) using new 1200B data
+	run_chisq('/raid/caltech/moogify/7078l1_1200B/moogify.fits.gz', '/raid/caltech/moogify/7078l1_1200B/moogify.fits.gz', 'm15', '7078l1_1200B', startstar=0, globular=True, lines='new')
 
 	# Plot chi-sq contours for stars that already have [Mn/H] measured
 	#make_chisq_plots('/raid/caltech/moogify/n2419b_blue/moogify.fits.gz', '/raid/gduggan/moogify/n2419b_blue_moogify.fits.gz', 'n2419b_blue', 'n2419b_blue', startstar=11, globular=True)

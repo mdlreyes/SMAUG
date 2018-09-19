@@ -18,7 +18,7 @@ import pandas
 from matplotlib.ticker import NullFormatter
 from statsmodels.stats.weightstats import DescrStatsW
 
-def plot_mn_fe(filenames, outfile, title, snr=None, typeii=True, typei=True):
+def plot_mn_fe(filenames, outfile, title, gratings=None, maxerror=None, snr=None, solar=False, typeii=True, typei=True):
 	"""Plot [Mn/Fe] vs [Fe/H] for all the stars in a set of files.
 
 	Inputs:
@@ -27,7 +27,10 @@ def plot_mn_fe(filenames, outfile, title, snr=None, typeii=True, typei=True):
 	title 		-- title of graph
 
 	Keywords:
-	snr 		-- if not None, then plot points of different S/N ratios in different colors!
+	gratings 	-- if not None, must be list of gratings used for input filenames.
+					Plot points from different gratings in different colors.
+	maxerror 	-- if not None, points with error > maxerror will not be plotted
+	solar 		-- if 'True', plot line marking solar abundance
 	typeii 		-- if 'True', plot theoretical Type II yield
 	typei 		-- if 'True', plot theoretical Type II yields
 	"""
@@ -38,15 +41,20 @@ def plot_mn_fe(filenames, outfile, title, snr=None, typeii=True, typei=True):
 	feherr 	= []
 	mnh 	= []
 	mnherr	= []
+	colors  = []
+	redchisq = []
 
-	for file in filenames:
+	for i in range(len(filenames)):
+
+		file = filenames[i]
 		current_name 	= np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=0, dtype='str')
 
-		data = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=[5,6,8,9])
+		data = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=[5,6,8,9,10])
 		current_feh 	= data[:,0]
 		current_feherr 	= data[:,1]
 		current_mnh 	= data[:,2]
 		current_mnherr 	= data[:,3]
+		current_redchisq = data[:,4]
 
 		# Append to total data arrays
 		name.append(current_name)
@@ -54,6 +62,11 @@ def plot_mn_fe(filenames, outfile, title, snr=None, typeii=True, typei=True):
 		feherr.append(current_feherr)
 		mnh.append(current_mnh)
 		mnherr.append(current_mnherr)
+		redchisq.append(current_redchisq)
+
+		if gratings is not None:
+			current_grating = len(current_feh) * [gratings[i]]
+			colors.append(current_grating)
 
 	# Convert back to numpy arrays
 	name 	= np.hstack(name)
@@ -61,20 +74,30 @@ def plot_mn_fe(filenames, outfile, title, snr=None, typeii=True, typei=True):
 	feherr 	= np.hstack(feherr)
 	mnh 	= np.hstack(mnh)
 	mnherr  = np.hstack(mnherr)
+	colors  = np.hstack(colors)
+	redchisq = np.hstack(redchisq)
 
 	# Compute [Mn/Fe]
 	mnfe = mnh - feh
 	mnfeerr = np.sqrt(np.power(feherr,2.)+np.power(mnherr,2.))
 
+	# Remove points with error > maxerror
+	if maxerror is not None:
+		mask 	= np.where((mnfeerr < maxerror)) # & (redchisq < 3.0))
+		name 	= name[mask]
+		feh 	= feh[mask]
+		mnfe 	= mnfe[mask]
+		mnfeerr = mnfeerr[mask]
+		colors  = colors[mask]
+
 	# Testing: Label some stuff
-	outlier = np.where(feh > -1)[0]
-	#print(name[outlier])
-	notoutlier = np.where(mnfeerr < 1)[0]
-	'''
-	for i in range(len(outlier)):
-		idx = outlier[i]
-		plt.text(feh[idx], mnfe[idx], name[idx]) 
-	'''
+	outlier = np.where(mnfe > 1)[0]
+	print(name[outlier])
+	notoutlier = np.where(mnfe > 0.5)[0]
+
+	#for i in range(len(outlier)):
+	#	idx = outlier[i]
+	#	plt.text(feh[idx], mnfe[idx], name[idx])
 
 	# Errorbar plot
 	'''
@@ -87,14 +110,6 @@ def plot_mn_fe(filenames, outfile, title, snr=None, typeii=True, typei=True):
 
 	# Plot points with different signal/noise in different colors
 	plt.gca().set_color_cycle(['red', 'blue', 'orange', 'cyan'])
-	if snr is not None:
-		for i in range(len(snr)):
-
-			# Find points with signal/noise greater than whatever value
-			snrmask = np.where(np.abs(mnfe/mnfeerr) > snr[i])
-
-			# Plot in a different color
-			plt.errorbar(feh[snrmask], mnfe[snrmask], xerr=feherr[snrmask], yerr=mnfeerr[snrmask], marker='o', linestyle='None', label='S/N > '+str(snr[i]))
 	plt.legend(loc='best')
 	'''
 
@@ -120,17 +135,20 @@ def plot_mn_fe(filenames, outfile, title, snr=None, typeii=True, typei=True):
 
 	if typei:
 		#xmin=(-2.34+3)/2.5, 
-		ax.axhline(0.18, color='r', linestyle='dashed', label='DDT(T16)')
+		ax.axhline(0.18, color='b', linestyle='dashed', label='DDT(T16)')
 		ax.axhspan(0.01, 0.53, color='g', hatch='\\', alpha=0.2, label='DDT(S13)')
 		ax.axhspan(0.36, 0.52, color='darkorange', hatch='//', alpha=0.3, label='Def(F14)')
 		ax.axhspan(-1.69, -1.21, color='r', alpha=0.2, label='Sub(B)')
 		ax.axhspan(-1.52, -0.68, color='b', hatch='//', alpha=0.2, label='Sub(S18)')
 
+	if solar:
+		ax.axhline(0, color='gold', linestyle='solid')
+
 	#if fit == 'scl':
 
 	# Scatter plot
 	area = 2*np.reciprocal(np.power(mnfeerr,2.))
-	ax.scatter(feh, mnfe, s=area, c='k', alpha=0.5, zorder=100) #, label='N = '+str(len(name)))
+	ax.scatter(feh, mnfe, s=area, c=colors, alpha=0.5, zorder=100) #, label='N = '+str(len(name)))
 	ax.text(0.025, 0.9, 'N = '+str(len(name)), transform=ax.transAxes, fontsize=14)
 
 	# Format plot
@@ -141,12 +159,13 @@ def plot_mn_fe(filenames, outfile, title, snr=None, typeii=True, typei=True):
 		label.set_fontsize(14)
 
 	ax.set_xlim([-3,-0.75])
+	ax.set_ylim([-2,2])
 	plt.legend(loc='best')
 
 	# Print labels
-	for i in range(len(feh)):
-		if feh[i] < -3.5:
-			ax.text(feh[i], mnfe[i], name[i])
+	#for i in range(len(feh)):
+	#	if feh[i] < -3.5:
+	#		ax.text(feh[i], mnfe[i], name[i])
 
 	# Output file
 	plt.savefig(outfile, bbox_inches='tight')
@@ -491,7 +510,8 @@ def plot_spectrum(filename, starname, outfile, lines):
 
 def main():
 	# Sculptor
-	plot_mn_fe(['data/newlinelist_data/scl1_final.csv','data/newlinelist_data/scl2_final.csv','data/newlinelist_data/scl6_final.csv'],'figures/mnfe_scltotal_newlinelist.png','Sculptor',typeii=False) #,snr=[3,5])
+	plot_mn_fe(['data/scl1_final.csv','data/scl2_final.csv','data/scl6_final.csv','data/scl5_1200B_final.csv'],
+			'figures/mnfe_scltotal_newlinelist.png','Sculptor',gratings=['k','k','k','r'],maxerror=0.3,solar=False,typei=True,typeii=False) #,snr=[3,5])
 
 	# Ursa Minor
 	#plot_mn_fe(['data/umi1_final.csv','data/umi2_final.csv','data/umi3_final.csv'],'figures/mnfe_umitotal.png','Ursa Minor',snr=[3,5])
@@ -503,7 +523,7 @@ def main():
 	#comparison_plot(['data/newlinelist_data/n2419b_blue_final.csv','data/oldlinelist_data/n2419b_blue_final.csv'],['New linelist [Mn/H]', 'Old linelist [Mn/H]'],'figures/gc_checks/n2419b_linelistcheck.png','NGC 2419', membercheck='NGC 2419', memberlist='data/gc_checks/table_catalog.dat', maxerror=1) #, weighted=False)
 	#plot_mn_fe(['data/newlinelist_data/n2419b_blue_final.csv',],'figures/gc_checks/mnfe_n2419total.png','NGC 2419') #,snr=[3,5])
 	#plot_mn_vs_something('data/newlinelist_data/n2419b_blue_final.csv', 'feh', 'figures/gc_checks/n2419b_mnh_temp.png','NGC 2419', membercheck='NGC 2419', memberlist='data/gc_checks/table_catalog.dat', maxerror=1, weighted=True)
-	#plot_mn_vs_something('data/newlinelist_data/n2419b_blue_final.csv', 'temp', 'figures/gc_checks/n2419b_mnh_temp.png','NGC 2419', membercheck='NGC 2419', memberlist='data/gc_checks/table_catalog.dat', maxerror=1, weighted=True)
+	#plot_mn_vs_something('data/n2419b_blue_final.csv', 'temp', 'figures/gc_checks/n2419b_mnh_temp.png','NGC 2419', membercheck='NGC 2419', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True)
 
 	'''
 	newlinelist = [4739.087, 4754.042, 4761.512, 4762.367, 4765.846, 
