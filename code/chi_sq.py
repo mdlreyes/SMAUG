@@ -24,6 +24,100 @@ import pandas
 import scipy.optimize
 from wvl_corr import fit_wvl
 
+# Code to make plots
+def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, ivar=None, title=None):
+	"""Make plots.
+
+	Inputs:
+	lines -- which linelist to use? Options: 'new', 'old'
+	specname -- name of star
+	obswvl 	-- observed wavelength array
+	obsflux -- observed flux
+	synthflux 	-- synthetic flux
+	outputname 	-- where to output file
+
+	Keywords:
+	ivar 	-- inverse variance; if 'None' (default), don't print errorbars
+	title 	-- plot title; if 'None' (default), then plot title = "Star + ID"
+
+	Outputs:
+	"""
+
+	# Define lines to plot
+	if lines == 'new':
+		linelist = np.array([4739.,4754.,4761.5,4765.5,4783.,4823.,4394.,4399.,
+							 5407.,5420.,5432.,5516.,5537.,6013.,6016.,6021.,6384.,6491.])
+		linewidth = np.array([1.,1.,1.5,1.5,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.])
+
+		nrows = 3
+		ncols = 6
+		figsize = (24,12)
+
+	elif lines == 'old':
+		linelist = np.array([4739.,4783.,4823.,5394.,5432.,5516.,5537.,6013.,6021.,6384.,6491.])
+		linewidth = np.ones(len(linelist))
+
+		nrows = 3
+		ncols = 4
+		figsize = (16,12)
+
+	# Define title
+	if title is None:
+		title = 'Star'+specname
+
+	# Plot showing fits
+	plt.figure(num=1, figsize=figsize)
+	plt.title(title)
+
+	# Plot showing residuals
+	plt.figure(num=2, figsize=figsize)
+	plt.title(title)
+
+	for i in range(len(linelist)):
+
+		# Range over which to plot
+		lolim = linelist[i] - 5
+		uplim = linelist[i] + 5
+
+		# Make mask for wavelength
+		try:
+			mask = np.where((obswvl > lolim) & (obswvl < uplim))
+
+			if len(mask[0]) > 0:
+
+				if ivar is not None:
+					yerr=np.power(ivar[mask],-0.5)
+				else:
+					yerr=None
+
+				# Plot fits
+				plt.figure(1)
+				plt.subplot(nrows,ncols,i+1)
+				plt.axvspan(linelist[i] - linewidth[i], linelist[i] + linewidth[i], color='green', alpha=0.25)
+				plt.errorbar(obswvl[mask], obsflux[mask], yerr=yerr, color='k', fmt='o', label='Observed')
+				plt.plot(obswvl[mask], synthflux[mask], 'r-', label='Synthetic')
+
+				# Plot residuals
+				plt.figure(2)
+				plt.subplot(nrows,ncols,i+1)
+				plt.axvspan(linelist[i] - linewidth[i], linelist[i] + linewidth[i], color='green', alpha=0.25)
+				plt.errorbar(obswvl[mask], obsflux[mask] - synthflux[mask], yerr=yerr, color='k', fmt='o', label='Residuals')
+				plt.axhline(0, color='r', linestyle='solid', label='Zero')
+
+		except:
+			continue
+
+	# Legend for plot showing fits
+	plt.figure(1)
+	plt.legend(loc='best')
+	plt.savefig(outputname+'/'+specname+'_finalfits.png',bbox_inches='tight')
+	plt.close(1)
+
+	plt.figure(2)
+	plt.legend(loc='best')
+	plt.savefig(outputname+'/'+specname+'_resids.png',bbox_inches='tight')
+	plt.close(2)
+
 # Observed spectrum
 class obsSpectrum:
 
@@ -189,73 +283,8 @@ class obsSpectrum:
 		# Do some checks
 		finalsynth = self.synthetic(self.obswvl_final, best_mn, full=True)
 
-		# Define lines to plot
-		if self.lines == 'new':
-			linelist = np.array([4739.,4754.,4761.5,4765.5,4783.,4823.,4394.,4399.,
-								 5407.,5420.,5432.,5516.,5537.,6013.,6016.,6021.,6384.,6491.])
-			linewidth = np.array([1.,1.,1.5,1.5,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.])
-
-			nrows = 3
-			ncols = 6
-			figsize = (24,12)
-
-		elif self.lines == 'old':
-			linelist = np.array([4739.,4783.,4823.,5394.,5432.,5516.,5537.,6013.,6021.,6384.,6491.])
-			linewidth = np.ones(len(linelist))
-
-			nrows = 3
-			ncols = 4
-			figsize = (16,12)
-
 		# Make plots
-
-		# Plot showing fits
-		plt.figure(num=1, figsize=figsize)
-		plt.title('Star '+self.specname)
-
-		# Plot showing residuals
-		plt.figure(num=2, figsize=figsize)
-		plt.title('Star '+self.specname)
-
-		for i in range(len(linelist)):
-
-			# Range over which to plot
-			lolim = linelist[i] - 5
-			uplim = linelist[i] + 5
-
-			# Make mask for wavelength
-			try:
-				mask = np.where((self.obswvl_final > lolim) & (self.obswvl_final < uplim))
-
-				if len(mask[0]) > 0:
-
-					# Plot fits
-					plt.figure(1)
-					plt.subplot(nrows,ncols,i+1)
-					plt.axvspan(linelist[i] - linewidth[i], linelist[i] + linewidth[i], color='green', alpha=0.25)
-					plt.errorbar(self.obswvl_final[mask], self.obsflux_final[mask], yerr=np.power(self.ivar_final[mask],-0.5), color='k', fmt='o', label='Observed')
-					plt.plot(self.obswvl_final[mask], finalsynth[mask], 'r-', label='Synthetic')
-
-					# Plot residuals
-					plt.figure(2)
-					plt.subplot(nrows,ncols,i+1)
-					plt.axvspan(linelist[i] - linewidth[i], linelist[i] + linewidth[i], color='green', alpha=0.25)
-					plt.errorbar(self.obswvl_final[mask], self.obsflux_final[mask] - finalsynth[mask], yerr=np.power(self.ivar_final[mask],-0.5), color='k', fmt='o', label='Residuals')
-					plt.axhline(0, color='r', linestyle='solid', label='Zero')
-
-			except:
-				continue
-
-		# Legend for plot showing fits
-		plt.figure(1)
-		plt.legend(loc='best')
-		plt.savefig(self.outputname+'/'+self.specname+'_finalfits.png',bbox_inches='tight')
-		plt.close(1)
-
-		plt.figure(2)
-		plt.legend(loc='best')
-		plt.savefig(self.outputname+'/'+self.specname+'_resids.png',bbox_inches='tight')
-		plt.close(2)
+		make_plots(self.lines, self.specname, self.obswvl_final, self.obsflux_final, finalsynth, self.outputname, ivar=self.ivar_final)
 
 		return best_mn, error
 
