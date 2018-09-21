@@ -157,19 +157,27 @@ def smooth_gauss_wrapper(lambda1, spec1, lambda2, dlam_in):
 
 	n2 = lambda2.size; n1 = lambda1.size
 	
-	def findex(u, v):
-		"""
-		Return the index, for each point in the synthetic wavelength array, that corresponds
-	    to the bin it belongs to in the observed spectrum
-		e.g., lambda1[i-1] <= lambda2 < lambda1[i] if lambda1 is monotonically increasing
-	    The minus one changes it such that lambda[i] <= lambda2 < lambda[i+1] for i = 0,n2-2
-		in accordance with IDL
-		"""
-		result = np.digitize(u, v)-1
-		w = [int((v[i] - u[result[i]])/(u[result[i]+1] - u[result[i]]) + result[i]) for i in range(n2)]
-		return np.array(w)
+	# def findex(u, v):
+	# 	"""
+	# 	Return the index, for each point in the synthetic wavelength array, that corresponds
+	#     to the bin it belongs to in the observed spectrum
+	# 	e.g., lambda1[i-1] <= lambda2 < lambda1[i] if lambda1 is monotonically increasing
+	#     The minus one changes it such that lambda[i] <= lambda2 < lambda[i+1] for i = 0,n2-2
+	# 	in accordance with IDL
+	# 	"""
+	# 	result = np.digitize(u, v)-1 # Gives bin i for each lambda1[i] such that lambda2[i] <= lambda1 < lambda2[i+1]
+	# 	w = [int((v[i] - u[result[i]])/(u[result[i]+1] - u[result[i]]) + result[i]) for i in range(n2)]
+	# 	return np.array(w)
 	
-	f = findex(lambda1, lambda2)
+	#f = findex(lambda1, lambda2)
+	f = np.digitize(lambda2, lambda1)
+	f[-1] -= 1
+
+	#print(f[0:20])
+	#print(lambda1[0:20])
+	#print(lambda2[0:20])
+
+	#print(f)
 	
 	#Make it such that smooth_gauss.f takes an array corresponding to the resolution
 	#each point of the synthetic spectrum will be smoothed to

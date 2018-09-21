@@ -97,7 +97,7 @@ def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, ivar=Non
 				plt.errorbar(obswvl[mask], obsflux[mask], yerr=yerr, color='k', fmt='o', label='Observed')
 				plt.plot(obswvl[mask], synthflux[mask], 'r-', label='Synthetic')
 
-				# Plot residuals
+				# Only plot residuals if synth spectrum has been smoothed to match obswvl
 				plt.figure(2)
 				plt.subplot(nrows,ncols,i+1)
 				plt.axvspan(linelist[i] - linewidth[i], linelist[i] + linewidth[i], color='green', alpha=0.25)
@@ -121,7 +121,7 @@ def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, ivar=Non
 # Observed spectrum
 class obsSpectrum:
 
-	def __init__(self, obsfilename, paramfilename, starnum, wvlcorr, galaxyname, slitmaskname, globular, lines, plot=False):
+	def __init__(self, obsfilename, paramfilename, starnum, wvlcorr, galaxyname, slitmaskname, globular, lines, obsspecial=None, plot=False):
 
 		# Observed star
 		self.obsfilename 	= obsfilename 	# File with observed spectra
@@ -132,93 +132,109 @@ class obsSpectrum:
 		self.globular 		= globular		# Parameter marking if globular cluster
 		self.lines 			= lines 		# Parameter marking whether or not to use revised or original linelist
 
-		# Output filename
-		if self.globular:
-			self.outputname = '/raid/madlr/glob/'+galaxyname+'/'+slitmaskname
+		# If observed spectrum comes from moogify file (default), open observed file and continuum normalize as usual
+		if obsspecial is None:
+
+			# Output filename
+			if self.globular:
+				self.outputname = '/raid/madlr/glob/'+galaxyname+'/'+slitmaskname
+			else:
+				self.outputname = '/raid/madlr/dsph/'+galaxyname+'/'+slitmaskname
+
+			# Open observed spectrum
+			self.specname, self.obswvl, self.obsflux, self.ivar, self.dlam, self.zrest = open_obs_file(self.obsfilename, retrievespec=self.starnum)
+
+			# Get measured parameters from observed spectrum
+			self.temp, self.logg, self.fe, self.alpha, self.fe_err = open_obs_file(self.paramfilename, self.starnum, specparams=True, objname=self.specname)
+
+			if plot:
+				# Plot observed spectrum
+				plt.figure()
+				plt.plot(self.obswvl, self.obsflux, 'k-')
+				plt.axvspan(4749, 4759, alpha=0.5, color='blue')
+				plt.axvspan(4778, 4788, alpha=0.5, color='blue')
+				plt.axvspan(4818, 4828, alpha=0.5, color='blue')
+				plt.axvspan(5389, 5399, alpha=0.5, color='blue')
+				plt.axvspan(5532, 5542, alpha=0.5, color='blue')
+				plt.axvspan(6008, 6018, alpha=0.5, color='blue')
+				plt.axvspan(6016, 6026, alpha=0.5, color='blue')
+				plt.axvspan(4335, 4345, alpha=0.5, color='red')
+				plt.axvspan(4856, 4866, alpha=0.5, color='red')
+				plt.axvspan(6558, 6568, alpha=0.5, color='red')
+				plt.savefig(self.outputname+'/'+self.specname+'_obs.png')
+				plt.close()
+
+			# Get synthetic spectrum, split both obs and synth spectra into red and blue parts
+			synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask = mask_obs_for_division(self.obswvl, self.obsflux, self.ivar, temp=self.temp, logg=self.logg, fe=self.fe, alpha=self.alpha, dlam=self.dlam, lines=self.lines)
+
+			# Compute continuum-normalized observed spectrum
+			self.obsflux_norm, self.ivar_norm = divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask)
+
+			if plot:
+				# Plot continuum-normalized observed spectrum
+				plt.figure()
+				plt.plot(self.obswvl, self.obsflux_norm, 'k-')
+				plt.axvspan(4749, 4759, alpha=0.5, color='blue')
+				plt.axvspan(4778, 4788, alpha=0.5, color='blue')
+				plt.axvspan(4818, 4828, alpha=0.5, color='blue')
+				plt.axvspan(5389, 5399, alpha=0.5, color='blue')
+				plt.axvspan(5532, 5542, alpha=0.5, color='blue')
+				plt.axvspan(6008, 6018, alpha=0.5, color='blue')
+				plt.axvspan(6016, 6026, alpha=0.5, color='blue')
+				plt.axvspan(4335, 4345, alpha=0.5, color='red')
+				plt.axvspan(4856, 4866, alpha=0.5, color='red')
+				plt.axvspan(6558, 6568, alpha=0.5, color='red')
+				plt.ylim((0,5))
+				#plt.xlim((6553,6573))
+				plt.savefig(self.outputname+'/'+self.specname+'_obsnormalized.png')
+				plt.close()
+
+			if wvlcorr:
+				print('Doing wavelength correction...')
+
+				try:
+					# Compute standard deviation
+					contdivstd = np.zeros(len(self.ivar_norm))+np.inf
+					contdivstd[self.ivar_norm > 0] = np.sqrt(np.reciprocal(self.ivar_norm[self.ivar_norm > 0]))
+
+					# Wavelength correction
+					self.obswvl = fit_wvl(self.obswvl, self.obsflux_norm, contdivstd, self.dlam, 
+						self.temp, self.logg, self.fe, self.alpha, self.specname, self.outputname+'/')
+
+					print('Done with wavelength correction!')
+
+				except:
+					print('Couldn\'t complete wavelength correction for some reason.')
+
+			# Crop observed spectrum into regions around Mn lines
+			self.obsflux_fit, self.obswvl_fit, self.ivar_fit, self.dlam_fit, self.skip = mask_obs_for_abundance(self.obswvl, self.obsflux_norm, self.ivar_norm, self.dlam, lines=self.lines)
+
+		# Else, take spectrum and observed parameters from obsspecial keyword
 		else:
-			self.outputname = '/raid/madlr/dsph/'+galaxyname+'/'+slitmaskname
 
-		# Open observed spectrum
-		self.specname, self.obswvl, self.obsflux, self.ivar, self.dlam, self.zrest = open_obs_file(self.obsfilename, retrievespec=self.starnum)
+			# Output filename
+			self.outputname = '/raid/madlr/test/'+slitmaskname
 
-		#print(self.specname, self.obswvl, self.obsflux, self.ivar, self.dlam, self.zrest)
+			self.obsflux_fit = obsspecial[0]
+			self.obswvl_fit = obsspecial[1]
+			self.ivar_fit 	= obsspecial[2]
+			self.dlam_fit 	= obsspecial[3]
+			self.skip 		= obsspecial[4]
+			self.temp		= obsspecial[5]
+			self.logg		= obsspecial[6]
+			self.fe 		= obsspecial[7]
+			self.alpha 		= obsspecial[8]
+			self.fe_err 	= obsspecial[9]
 
-		# Get measured parameters from observed spectrum
-		self.temp, self.logg, self.fe, self.alpha, self.fe_err = open_obs_file(self.paramfilename, self.starnum, specparams=True, objname=self.specname)
-		#self.temp, self.logg, self.fe, self.alpha, self.zrest = open_obs_file('/raid/m31/dsph/scl/scl1/moogify7_flexteff.fits.gz', self.starnum, specparams=True, objname=self.specname)
-
-		# Correct observed spectrum for redshift
-		#self.obswvl = self.obswvl/(1. + self.zrest)
-
-		if plot:
-			# Plot observed spectrum
-			plt.figure()
-			plt.plot(self.obswvl, self.obsflux, 'k-')
-			plt.axvspan(4749, 4759, alpha=0.5, color='blue')
-			plt.axvspan(4778, 4788, alpha=0.5, color='blue')
-			plt.axvspan(4818, 4828, alpha=0.5, color='blue')
-			plt.axvspan(5389, 5399, alpha=0.5, color='blue')
-			plt.axvspan(5532, 5542, alpha=0.5, color='blue')
-			plt.axvspan(6008, 6018, alpha=0.5, color='blue')
-			plt.axvspan(6016, 6026, alpha=0.5, color='blue')
-			plt.axvspan(4335, 4345, alpha=0.5, color='red')
-			plt.axvspan(4856, 4866, alpha=0.5, color='red')
-			plt.axvspan(6558, 6568, alpha=0.5, color='red')
-			plt.savefig(self.outputname+'/'+self.specname+'_obs.png')
-			plt.close()
-
-		# Get synthetic spectrum, split both obs and synth spectra into red and blue parts
-		synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask = mask_obs_for_division(self.obswvl, self.obsflux, self.ivar, temp=self.temp, logg=self.logg, fe=self.fe, alpha=self.alpha, dlam=self.dlam, lines=self.lines)
-
-		# Compute continuum-normalized observed spectrum
-		self.obsflux_norm, self.ivar_norm = divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask)
-
-		if plot:
-			# Plot continuum-normalized observed spectrum
-			plt.figure()
-			plt.plot(self.obswvl, self.obsflux_norm, 'k-')
-			plt.axvspan(4749, 4759, alpha=0.5, color='blue')
-			plt.axvspan(4778, 4788, alpha=0.5, color='blue')
-			plt.axvspan(4818, 4828, alpha=0.5, color='blue')
-			plt.axvspan(5389, 5399, alpha=0.5, color='blue')
-			plt.axvspan(5532, 5542, alpha=0.5, color='blue')
-			plt.axvspan(6008, 6018, alpha=0.5, color='blue')
-			plt.axvspan(6016, 6026, alpha=0.5, color='blue')
-			plt.axvspan(4335, 4345, alpha=0.5, color='red')
-			plt.axvspan(4856, 4866, alpha=0.5, color='red')
-			plt.axvspan(6558, 6568, alpha=0.5, color='red')
-			plt.ylim((0,5))
-			#plt.xlim((6553,6573))
-			plt.savefig(self.outputname+'/'+self.specname+'_obsnormalized.png')
-			plt.close()
-
-		if wvlcorr:
-			print('Doing wavelength correction...')
-
-			try:
-				# Compute standard deviation
-				contdivstd = np.zeros(len(self.ivar_norm))+np.inf
-				contdivstd[self.ivar_norm > 0] = np.sqrt(np.reciprocal(self.ivar_norm[self.ivar_norm > 0]))
-
-				# Wavelength correction
-				self.obswvl = fit_wvl(self.obswvl, self.obsflux_norm, contdivstd, self.dlam, 
-					self.temp, self.logg, self.fe, self.alpha, self.specname, self.outputname+'/')
-
-				print('Done with wavelength correction!')
-
-			except:
-				print('Couldn\'t complete wavelength correction for some reason.')
-
-		# Crop observed spectrum into regions around Mn lines
-		self.obsflux_fit, self.obswvl_fit, self.ivar_fit, self.dlam_fit, self.skip = mask_obs_for_abundance(self.obswvl, self.obsflux_norm, self.ivar_norm, self.dlam, lines=self.lines)
+			self.specname 	= self.slitmaskname
 
 		# Splice together Mn line regions of observed spectra
+		print('Skip: ', self.skip)
+
 		self.obsflux_final = np.hstack((self.obsflux_fit[self.skip]))
 		self.obswvl_final = np.hstack((self.obswvl_fit[self.skip]))
 		self.ivar_final = np.hstack((self.ivar_fit[self.skip]))
-		self.dlam_final = np.hstack((self.dlam_fit[self.skip]))
-
-		print('Skip: ', self.skip)
+		#self.dlam_final = np.hstack((self.dlam_fit[self.skip]))
 		#print(len(self.obswvl_final))
 
 	# Define function to minimize

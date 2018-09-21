@@ -79,8 +79,9 @@ def get_synth(obswvl, obsflux, ivar, dlam, synth=None, temp=None, logg=None, fe=
 	#print(synthwvl, obswvl)
 
 	# Clip synthetic spectrum so it's within range of obs spectrum
-	synthwvl = synthwvl[(np.where((synthwvl > obswvl[0]) & (synthwvl < obswvl[-1])))]
-	synthflux = synthflux[(np.where((synthwvl > obswvl[0]) & (synthwvl < obswvl[-1])))]
+	mask = np.where((synthwvl > obswvl[0]) & (synthwvl < obswvl[-1]))
+	synthwvl = synthwvl[mask]
+	synthflux = synthflux[mask]
 
 	# Interpolate and smooth the synthetic spectrum onto the observed wavelength array
 	synthfluxnew = smooth_gauss_wrapper(synthwvl, synthflux, obswvl, dlam)
