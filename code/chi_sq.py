@@ -45,7 +45,7 @@ def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, ivar=Non
 
 	# Define lines to plot
 	if lines == 'new':
-		linelist = np.array([4739.,4754.,4761.5,4765.5,4783.,4823.,4394.,4399.,
+		linelist = np.array([4739.,4754.,4761.5,4765.5,4783.,4823.,5394.,5399.,
 							 5407.,5420.,5432.,5516.,5537.,6013.,6016.,6021.,6384.,6491.])
 		linewidth = np.array([1.,1.,1.5,1.5,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.])
 
@@ -109,11 +109,15 @@ def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, ivar=Non
 
 	# Legend for plot showing fits
 	plt.figure(1)
+	plt.yaxis('Relative flux')
+	plt.xaxis('Wavelength (A)')
 	plt.legend(loc='best')
 	plt.savefig(outputname+'/'+specname+'_finalfits.png',bbox_inches='tight')
 	plt.close(1)
 
 	plt.figure(2)
+	plt.yaxis('Residuals')
+	plt.xaxis('Wavelength (A)')
 	plt.legend(loc='best')
 	plt.savefig(outputname+'/'+specname+'_resids.png',bbox_inches='tight')
 	plt.close(2)
@@ -259,7 +263,6 @@ class obsSpectrum:
 
 		# Loop over each line
 		synthflux = []
-		#a = [a0, a1, a2, a3, a4, a5]
 		for i in self.skip:
 
 			synthregion = synth[i]
