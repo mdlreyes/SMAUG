@@ -108,16 +108,20 @@ def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, ivar=Non
 			continue
 
 	# Legend for plot showing fits
-	plt.figure(1)
-	plt.yaxis('Relative flux')
-	plt.xaxis('Wavelength (A)')
+	fig = plt.figure(1)
+	fig.text(0.5, 0.04, 'Wavelength (A)', fontsize=18, ha='center', va='center')
+	fig.text(0.06, 0.5, 'Relative flux', fontsize=18, ha='center', va='center', rotation='vertical')
+	#plt.ylabel('Relative flux')
+	#plt.xlabel('Wavelength (A)')
 	plt.legend(loc='best')
 	plt.savefig(outputname+'/'+specname+'_finalfits.png',bbox_inches='tight')
 	plt.close(1)
 
-	plt.figure(2)
-	plt.yaxis('Residuals')
-	plt.xaxis('Wavelength (A)')
+	fig2 = plt.figure(2)
+	fig2.text(0.5, 0.04, 'Wavelength (A)', fontsize=18, ha='center', va='center')
+	fig2.text(0.06, 0.5, 'Residuals', fontsize=18, ha='center', va='center', rotation='vertical')
+	plt.ylabel('Residuals')
+	plt.xlabel('Wavelength (A)')
 	plt.legend(loc='best')
 	plt.savefig(outputname+'/'+specname+'_resids.png',bbox_inches='tight')
 	plt.close(2)
@@ -280,11 +284,14 @@ class obsSpectrum:
 
 		return synthflux
 
-	def minimize_scipy(self, mn0):
+	def minimize_scipy(self, mn0, output=False):
 		"""Minimize residual using scipy.optimize Levenberg-Marquardt.
 
 		Inputs:
 		mn0 -- initial guess for Mn abundance
+
+		Keywords:
+		output -- if 'True', also output a file (default='False')
 
 		Outputs:
 		fitparams -- best fit parameters
@@ -304,6 +311,24 @@ class obsSpectrum:
 
 		# Make plots
 		make_plots(self.lines, self.specname, self.obswvl_final, self.obsflux_final, finalsynth, self.outputname, ivar=self.ivar_final)
+
+		# Output the final data
+		if output:
+
+			# Create file
+			filename = self.outputname+'/'+specname+'_data.csv'
+			datawriter = csv.writer(csvfile, delimiter=',')
+
+			# Define columns
+			columnstr = ['wvl','synthflux','obsflux']
+			columns = np.asarray([self.obswvl_final, finalsynth, self.obsflux_final])
+
+			#Write header
+ 			datawriter.writerow(columnstr)
+
+			with open(filename, 'wb') as csvfile:
+				for i in spiralsmovedtodwarfs:
+					datawriter.writerow(columns[:,i])
 
 		return best_mn, error
 
@@ -352,7 +377,11 @@ def main():
 	paramfilename = '/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz'
 	galaxyname = 'scl'
 	slitmaskname = 'scl5_1200B'
-	test = obsSpectrum(filename, paramfilename, 0, True, galaxyname, slitmaskname, False, 'new', plot=True).minimize_scipy(-1.1)
+
+	# Code for Evan for Keck 2019A proposal
+	test1 = obsSpectrum(filename, paramfilename, 16, True, galaxyname, slitmaskname, False, 'new', plot=True).minimize_scipy(-2.68, output=True)
+	test2 = obsSpectrum(filename, paramfilename, 30, True, galaxyname, slitmaskname, False, 'new', plot=True).minimize_scipy(-1.29, output=True)
+
 	#print('we done')
 	#test = obsSpectrum(filename, 57).plot_chisq(-2.1661300692266998)
 

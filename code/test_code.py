@@ -121,7 +121,7 @@ def main():
 
 	# Arcturus parameters from Ramirez & Allende Prieto (2011)
 	# Arcturus [Mn/H] = -0.73
-	arcturus_test(resolution=resolution, temp=4286, logg=1.66, fe=-0.52, alpha=0.4, mn=-0.73, fit=True)
+	arcturus_test(resolution=resolution, temp=4286, logg=1.66, fe=-0.52, alpha=0.4, mn=-0.52, fit=True)
 
 	return
 
