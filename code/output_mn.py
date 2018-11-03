@@ -2,7 +2,7 @@
 # Gets Mn abundances for a list of stars
 #
 # Created 5 June 18
-# Updated 22 June 18
+# Updated 2 Nov 18
 ###################################################################
 
 #Backend for python3 on mahler
@@ -53,7 +53,7 @@ def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, gl
 	# Open new file
 	if startstar<1:
 		with open(outputname, 'w+') as f:
-			f.write('Name\tRA\tDec\tTemp\tlog(g)\t[Fe/H]\terror([Fe/H])\t[alpha/Fe]\t[Mn/H]\terror([Mn/H])\tchisq(reduced)\n')
+			f.write('Name\tRA\tDec\tTemp\tlog(g)\t[Fe/H]\terror([Fe/H])\t[alpha/Fe]\tdlam\terror(dlam)\t[Mn/H]\terror([Mn/H])\tchisq(reduced)\n')
 
 	# Get number of stars in file
 	Nstars = open_obs_file(filename)
@@ -76,9 +76,8 @@ def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, gl
 			print('Getting initial metallicity')
 			temp, logg, fe, alpha, fe_err = open_obs_file(filename, retrievespec=i, specparams=True)
 
-			#if np.isclose(1.5,logg) and np.isclose(fe,-1.5) and np.isclose(fe_err, 0.0):
-			#	print('Bad parameter measurement! Skipped #'+str(i+1)+'/'+str(Nstars)+' stars')
-			#	continue
+			# Get dlam (FWHM) of star to use for initial guess
+			specname, obswvl, obsflux, ivar, dlam, zrest = open_obs_file(filename, retrievespec=i)
 
 			if np.isclose(temp, 4750.) and np.isclose(fe,-1.5) and np.isclose(alpha,0.2):
 				print('Bad parameter measurement! Skipped #'+str(i+1)+'/'+str(Nstars)+' stars')
@@ -87,7 +86,7 @@ def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, gl
 			# Run optimization code
 			star = chi_sq.obsSpectrum(filename, paramfilename, i, True, galaxyname, slitmaskname, globular, lines)
 			#best_mn, error = star.minimize_scipy(fe)
-			best_mn, error, finalchisq = star.plot_chisq(fe)
+			best_mn, error, finalchisq = star.plot_chisq(fe, dlam)
 
 		except Exception as e:
 			print(repr(e))
@@ -97,10 +96,9 @@ def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, gl
 		print('Finished star '+star.specname, '#'+str(i+1)+'/'+str(Nstars)+' stars')
 
 		with open(outputname, 'a') as f:
-			f.write(star.specname+'\t'+str(RA[i])+'\t'+str(Dec[i])+'\t'+str(star.temp)+'\t'+str(star.logg[0])+'\t'+str(star.fe[0])+'\t'+str(star.fe_err[0])+'\t'+str(star.alpha[0])+'\t'+str(best_mn[0])+'\t'+str(error[0])+'\t'+str(finalchisq)+'\n')
+			f.write(star.specname+'\t'+str(RA[i])+'\t'+str(Dec[i])+'\t'+str(star.temp)+'\t'+str(star.logg[0])+'\t'+str(star.fe[0])+'\t'+str(star.fe_err[0])+'\t'+str(star.alpha[0])+'\t'+str(best_mn[1])+'\t'+str(error[1])+'\t'+str(best_mn[0])+'\t'+str(error[0])+'\t'+str(finalchisq)+'\n')
 
 	return
-
 
 def match_hires(hiresfile, obsfile):
 	"""Measure Mn abundances for stars that have hi-resolution measurements.
@@ -179,8 +177,10 @@ def make_chisq_plots(filename, paramfilename, galaxyname, slitmaskname, startsta
 		file = '/raid/madlr/dsph/'+galaxyname+'/'+slitmaskname+'.csv'
 
 	name  = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=0, dtype='str')
-	mn    = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=8)
-	mnerr = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=9)
+	mn    = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=10)
+	mnerr = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=11)
+	dlam = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=8)
+	dlamerr = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=9)
 
 	# Get number of stars in file with observed spectra
 	Nstars = open_obs_file(filename)
@@ -205,7 +205,81 @@ def make_chisq_plots(filename, paramfilename, galaxyname, slitmaskname, startsta
 				# If so, plot chi-sq contours if error is < 1 dex
 				idx = np.where(name == star.specname)
 				if mnerr[idx][0] < 1:
-					best_mn, error = star.plot_chisq([mn[idx][0], mnerr[idx][0]], minimize=False)
+					params0 = [[mn[idx][0], dlam[idx][0]],[mnerr[idx][0],dlamerr[idx][0]]]
+					best_mn, error = star.plot_chisq(params0, minimize=False)
+
+		except Exception as e:
+			print(repr(e))
+			print('Skipped star #'+str(i+1)+'/'+str(Nstars)+' stars')
+			continue
+
+		print('Finished star '+star.specname, '#'+str(i+1)+'/'+str(Nstars)+' stars')
+
+	return
+
+def plot_fits_postfacto(filename, paramfilename, galaxyname, slitmaskname, startstar=0, globular=False):
+	""" Plot fits and residuals for stars whose [Mn/H] abundances have already been measured.
+
+	Inputs:
+	filename 		-- file with observed spectra
+	paramfilename 	-- file with parameters of observed spectra
+	galaxyname		-- galaxy name, options: 'scl'
+	slitmaskname 	-- slitmask name, options: 'scl1'
+
+	Keywords:
+	globular 		-- if 'False', put into output path of galaxy; else, put into globular cluster path
+
+	"""
+
+	# Input filename
+	if globular:
+		file = '/raid/madlr/glob/'+galaxyname+'/'+slitmaskname+'.csv'
+	else:
+		file = '/raid/madlr/dsph/'+galaxyname+'/'+slitmaskname+'.csv'
+
+	name  = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=0, dtype='str')
+	mn    = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=10)
+	mnerr = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=11)
+	dlam = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=8)
+	dlamerr = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=9)
+
+	# Get number of stars in file with observed spectra
+	Nstars = open_obs_file(filename)
+
+	# Plot chi-sq contours for each star
+	for i in range(startstar, Nstars):
+
+		try:
+
+			# Check if parameters are measured
+			temp, logg, fe, alpha, fe_err = open_obs_file(filename, retrievespec=i, specparams=True)
+			if np.isclose(1.5,logg) and np.isclose(fe,-1.5) and np.isclose(fe_err, 0.0):
+				print('Bad parameter measurement! Skipped #'+str(i+1)+'/'+str(Nstars)+' stars')
+				continue
+
+			# Open star
+			star = chi_sq.obsSpectrum(filename, paramfilename, i, False, galaxyname, slitmaskname, globular)
+
+			# Check if star has already had [Mn/H] measured
+			if star.specname in name:
+
+				# If so, open data file for star
+				if globular:
+					datafile = '/raid/madlr/glob/'+galaxyname+'/'+slitmaskname+'/'+star.specname+'_data.csv'
+				else:
+					datafile = '/raid/madlr/dsph/'+galaxyname+'/'+slitmaskname+'/'+star.specname+'_data.csv'
+
+				# Get observed and synthetic spectra and inverse variance array
+				obswvl 		= np.genfromtxt(datafile, delimiter=',', skip_header=3, usecols=0)
+				obsflux 	= np.genfromtxt(datafile, delimiter=',', skip_header=3, usecols=1)
+				synthflux 	= np.genfromtxt(datafile, delimiter=',', skip_header=3, usecols=2)
+				synthfluxup = np.genfromtxt(datafile, delimiter=',', skip_header=3, usecols=3)
+				synthfluxdown = np.genfromtxt(datafile, delimiter=',', skip_header=3, usecols=4)
+				ivar 		= np.genfromtxt(datafile, delimiter=',', skip_header=3, usecols=5)
+
+				idx = np.where(name == star.specname)
+				if mnerr[idx][0] < 1:
+					chi_sq.make_plots('new', name, obswvl, obsflux, synthflux, outputname, ivar=ivar, synthfluxup=synthfluxup, synthfluxdown=synthfluxdown, title=None)
 
 		except Exception as e:
 			print(repr(e))

@@ -3,7 +3,7 @@
 # and finds parameters that minimze chisq measure
 # 
 # Created 5 Feb 18
-# Updated 16 Aug 18
+# Updated 2 Nov 18
 ###################################################################
 
 #Backend for python3 on mahler
@@ -26,7 +26,7 @@ from wvl_corr import fit_wvl
 import csv
 
 # Code to make plots
-def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, ivar=None, title=None):
+def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, ivar=None, title=None, synthfluxup=None, synthfluxdown=None):
 	"""Make plots.
 
 	Inputs:
@@ -40,6 +40,7 @@ def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, ivar=Non
 	Keywords:
 	ivar 	-- inverse variance; if 'None' (default), don't print errorbars
 	title 	-- plot title; if 'None' (default), then plot title = "Star + ID"
+	synthfluxup & synthfluxdown -- if not 'None' (default), then plot synthetic spectrum as region between [Mn/H]_best +/- 0.3dex
 
 	Outputs:
 	"""
@@ -95,8 +96,11 @@ def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, ivar=Non
 				plt.figure(1)
 				plt.subplot(nrows,ncols,i+1)
 				plt.axvspan(linelist[i] - linewidth[i], linelist[i] + linewidth[i], color='green', alpha=0.25)
+				if (synthfluxup is not None) and (synthfluxdown is not None):
+					plt.fill_between(obswvl[mask], synthfluxup[mask], synthfluxup[mask], facecolor='red', alpha=0.25, label='Synthetic')
+				else:
+					plt.plot(obswvl[mask], synthflux[mask], 'r-', label='Synthetic')
 				plt.errorbar(obswvl[mask], obsflux[mask], yerr=yerr, color='k', fmt='o', label='Observed')
-				plt.plot(obswvl[mask], synthflux[mask], 'r-', label='Synthetic')
 
 				# Only plot residuals if synth spectrum has been smoothed to match obswvl
 				plt.figure(2)
@@ -293,7 +297,7 @@ class obsSpectrum:
 
 		return synthflux
 
-	def minimize_scipy(self, params0, output=False):
+	def minimize_scipy(self, params0, plots=False, output=False):
 		"""Minimize residual using scipy.optimize Levenberg-Marquardt.
 
 		Inputs:
@@ -302,6 +306,7 @@ class obsSpectrum:
 			smoothivar0 -- if applicable, inverse variance to use for smoothing
 
 		Keywords:
+		plots  -- if 'True', also plot final fit & residual
 		output -- if 'True', also output a file (default='False')
 
 		Outputs:
@@ -324,24 +329,25 @@ class obsSpectrum:
 			finalsynth = self.synthetic(self.obswvl_final, best_mn[0], best_mn[1], full=True)
 
 		# Make plots
-		make_plots(self.lines, self.specname, self.obswvl_final, self.obsflux_final, finalsynth, self.outputname, ivar=self.ivar_final)
+		if plots:
+			make_plots(self.lines, self.specname, self.obswvl_final, self.obsflux_final, finalsynth, self.outputname, ivar=self.ivar_final)
 
 		# Output the final data
 		if output:
 
 			if len(np.atleast_1d(best_mn)) == 1:
-				finalsynthup 	= self.synthetic(self.obswvl_final, best_mn + 0.3, full=True)
-				finalsynthdown 	= self.synthetic(self.obswvl_final, best_mn - 0.3, full=True)
+				finalsynthup 	= self.synthetic(self.obswvl_final, best_mn + error, full=True)
+				finalsynthdown 	= self.synthetic(self.obswvl_final, best_mn - error, full=True)
 			else:
-				finalsynthup = self.synthetic(self.obswvl_final, best_mn[0] + 0.3, best_mn[1], full=True)
-				finalsynthdown = self.synthetic(self.obswvl_final, best_mn[0] - 0.3, best_mn[1], full=True)
+				finalsynthup = self.synthetic(self.obswvl_final, best_mn[0] + error[0], best_mn[1], full=True)
+				finalsynthdown = self.synthetic(self.obswvl_final, best_mn[0] - error[0], best_mn[1], full=True)
 
 			# Create file
 			filename = self.outputname+'/'+self.specname+'_data.csv'
 
 			# Define columns
-			columnstr = ['wvl','obsflux','synthflux','synthflux_up','synthflux_down']
-			columns = np.asarray([self.obswvl_final, self.obsflux_final, finalsynth, finalsynthup, finalsynthdown])
+			columnstr = ['wvl','obsflux','synthflux','synthflux_up','synthflux_down','ivar']
+			columns = np.asarray([self.obswvl_final, self.obsflux_final, finalsynth, finalsynthup, finalsynthdown, self.ivar_final])
 
 			with open(filename, 'w') as csvfile:
 				datawriter = csv.writer(csvfile, delimiter=',')
@@ -349,7 +355,7 @@ class obsSpectrum:
 				# Write header
 				datawriter.writerow(['[Mn/H]', best_mn[0]])
 				if len(np.atleast_1d(best_mn)) > 1:
-					datawriter.writerow(['dlam: ', best_mn[1]])
+					datawriter.writerow(['dlam', best_mn[1]])
 				datawriter.writerow(columnstr)
 
 				# Write data
@@ -358,7 +364,7 @@ class obsSpectrum:
 
 		return best_mn, error
 
-	def plot_chisq(self, mn0, minimize=True):
+	def plot_chisq(self, params0, minimize=True):
 		"""Plot chi-sq as a function of [Mn/H].
 
 		Inputs:
@@ -378,8 +384,8 @@ class obsSpectrum:
 		if minimize:
 			mn_result, mn_error = self.minimize_scipy(params0, output=True)
 		else:
-			mn_result = mn0[0]
-			mn_error  = mn0[1]
+			mn_result = [params0[0]]
+			mn_error  = [params0[1]]
 
 		mn_list = np.array([-3,-2,-1.5,-1,-0.5,-0.1,0,0.1,0.5,1,1.5,2,3])*mn_error[0] + mn_result[0]
 		dlam 	= mn_result[1]
