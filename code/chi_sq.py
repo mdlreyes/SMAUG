@@ -23,6 +23,7 @@ from astropy.io import fits
 import pandas
 import scipy.optimize
 from wvl_corr import fit_wvl
+import csv
 
 # Code to make plots
 def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, ivar=None, title=None):
@@ -246,12 +247,14 @@ class obsSpectrum:
 		#print(len(self.obswvl_final))
 
 	# Define function to minimize
-	def synthetic(self, obswvl, mn, full=True):
+	def synthetic(self, obswvl, mn, dlam, full=True):
 		"""Get synthetic spectrum for fitting.
 
 		Inputs:
 		obswvl  -- independent variable (wavelength)
-		mn 		-- parameter to fit (Mn abundance)
+		parameters to fit:
+			mn 		-- Mn abundance
+			dlam    -- FWHM to be used for smoothing
 
 		Keywords:
 		full 	-- if True, splice together all Mn line regions; else, keep as array
@@ -261,8 +264,9 @@ class obsSpectrum:
 		"""
 
 		# Compute synthetic spectrum
-		print('Computing synthetic spectrum...')
+		print('Computing synthetic spectrum with parameters: ', mn, dlam)
 		synth = runMoog(temp=self.temp, logg=self.logg, fe=self.fe, alpha=self.alpha, elements=[25], abunds=[mn], solar=[5.43], lines=self.lines)
+
 		#print('Ran synthetic spectrum.')
 
 		# Loop over each line
@@ -273,7 +277,12 @@ class obsSpectrum:
 			#print(len(synthregion), len(self.obswvl_fit[i]),len(self.obsflux_fit[i]),len(self.ivar_fit[i]), len(self.dlam_fit[i]))
 
 			# Smooth each region of synthetic spectrum to match each region of continuum-normalized observed spectrum
-			newsynth = get_synth(self.obswvl_fit[i], self.obsflux_fit[i], self.ivar_fit[i], self.dlam_fit[i], synth=synthregion)
+
+			# uncomment this if dlam is not a fitting parameter
+			# newsynth = get_synth(self.obswvl_fit[i], self.obsflux_fit[i], self.ivar_fit[i], self.dlam_fit[i], synth=synthregion)
+
+			# uncomment this if dlam is a fitting parameter
+			newsynth = get_synth(self.obswvl_fit[i], self.obsflux_fit[i], self.ivar_fit, dlam, synth=synthregion)
 			synthflux.append(newsynth)
 
 		print('Finished smoothing synthetic spectrum!')
@@ -284,11 +293,13 @@ class obsSpectrum:
 
 		return synthflux
 
-	def minimize_scipy(self, mn0, output=False):
+	def minimize_scipy(self, params0, output=False):
 		"""Minimize residual using scipy.optimize Levenberg-Marquardt.
 
 		Inputs:
-		mn0 -- initial guess for Mn abundance
+		params0 -- initial guesses for parameters:
+			mn0 -- Mn abundance
+			smoothivar0 -- if applicable, inverse variance to use for smoothing
 
 		Keywords:
 		output -- if 'True', also output a file (default='False')
@@ -299,15 +310,18 @@ class obsSpectrum:
 		"""
 
 		# Do minimization
-		print('Starting minimization!')
-		best_mn, covar = scipy.optimize.curve_fit(self.synthetic, self.obswvl_final, self.obsflux_final, p0=[mn0], sigma=np.sqrt(np.reciprocal(self.ivar_final)), epsfcn=0.01)
+		print('Starting minimization! Initial guesses: ', params0)
+		best_mn, covar = scipy.optimize.curve_fit(self.synthetic, self.obswvl_final, self.obsflux_final, p0=[params0], sigma=np.sqrt(np.reciprocal(self.ivar_final)), epsfcn=0.01)
 		error = np.sqrt(np.diag(covar))
 
 		print('Answer: ', best_mn)
 		print('Error: ', error)
 
 		# Do some checks
-		finalsynth = self.synthetic(self.obswvl_final, best_mn, full=True)
+		if len(np.atleast_1d(best_mn)) == 1:
+			finalsynth = self.synthetic(self.obswvl_final, best_mn, full=True)
+		else:
+			finalsynth = self.synthetic(self.obswvl_final, best_mn[0], best_mn[1], full=True)
 
 		# Make plots
 		make_plots(self.lines, self.specname, self.obswvl_final, self.obsflux_final, finalsynth, self.outputname, ivar=self.ivar_final)
@@ -315,19 +329,31 @@ class obsSpectrum:
 		# Output the final data
 		if output:
 
+			if len(np.atleast_1d(best_mn)) == 1:
+				finalsynthup 	= self.synthetic(self.obswvl_final, best_mn + 0.3, full=True)
+				finalsynthdown 	= self.synthetic(self.obswvl_final, best_mn - 0.3, full=True)
+			else:
+				finalsynthup = self.synthetic(self.obswvl_final, best_mn[0] + 0.3, best_mn[1], full=True)
+				finalsynthdown = self.synthetic(self.obswvl_final, best_mn[0] - 0.3, best_mn[1], full=True)
+
 			# Create file
-			filename = self.outputname+'/'+specname+'_data.csv'
-			datawriter = csv.writer(csvfile, delimiter=',')
+			filename = self.outputname+'/'+self.specname+'_data.csv'
 
 			# Define columns
-			columnstr = ['wvl','synthflux','obsflux']
-			columns = np.asarray([self.obswvl_final, finalsynth, self.obsflux_final])
+			columnstr = ['wvl','obsflux','synthflux','synthflux_up','synthflux_down']
+			columns = np.asarray([self.obswvl_final, self.obsflux_final, finalsynth, finalsynthup, finalsynthdown])
 
-			#Write header
- 			datawriter.writerow(columnstr)
+			with open(filename, 'w') as csvfile:
+				datawriter = csv.writer(csvfile, delimiter=',')
 
-			with open(filename, 'wb') as csvfile:
-				for i in spiralsmovedtodwarfs:
+				# Write header
+				datawriter.writerow(['[Mn/H]', best_mn[0]])
+				if len(np.atleast_1d(best_mn)) > 1:
+					datawriter.writerow(['dlam: ', best_mn[1]])
+				datawriter.writerow(columnstr)
+
+				# Write data
+				for i in range(len(finalsynth)):
 					datawriter.writerow(columns[:,i])
 
 		return best_mn, error
@@ -379,8 +405,9 @@ def main():
 	slitmaskname = 'scl5_1200B'
 
 	# Code for Evan for Keck 2019A proposal
-	test1 = obsSpectrum(filename, paramfilename, 16, True, galaxyname, slitmaskname, False, 'new', plot=True).minimize_scipy(-2.68, output=True)
-	test2 = obsSpectrum(filename, paramfilename, 30, True, galaxyname, slitmaskname, False, 'new', plot=True).minimize_scipy(-1.29, output=True)
+	#test1 = obsSpectrum(filename, paramfilename, 16, True, galaxyname, slitmaskname, False, 'new', plot=True).minimize_scipy(-2.68, output=True)
+	#test2 = obsSpectrum(filename, paramfilename, 30, True, galaxyname, slitmaskname, False, 'new', plot=True).minimize_scipy(-1.29, output=True)
+	test2 = obsSpectrum(filename, paramfilename, 26, True, galaxyname, slitmaskname, False, 'new', plot=True).minimize_scipy([-1.50, 0.48], output=True)
 
 	#print('we done')
 	#test = obsSpectrum(filename, 57).plot_chisq(-2.1661300692266998)

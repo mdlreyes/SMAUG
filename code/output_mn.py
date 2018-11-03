@@ -247,11 +247,14 @@ def main():
 	run_chisq('/raid/caltech/moogify/bfor6/moogify.fits.gz', '/raid/gduggan/moogify/bfor6_moogify.fits.gz', 'for', 'for6', startstar=0)
 	'''
 
+	# Measure Mn abundances for Fornax using new 1200B data
+	run_chisq('/raid/caltech/moogify/bfor7_1200B/moogify.fits.gz', '/raid/caltech/moogify/bfor7_1200B/moogify.fits.gz', 'for', 'for7_1200B', startstar=0, lines='new')
+
 	# Measure Mn abundances for a test globular cluster (NGC 2419)
 	#run_chisq('/raid/caltech/moogify/n2419b_blue/moogify.fits.gz', '/raid/gduggan/moogify/n2419b_blue_moogify.fits.gz', 'n2419', 'n2419b_blue', startstar=0, globular=True, lines='new')
 
 	# Measure Mn abundances for a test globular cluster (M15) using new 1200B data
-	run_chisq('/raid/caltech/moogify/7078l1_1200B/moogify.fits.gz', '/raid/caltech/moogify/7078l1_1200B/moogify.fits.gz', 'm15', '7078l1_1200B', startstar=0, globular=True, lines='new')
+	#run_chisq('/raid/caltech/moogify/7078l1_1200B/moogify.fits.gz', '/raid/caltech/moogify/7078l1_1200B/moogify.fits.gz', 'm15', '7078l1_1200B', startstar=0, globular=True, lines='new')
 
 	# Plot chi-sq contours for stars that already have [Mn/H] measured
 	#make_chisq_plots('/raid/caltech/moogify/n2419b_blue/moogify.fits.gz', '/raid/gduggan/moogify/n2419b_blue_moogify.fits.gz', 'n2419b_blue', 'n2419b_blue', startstar=11, globular=True)
