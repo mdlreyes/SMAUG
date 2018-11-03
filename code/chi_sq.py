@@ -362,7 +362,9 @@ class obsSpectrum:
 		"""Plot chi-sq as a function of [Mn/H].
 
 		Inputs:
-		mn0 -- initial guess for Mn abundance
+		params0 -- initial guesses for parameters:
+			mn0 -- Mn abundance
+			smoothivar0 -- if applicable, inverse variance to use for smoothing
 
 		Keywords:
 		minimize -- if 'True' (default), mn0 is an initial guess, and code will minimize;
@@ -374,15 +376,16 @@ class obsSpectrum:
 		"""
 
 		if minimize:
-			mn_result, mn_error = self.minimize_scipy(mn0)
+			mn_result, mn_error = self.minimize_scipy(params0, output=True)
 		else:
 			mn_result = mn0[0]
 			mn_error  = mn0[1]
 
-		mn_list = np.array([-3,-2,-1.5,-1,-0.5,-0.1,0,0.1,0.5,1,1.5,2,3])*mn_error + mn_result
+		mn_list = np.array([-3,-2,-1.5,-1,-0.5,-0.1,0,0.1,0.5,1,1.5,2,3])*mn_error[0] + mn_result[0]
+		dlam 	= mn_result[1]
 		chisq_list = np.zeros(len(mn_list))
 		for i in range(len(mn_list)):
-			finalsynth = self.synthetic(self.obswvl_final, mn_list[i])
+			finalsynth = self.synthetic(self.obswvl_final, mn_list[i], dlam)
 			chisq = np.sum(np.power(self.obsflux_final - finalsynth, 2.) * self.ivar_final) / (len(self.obsflux_final) - 1.)
 			chisq_list[i] = chisq
 
