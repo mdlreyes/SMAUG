@@ -219,7 +219,7 @@ def make_chisq_plots(filename, paramfilename, galaxyname, slitmaskname, startsta
 
 	return
 
-def plot_fits_postfacto(filename, paramfilename, galaxyname, slitmaskname, startstar=0, globular=False):
+def plot_fits_postfacto(filename, paramfilename, galaxyname, slitmaskname, startstar=0, globular=False, lines='new'):
 	""" Plot fits, residuals, and ivar for stars whose [Mn/H] abundances have already been measured.
 
 	Inputs:
@@ -229,7 +229,12 @@ def plot_fits_postfacto(filename, paramfilename, galaxyname, slitmaskname, start
 	slitmaskname 	-- slitmask name, options: 'scl1'
 
 	Keywords:
-	globular 		-- if 'False', put into output path of galaxy; else, put into globular cluster path
+	startstar		-- if 0 (default), start at beginning of file and write new datafile;
+						else, start at #startstar and just append to datafile
+	globular 		-- if 'False' (default), put into output path of galaxy;
+						else, put into globular cluster path
+	lines 			-- if 'new' (default), use new revised linelist;
+						else, use original linelist from Judy's code
 
 	"""
 
@@ -238,6 +243,12 @@ def plot_fits_postfacto(filename, paramfilename, galaxyname, slitmaskname, start
 		file = '/raid/madlr/glob/'+galaxyname+'/'+slitmaskname+'.csv'
 	else:
 		file = '/raid/madlr/dsph/'+galaxyname+'/'+slitmaskname+'.csv'
+
+	# Output filepath
+	if globular:
+		outputname = '/raid/madlr/glob/'+galaxyname+'/'+slitmaskname
+	else:
+		outputname = '/raid/madlr/dsph/'+galaxyname+'/'+slitmaskname
 
 	name  = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=0, dtype='str')
 	mn    = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=10)
@@ -260,16 +271,16 @@ def plot_fits_postfacto(filename, paramfilename, galaxyname, slitmaskname, start
 				continue
 
 			# Open star
-			star = chi_sq.obsSpectrum(filename, paramfilename, i, False, galaxyname, slitmaskname, globular)
+			star = chi_sq.obsSpectrum(filename, paramfilename, i, False, galaxyname, slitmaskname, globular, lines)
 
 			# Check if star has already had [Mn/H] measured
 			if star.specname in name:
 
 				# If so, open data file for star
 				if globular:
-					datafile = '/raid/madlr/glob/'+galaxyname+'/'+slitmaskname+'/'+star.specname+'_data.csv'
+					datafile = '/raid/madlr/glob/'+galaxyname+'/'+slitmaskname+'/'+str(star.specname)+'_data.csv'
 				else:
-					datafile = '/raid/madlr/dsph/'+galaxyname+'/'+slitmaskname+'/'+star.specname+'_data.csv'
+					datafile = '/raid/madlr/dsph/'+galaxyname+'/'+slitmaskname+'/'+str(star.specname)+'_data.csv'
 
 				# Get observed and synthetic spectra and inverse variance array
 				obswvl 		= np.genfromtxt(datafile, delimiter=',', skip_header=3, usecols=0)
@@ -281,7 +292,7 @@ def plot_fits_postfacto(filename, paramfilename, galaxyname, slitmaskname, start
 
 				idx = np.where(name == star.specname)
 				if mnerr[idx][0] < 1:
-					chi_sq.make_plots('new', name, obswvl, obsflux, synthflux, outputname, ivar=ivar, synthfluxup=synthfluxup, synthfluxdown=synthfluxdown, title=None)
+					chi_sq.make_plots(lines, star.specname, obswvl, obsflux, synthflux, outputname, ivar=ivar, synthfluxup=synthfluxup, synthfluxdown=synthfluxdown, title=None)
 
 		except Exception as e:
 			print(repr(e))
@@ -302,7 +313,8 @@ def main():
 	#run_chisq('/raid/caltech/moogify/bscl6/moogify.fits.gz', '/raid/gduggan/moogify/bscl6_moogify.fits.gz', 'scl', 'scl6', startstar=0, lines='new')
 
 	# Measure Mn abundances for Sculptor using new 1200B data
-	run_chisq('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', '/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'scl5_1200B', startstar=0, lines='new', plots=True)
+	#run_chisq('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', '/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'scl5_1200B', startstar=0, lines='new', plots=True)
+	plot_fits_postfacto('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', '/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'scl5_1200B', startstar=0, globular=False, lines='new')
 	'''
 	# Measure Mn abundances for Ursa Minor
 	run_chisq('/raid/caltech/moogify/bumi1/moogify.fits.gz', '/raid/gduggan/moogify/bumi1_moogify.fits.gz', 'umi', 'umi1', startstar=0)
