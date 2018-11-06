@@ -25,7 +25,7 @@ import pandas
 import scipy.optimize
 import chi_sq
 
-def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, globular=False, lines='new'):
+def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, globular=False, lines='new', plots=False):
 	""" Measure Mn abundances from a FITS file.
 
 	Inputs:
@@ -41,6 +41,8 @@ def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, gl
 						else, put into globular cluster path
 	lines 			-- if 'new' (default), use new revised linelist;
 						else, use original linelist from Judy's code
+	plots 			-- if 'False' (default), don't plot final fits/resids while doing the fits;
+						else, plot them
 
 	"""
 
@@ -86,7 +88,7 @@ def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, gl
 			# Run optimization code
 			star = chi_sq.obsSpectrum(filename, paramfilename, i, True, galaxyname, slitmaskname, globular, lines)
 			#best_mn, error = star.minimize_scipy(fe)
-			best_mn, error, finalchisq = star.plot_chisq(fe, dlam)
+			best_mn, error, finalchisq = star.plot_chisq([fe, dlam[0]], output=True, plots=plots)
 
 		except Exception as e:
 			print(repr(e))
@@ -218,7 +220,7 @@ def make_chisq_plots(filename, paramfilename, galaxyname, slitmaskname, startsta
 	return
 
 def plot_fits_postfacto(filename, paramfilename, galaxyname, slitmaskname, startstar=0, globular=False):
-	""" Plot fits and residuals for stars whose [Mn/H] abundances have already been measured.
+	""" Plot fits, residuals, and ivar for stars whose [Mn/H] abundances have already been measured.
 
 	Inputs:
 	filename 		-- file with observed spectra
@@ -300,8 +302,7 @@ def main():
 	#run_chisq('/raid/caltech/moogify/bscl6/moogify.fits.gz', '/raid/gduggan/moogify/bscl6_moogify.fits.gz', 'scl', 'scl6', startstar=0, lines='new')
 
 	# Measure Mn abundances for Sculptor using new 1200B data
-	#run_chisq('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', '/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'scl5_1200B', startstar=0, lines='new')
-
+	run_chisq('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', '/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'scl5_1200B', startstar=0, lines='new', plots=True)
 	'''
 	# Measure Mn abundances for Ursa Minor
 	run_chisq('/raid/caltech/moogify/bumi1/moogify.fits.gz', '/raid/gduggan/moogify/bumi1_moogify.fits.gz', 'umi', 'umi1', startstar=0)
@@ -322,7 +323,7 @@ def main():
 	'''
 
 	# Measure Mn abundances for Fornax using new 1200B data
-	run_chisq('/raid/caltech/moogify/bfor7_1200B/moogify.fits.gz', '/raid/caltech/moogify/bfor7_1200B/moogify.fits.gz', 'for', 'for7_1200B', startstar=0, lines='new')
+	#run_chisq('/raid/caltech/moogify/bfor7_1200B/moogify.fits.gz', '/raid/caltech/moogify/bfor7_1200B/moogify.fits.gz', 'for', 'for7_1200B', startstar=0, lines='new')
 
 	# Measure Mn abundances for a test globular cluster (NGC 2419)
 	#run_chisq('/raid/caltech/moogify/n2419b_blue/moogify.fits.gz', '/raid/gduggan/moogify/n2419b_blue_moogify.fits.gz', 'n2419', 'n2419b_blue', startstar=0, globular=True, lines='new')

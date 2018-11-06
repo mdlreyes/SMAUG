@@ -75,6 +75,10 @@ def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, ivar=Non
 	plt.figure(num=2, figsize=figsize)
 	plt.title(title)
 
+	# Plot showing ivar
+	plt.figure(num=3, figsize=figsize)
+	plt.title(title)
+
 	for i in range(len(linelist)):
 
 		# Range over which to plot
@@ -97,7 +101,7 @@ def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, ivar=Non
 				plt.subplot(nrows,ncols,i+1)
 				plt.axvspan(linelist[i] - linewidth[i], linelist[i] + linewidth[i], color='green', alpha=0.25)
 				if (synthfluxup is not None) and (synthfluxdown is not None):
-					plt.fill_between(obswvl[mask], synthfluxup[mask], synthfluxup[mask], facecolor='red', alpha=0.25, label='Synthetic')
+					plt.fill_between(obswvl[mask], synthfluxup[mask], synthfluxdown[mask], facecolor='red', alpha=0.75, label='Synthetic')
 				else:
 					plt.plot(obswvl[mask], synthflux[mask], 'r-', label='Synthetic')
 				plt.errorbar(obswvl[mask], obsflux[mask], yerr=yerr, color='k', fmt='o', label='Observed')
@@ -108,6 +112,13 @@ def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, ivar=Non
 				plt.axvspan(linelist[i] - linewidth[i], linelist[i] + linewidth[i], color='green', alpha=0.25)
 				plt.errorbar(obswvl[mask], obsflux[mask] - synthflux[mask], yerr=yerr, color='k', fmt='o', label='Residuals')
 				plt.axhline(0, color='r', linestyle='solid', label='Zero')
+
+				# Plot ivar
+				plt.figure(3)
+				plt.subplot(nrows,ncols,i+1)
+				plt.axvspan(linelist[i] - linewidth[i], linelist[i] + linewidth[i], color='green', alpha=0.25)
+				plt.errorbar(obswvl[mask], ivar[mask], color='k', linestyle='-')
+				#plt.axhline(0, color='r', linestyle='solid', label='Zero')
 
 		except:
 			continue
@@ -125,11 +136,16 @@ def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, ivar=Non
 	fig2 = plt.figure(2)
 	fig2.text(0.5, 0.04, 'Wavelength (A)', fontsize=18, ha='center', va='center')
 	fig2.text(0.06, 0.5, 'Residuals', fontsize=18, ha='center', va='center', rotation='vertical')
-	plt.ylabel('Residuals')
-	plt.xlabel('Wavelength (A)')
 	plt.legend(loc='best')
 	plt.savefig(outputname+'/'+specname+'_resids.png',bbox_inches='tight')
 	plt.close(2)
+
+	fig3 = plt.figure(3)
+	fig3.text(0.5, 0.04, 'Wavelength (A)', fontsize=18, ha='center', va='center')
+	fig3.text(0.06, 0.5, 'Inverse variance', fontsize=18, ha='center', va='center', rotation='vertical')
+	#plt.legend(loc='best')
+	plt.savefig(outputname+'/'+specname+'_ivar.png',bbox_inches='tight')
+	plt.close(3)
 
 # Observed spectrum
 class obsSpectrum:
@@ -289,7 +305,7 @@ class obsSpectrum:
 			newsynth = get_synth(self.obswvl_fit[i], self.obsflux_fit[i], self.ivar_fit, dlam, synth=synthregion)
 			synthflux.append(newsynth)
 
-		print('Finished smoothing synthetic spectrum!')
+		#print('Finished smoothing synthetic spectrum!')
 
 		# If necessary, splice everything together
 		if full:
@@ -297,7 +313,7 @@ class obsSpectrum:
 
 		return synthflux
 
-	def minimize_scipy(self, params0, plots=False, output=False):
+	def minimize_scipy(self, params0, output=False, plots=False):
 		"""Minimize residual using scipy.optimize Levenberg-Marquardt.
 
 		Inputs:
@@ -327,10 +343,6 @@ class obsSpectrum:
 			finalsynth = self.synthetic(self.obswvl_final, best_mn, full=True)
 		else:
 			finalsynth = self.synthetic(self.obswvl_final, best_mn[0], best_mn[1], full=True)
-
-		# Make plots
-		if plots:
-			make_plots(self.lines, self.specname, self.obswvl_final, self.obsflux_final, finalsynth, self.outputname, ivar=self.ivar_final)
 
 		# Output the final data
 		if output:
@@ -362,9 +374,16 @@ class obsSpectrum:
 				for i in range(len(finalsynth)):
 					datawriter.writerow(columns[:,i])
 
+			# Make plots
+			if plots:
+				make_plots(self.lines, self.specname, self.obswvl_final, self.obsflux_final, finalsynth, self.outputname, ivar=self.ivar_final, synthfluxup=finalsynthup, synthfluxdown=finalsynthdown)
+
+		elif plots:
+			make_plots(self.lines, self.specname, self.obswvl_final, self.obsflux_final, finalsynth, self.outputname, ivar=self.ivar_final)
+
 		return best_mn, error
 
-	def plot_chisq(self, params0, minimize=True):
+	def plot_chisq(self, params0, minimize=True, output=False, plots=False):
 		"""Plot chi-sq as a function of [Mn/H].
 
 		Inputs:
@@ -375,6 +394,7 @@ class obsSpectrum:
 		Keywords:
 		minimize -- if 'True' (default), mn0 is an initial guess, and code will minimize;
 					else, mn0 must be a list containing the best-fit Mn and the error [mn_result, mn_error]
+		plots    -- if 'True', also plot final fit & residual (note: only works if minimize=True)
 
 		Outputs:
 		fitparams -- best fit parameters
@@ -382,7 +402,7 @@ class obsSpectrum:
 		"""
 
 		if minimize:
-			mn_result, mn_error = self.minimize_scipy(params0, output=True)
+			mn_result, mn_error = self.minimize_scipy(params0, plots=plots, output=output)
 		else:
 			mn_result = [params0[0]]
 			mn_error  = [params0[1]]
@@ -395,7 +415,7 @@ class obsSpectrum:
 			chisq = np.sum(np.power(self.obsflux_final - finalsynth, 2.) * self.ivar_final) / (len(self.obsflux_final) - 1.)
 			chisq_list[i] = chisq
 
-		if mn_error < 1.0:
+		if mn_error[0] < 1.0:
 			plt.figure()
 			plt.title('Star '+self.specname, fontsize=18)
 			plt.plot(mn_list, chisq_list, '-o')
@@ -416,7 +436,7 @@ def main():
 	# Code for Evan for Keck 2019A proposal
 	#test1 = obsSpectrum(filename, paramfilename, 16, True, galaxyname, slitmaskname, False, 'new', plot=True).minimize_scipy(-2.68, output=True)
 	#test2 = obsSpectrum(filename, paramfilename, 30, True, galaxyname, slitmaskname, False, 'new', plot=True).minimize_scipy(-1.29, output=True)
-	test2 = obsSpectrum(filename, paramfilename, 26, True, galaxyname, slitmaskname, False, 'new', plot=True).minimize_scipy([-1.50, 0.48], output=True)
+	test2 = obsSpectrum(filename, paramfilename, 26, True, galaxyname, slitmaskname, False, 'new', plot=True).plot_chisq([-1.50, 0.48], output=True, plots=True)
 
 	#print('we done')
 	#test = obsSpectrum(filename, 57).plot_chisq(-2.1661300692266998)
