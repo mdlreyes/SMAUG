@@ -4,7 +4,7 @@
 # - divides obs/synth, fits spline, and divides obs/spline (divide_spec)
 # 
 # Created 22 Feb 18
-# Updated 10 Aug 18
+# Updated 9 Nov 18
 ###################################################################
 
 import os
@@ -26,6 +26,7 @@ from smooth_gauss import smooth_gauss
 from interp_atmosphere import interpolateAtm
 from match_spectrum import open_obs_file, smooth_gauss_wrapper
 from scipy.interpolate import splrep, splev
+from make_plots import make_plots
 
 def get_synth(obswvl, obsflux, ivar, dlam, synth=None, temp=None, logg=None, fe=None, alpha=None):
 	"""Get synthetic spectrum and smooth it to match observed spectrum.
@@ -182,7 +183,7 @@ def mask_obs_for_division(obswvl, obsflux, ivar, temp=None, logg=None, fe=None, 
 
 	return synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask
 
-def divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask, sigmaclip=False):
+def divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask, sigmaclip=False, specname=None, outputname=None):
 	"""Do the actual continuum fitting:
 	- Divide obs/synth.
 	- Fit spline to quotient. 
@@ -202,6 +203,8 @@ def divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask, sigmacli
 
     Keywords:
     sigmaclip 		-- if 'True', do sigma clipping while spline-fitting
+    specname 		-- if not None, make plots of quotient and spline
+    outputname 		-- if not None, gives path to save plots to
 
     Outputs:
     obsflux_norm_final -- continuum-normalized observed flux (blue and red parts spliced together)
@@ -213,6 +216,11 @@ def divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask, sigmacli
 	obsflux_norm = []
 	ivar_norm 	 = []
 
+	# Also prep some other outputs for testing
+	quotient = []
+	continuum = []
+	obsflux = []
+
 	# Do continuum division for blue and red parts separately
 	for ipart in [0,1]:
 
@@ -220,7 +228,7 @@ def divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask, sigmacli
 		newivarmask = ma.masked_array(np.sqrt(ivarmask[ipart].data), mask[ipart])
 
 		# Divide obs/synth
-		quotient = obsfluxmask[ipart]/synthfluxmask[ipart]
+		quotient.append(obsfluxmask[ipart]/synthfluxmask[ipart])
 
 		# First check if there are enough points to compute continuum
 		if len(synthfluxmask[ipart].compressed()) < 300:
@@ -247,7 +255,7 @@ def divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask, sigmacli
 		# Determine initial spline fit, before sigma-clipping
 		breakpoints_old	= calc_breakpoints(obswvlmask[ipart].compressed(), 150.) # Use 150 A spacing
 		#print('breakpoints: ', breakpoints_old)
-		splinerep_old 	= splrep(obswvlmask[ipart].compressed(), quotient.compressed(), w=newivarmask.compressed(), t=breakpoints_old)
+		splinerep_old 	= splrep(obswvlmask[ipart].compressed(), quotient[ipart].compressed(), w=newivarmask.compressed(), t=breakpoints_old)
 		continuum_old	= splev(obswvlmask[ipart].compressed(), splinerep_old)
 
 		# Iterate the fit, sigma-clipping until it converges or max number of iterations is reached
@@ -259,7 +267,7 @@ def divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask, sigmacli
 			while iternum < maxiter:
 
 				# Compute residual between quotient and spline
-				resid = quotient.compressed() - continuum_old
+				resid = quotient[ipart].compressed() - continuum_old
 				sigma = np.std(resid)
 
 				# Sigma-clipping
@@ -304,8 +312,11 @@ def divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask, sigmacli
 		else:
 			continuum_final = splev(obswvlmask[ipart].data, splinerep_old)
 
+		continuum.append(continuum_final)
+
 		# Now divide obs/spline
 		obswvl.append(obswvlmask[ipart].data)
+		obsflux.append(obsfluxmask[ipart].data)
 		obsflux_norm.append(obsfluxmask[ipart].data/continuum_final)
 
 		# Compute final inverse variance
@@ -341,24 +352,26 @@ def divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask, sigmacli
 
 		print(len(obswvlmask[ipart].compressed()), len(continuum_final[~mask[ipart]]))
 
-		plt.figure()
-		plt.plot(obswvlmask[ipart].compressed(), quotient.compressed(), 'k-', label='Quotient (masked)')
-		plt.plot(obswvlmask[ipart].compressed(), continuum_final[~mask[ipart]], 'r-', label='Final spline (masked)')
-		plt.axvspan(4749, 4759, alpha=0.5, color='blue')
-		plt.axvspan(4778, 4788, alpha=0.5, color='blue')
-		plt.axvspan(4818, 4828, alpha=0.5, color='blue')
-		plt.axvspan(5389, 5399, alpha=0.5, color='blue')
-		plt.axvspan(5532, 5542, alpha=0.5, color='blue')
-		plt.axvspan(6008, 6018, alpha=0.5, color='blue')
-		plt.axvspan(6016, 6026, alpha=0.5, color='blue')
-		plt.legend(loc='best')
-		plt.savefig('quotient_maskedMnlines'+str(ipart)+'.png')
 		'''
+		plt.figure()
+		plt.plot(obswvlmask[ipart].compressed(), quotient[ipart].compressed(), 'k-', label='Quotient (masked)')
+		plt.plot(obswvlmask[ipart].compressed(), continuum_final[~mask[ipart]], 'r-', label='Final spline (masked)')
+		plt.legend(loc='best')
+		plt.savefig(outputname+'/'+specname+'quotient'+str(ipart)+'.png')
+		plt.close()
 
 	# Now splice blue and red parts together
 	obswvl_final	 	= np.hstack((obswvl[0], obswvl[1]))
 	obsflux_norm_final 	= np.hstack((obsflux_norm[0], obsflux_norm[1]))
 	ivar_norm_final 	= np.hstack((ivar_norm[0], ivar_norm[1]))
+
+	obsflux_final 		= np.hstack((obsflux[0], obsflux[1]))
+	quotient 			= np.hstack((quotient[0], quotient[1]))
+	continuum 			= np.hstack((continuum[0], continuum[1]))
+
+	# Make plot to test
+	make_plots('new', specname+'_continuum', obswvl_final, quotient, continuum, outputname, ivar=None, title=None, synthfluxup=None, synthfluxdown=None, resids=False)
+	make_plots('new', specname+'_unnormalized', obswvl_final, obsflux_final, continuum, outputname, ivar=None, title=None, synthfluxup=None, synthfluxdown=None, resids=False)
 
 	return obsflux_norm_final, ivar_norm_final
 

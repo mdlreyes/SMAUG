@@ -510,8 +510,8 @@ def plot_spectrum(filename, starname, outfile, lines):
 
 def main():
 	# Sculptor
-	plot_mn_fe(['data/scl1_final.csv','data/scl2_final.csv','data/scl6_final.csv','data/scl5_1200B_final.csv'],
-			'figures/mnfe_scltotal_newlinelist.png','Sculptor',gratings=['k','k','k','r'],maxerror=0.3,solar=False,typei=True,typeii=False) #,snr=[3,5])
+	#plot_mn_fe(['data/scl1_final.csv','data/scl2_final.csv','data/scl6_final.csv','data/scl5_1200B_final.csv'],
+	#		'figures/mnfe_scltotal_newlinelist.png','Sculptor',gratings=['k','k','k','r'],maxerror=0.3,solar=False,typei=True,typeii=False) #,snr=[3,5])
 
 	# Ursa Minor
 	#plot_mn_fe(['data/umi1_final.csv','data/umi2_final.csv','data/umi3_final.csv'],'figures/mnfe_umitotal.png','Ursa Minor',snr=[3,5])
@@ -524,6 +524,9 @@ def main():
 	#plot_mn_fe(['data/newlinelist_data/n2419b_blue_final.csv',],'figures/gc_checks/mnfe_n2419total.png','NGC 2419') #,snr=[3,5])
 	#plot_mn_vs_something('data/newlinelist_data/n2419b_blue_final.csv', 'feh', 'figures/gc_checks/n2419b_mnh_temp.png','NGC 2419', membercheck='NGC 2419', memberlist='data/gc_checks/table_catalog.dat', maxerror=1, weighted=True)
 	#plot_mn_vs_something('data/n2419b_blue_final.csv', 'temp', 'figures/gc_checks/n2419b_mnh_temp.png','NGC 2419', membercheck='NGC 2419', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True)
+
+	# Check if adding smoothing parameter does anything
+	comparison_plot(['data/no_dlam/scl5_1200B_final.csv','data/scl5_1200B.csv'],['Don\'t fit smoothing [Mn/H]', 'Fit smoothing [Mn/H]'],'figures/scl5_1200B_smoothcheck.png','Sculptor', maxerror=1) #, weighted=False)
 
 	'''
 	newlinelist = [4739.087, 4754.042, 4761.512, 4762.367, 4765.846, 

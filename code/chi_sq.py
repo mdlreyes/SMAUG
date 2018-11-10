@@ -24,128 +24,7 @@ import pandas
 import scipy.optimize
 from wvl_corr import fit_wvl
 import csv
-
-# Code to make plots
-def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, ivar=None, title=None, synthfluxup=None, synthfluxdown=None):
-	"""Make plots.
-
-	Inputs:
-	lines -- which linelist to use? Options: 'new', 'old'
-	specname -- name of star
-	obswvl 	-- observed wavelength array
-	obsflux -- observed flux
-	synthflux 	-- synthetic flux
-	outputname 	-- where to output file
-
-	Keywords:
-	ivar 	-- inverse variance; if 'None' (default), don't print errorbars
-	title 	-- plot title; if 'None' (default), then plot title = "Star + ID"
-	synthfluxup & synthfluxdown -- if not 'None' (default), then plot synthetic spectrum as region between [Mn/H]_best +/- 0.3dex
-
-	Outputs:
-	"""
-
-	# Define lines to plot
-	if lines == 'new':
-		linelist = np.array([4739.,4754.,4761.5,4765.5,4783.,4823.,5394.,5399.,
-							 5407.,5420.,5432.,5516.,5537.,6013.,6016.,6021.,6384.,6491.])
-		linewidth = np.array([1.,1.,1.5,1.5,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.])
-
-		nrows = 3
-		ncols = 6
-		figsize = (24,12)
-
-	elif lines == 'old':
-		linelist = np.array([4739.,4783.,4823.,5394.,5432.,5516.,5537.,6013.,6021.,6384.,6491.])
-		linewidth = np.ones(len(linelist))
-
-		nrows = 3
-		ncols = 4
-		figsize = (16,12)
-
-	# Define title
-	if title is None:
-		title = 'Star'+specname
-
-	# Plot showing fits
-	plt.figure(num=1, figsize=figsize)
-	plt.title(title)
-
-	# Plot showing residuals
-	plt.figure(num=2, figsize=figsize)
-	plt.title(title)
-
-	# Plot showing ivar
-	plt.figure(num=3, figsize=figsize)
-	plt.title(title)
-
-	for i in range(len(linelist)):
-
-		# Range over which to plot
-		lolim = linelist[i] - 5
-		uplim = linelist[i] + 5
-
-		# Make mask for wavelength
-		try:
-			mask = np.where((obswvl > lolim) & (obswvl < uplim))
-
-			if len(mask[0]) > 0:
-
-				if ivar is not None:
-					yerr=np.power(ivar[mask],-0.5)
-				else:
-					yerr=None
-
-				# Plot fits
-				plt.figure(1)
-				plt.subplot(nrows,ncols,i+1)
-				plt.axvspan(linelist[i] - linewidth[i], linelist[i] + linewidth[i], color='green', alpha=0.25)
-				if (synthfluxup is not None) and (synthfluxdown is not None):
-					plt.fill_between(obswvl[mask], synthfluxup[mask], synthfluxdown[mask], facecolor='red', alpha=0.75, label='Synthetic')
-				else:
-					plt.plot(obswvl[mask], synthflux[mask], 'r-', label='Synthetic')
-				plt.errorbar(obswvl[mask], obsflux[mask], yerr=yerr, color='k', fmt='o', label='Observed')
-
-				# Only plot residuals if synth spectrum has been smoothed to match obswvl
-				plt.figure(2)
-				plt.subplot(nrows,ncols,i+1)
-				plt.axvspan(linelist[i] - linewidth[i], linelist[i] + linewidth[i], color='green', alpha=0.25)
-				plt.errorbar(obswvl[mask], obsflux[mask] - synthflux[mask], yerr=yerr, color='k', fmt='o', label='Residuals')
-				plt.axhline(0, color='r', linestyle='solid', label='Zero')
-
-				# Plot ivar
-				plt.figure(3)
-				plt.subplot(nrows,ncols,i+1)
-				plt.axvspan(linelist[i] - linewidth[i], linelist[i] + linewidth[i], color='green', alpha=0.25)
-				plt.errorbar(obswvl[mask], ivar[mask], color='k', linestyle='-')
-				#plt.axhline(0, color='r', linestyle='solid', label='Zero')
-
-		except:
-			continue
-
-	# Legend for plot showing fits
-	fig = plt.figure(1)
-	fig.text(0.5, 0.04, 'Wavelength (A)', fontsize=18, ha='center', va='center')
-	fig.text(0.06, 0.5, 'Relative flux', fontsize=18, ha='center', va='center', rotation='vertical')
-	#plt.ylabel('Relative flux')
-	#plt.xlabel('Wavelength (A)')
-	plt.legend(loc='best')
-	plt.savefig(outputname+'/'+specname+'_finalfits.png',bbox_inches='tight')
-	plt.close(1)
-
-	fig2 = plt.figure(2)
-	fig2.text(0.5, 0.04, 'Wavelength (A)', fontsize=18, ha='center', va='center')
-	fig2.text(0.06, 0.5, 'Residuals', fontsize=18, ha='center', va='center', rotation='vertical')
-	plt.legend(loc='best')
-	plt.savefig(outputname+'/'+specname+'_resids.png',bbox_inches='tight')
-	plt.close(2)
-
-	fig3 = plt.figure(3)
-	fig3.text(0.5, 0.04, 'Wavelength (A)', fontsize=18, ha='center', va='center')
-	fig3.text(0.06, 0.5, 'Inverse variance', fontsize=18, ha='center', va='center', rotation='vertical')
-	#plt.legend(loc='best')
-	plt.savefig(outputname+'/'+specname+'_ivar.png',bbox_inches='tight')
-	plt.close(3)
+from make_plots import make_plots
 
 # Observed spectrum
 class obsSpectrum:
@@ -197,7 +76,7 @@ class obsSpectrum:
 			synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask = mask_obs_for_division(self.obswvl, self.obsflux, self.ivar, temp=self.temp, logg=self.logg, fe=self.fe, alpha=self.alpha, dlam=self.dlam, lines=self.lines)
 
 			# Compute continuum-normalized observed spectrum
-			self.obsflux_norm, self.ivar_norm = divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask)
+			self.obsflux_norm, self.ivar_norm = divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask, specname=self.specname, outputname=self.outputname)
 
 			if plot:
 				# Plot continuum-normalized observed spectrum
@@ -267,7 +146,7 @@ class obsSpectrum:
 		#print(len(self.obswvl_final))
 
 	# Define function to minimize
-	def synthetic(self, obswvl, mn, dlam, full=True):
+	def synthetic(self, obswvl, mn, full=True):
 		"""Get synthetic spectrum for fitting.
 
 		Inputs:
@@ -284,7 +163,7 @@ class obsSpectrum:
 		"""
 
 		# Compute synthetic spectrum
-		print('Computing synthetic spectrum with parameters: ', mn, dlam)
+		print('Computing synthetic spectrum with parameters: ', mn) #, dlam)
 		synth = runMoog(temp=self.temp, logg=self.logg, fe=self.fe, alpha=self.alpha, elements=[25], abunds=[mn], solar=[5.43], lines=self.lines)
 
 		#print('Ran synthetic spectrum.')
@@ -299,10 +178,11 @@ class obsSpectrum:
 			# Smooth each region of synthetic spectrum to match each region of continuum-normalized observed spectrum
 
 			# uncomment this if dlam is not a fitting parameter
-			# newsynth = get_synth(self.obswvl_fit[i], self.obsflux_fit[i], self.ivar_fit[i], self.dlam_fit[i], synth=synthregion)
+			newsynth = get_synth(self.obswvl_fit[i], self.obsflux_fit[i], self.ivar_fit[i], self.dlam_fit[i], synth=synthregion)
 
 			# uncomment this if dlam is a fitting parameter
-			newsynth = get_synth(self.obswvl_fit[i], self.obsflux_fit[i], self.ivar_fit, dlam, synth=synthregion)
+			#newsynth = get_synth(self.obswvl_fit[i], self.obsflux_fit[i], self.ivar_fit[i], dlam, synth=synthregion)
+
 			synthflux.append(newsynth)
 
 		#print('Finished smoothing synthetic spectrum!')
@@ -408,10 +288,10 @@ class obsSpectrum:
 			mn_error  = [params0[1]]
 
 		mn_list = np.array([-3,-2,-1.5,-1,-0.5,-0.1,0,0.1,0.5,1,1.5,2,3])*mn_error[0] + mn_result[0]
-		dlam 	= mn_result[1]
+		#dlam 	= mn_result[1]
 		chisq_list = np.zeros(len(mn_list))
 		for i in range(len(mn_list)):
-			finalsynth = self.synthetic(self.obswvl_final, mn_list[i], dlam)
+			finalsynth = self.synthetic(self.obswvl_final, mn_list[i]) #, dlam)
 			chisq = np.sum(np.power(self.obsflux_final - finalsynth, 2.) * self.ivar_final) / (len(self.obsflux_final) - 1.)
 			chisq_list[i] = chisq
 
@@ -436,7 +316,7 @@ def main():
 	# Code for Evan for Keck 2019A proposal
 	#test1 = obsSpectrum(filename, paramfilename, 16, True, galaxyname, slitmaskname, False, 'new', plot=True).minimize_scipy(-2.68, output=True)
 	#test2 = obsSpectrum(filename, paramfilename, 30, True, galaxyname, slitmaskname, False, 'new', plot=True).minimize_scipy(-1.29, output=True)
-	test2 = obsSpectrum(filename, paramfilename, 26, True, galaxyname, slitmaskname, False, 'new', plot=True).plot_chisq([-1.50, 0.48], output=True, plots=True)
+	test2 = obsSpectrum(filename, paramfilename, 26, True, galaxyname, slitmaskname, False, 'new', plot=True).plot_chisq(-1.50, output=True, plots=False)
 
 	#print('we done')
 	#test = obsSpectrum(filename, 57).plot_chisq(-2.1661300692266998)

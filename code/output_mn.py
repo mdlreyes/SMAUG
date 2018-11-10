@@ -1,8 +1,8 @@
 # output_mn.py
-# Gets Mn abundances for a list of stars
+# Produces nice outputs
 #
 # Created 5 June 18
-# Updated 2 Nov 18
+# Updated 9 Nov 18
 ###################################################################
 
 #Backend for python3 on mahler
@@ -24,6 +24,7 @@ from astropy.coordinates import SkyCoord
 import pandas
 import scipy.optimize
 import chi_sq
+from make_plots import make_plots
 
 def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, globular=False, lines='new', plots=False):
 	""" Measure Mn abundances from a FITS file.
@@ -55,7 +56,7 @@ def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, gl
 	# Open new file
 	if startstar<1:
 		with open(outputname, 'w+') as f:
-			f.write('Name\tRA\tDec\tTemp\tlog(g)\t[Fe/H]\terror([Fe/H])\t[alpha/Fe]\tdlam\terror(dlam)\t[Mn/H]\terror([Mn/H])\tchisq(reduced)\n')
+			f.write('Name\tRA\tDec\tTemp\tlog(g)\t[Fe/H]\terror([Fe/H])\t[alpha/Fe]\t[Mn/H]\terror([Mn/H])\tchisq(reduced)\n')
 
 	# Get number of stars in file
 	Nstars = open_obs_file(filename)
@@ -88,7 +89,7 @@ def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, gl
 			# Run optimization code
 			star = chi_sq.obsSpectrum(filename, paramfilename, i, True, galaxyname, slitmaskname, globular, lines)
 			#best_mn, error = star.minimize_scipy(fe)
-			best_mn, error, finalchisq = star.plot_chisq([fe, dlam[0]], output=True, plots=plots)
+			best_mn, error, finalchisq = star.plot_chisq(fe, output=True, plots=plots)
 
 		except Exception as e:
 			print(repr(e))
@@ -98,7 +99,7 @@ def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, gl
 		print('Finished star '+star.specname, '#'+str(i+1)+'/'+str(Nstars)+' stars')
 
 		with open(outputname, 'a') as f:
-			f.write(star.specname+'\t'+str(RA[i])+'\t'+str(Dec[i])+'\t'+str(star.temp)+'\t'+str(star.logg[0])+'\t'+str(star.fe[0])+'\t'+str(star.fe_err[0])+'\t'+str(star.alpha[0])+'\t'+str(best_mn[1])+'\t'+str(error[1])+'\t'+str(best_mn[0])+'\t'+str(error[0])+'\t'+str(finalchisq)+'\n')
+			f.write(star.specname+'\t'+str(RA[i])+'\t'+str(Dec[i])+'\t'+str(star.temp)+'\t'+str(star.logg[0])+'\t'+str(star.fe[0])+'\t'+str(star.fe_err[0])+'\t'+str(star.alpha[0])+'\t'+str(best_mn[0])+'\t'+str(error[0])+'\t'+str(finalchisq)+'\n')
 
 	return
 
@@ -292,7 +293,7 @@ def plot_fits_postfacto(filename, paramfilename, galaxyname, slitmaskname, start
 
 				idx = np.where(name == star.specname)
 				if mnerr[idx][0] < 1:
-					chi_sq.make_plots(lines, star.specname, obswvl, obsflux, synthflux, outputname, ivar=ivar, synthfluxup=synthfluxup, synthfluxdown=synthfluxdown, title=None)
+					make_plots(lines, star.specname, obswvl, obsflux, synthflux, outputname, ivar=ivar, synthfluxup=synthfluxup, synthfluxdown=synthfluxdown, title=None)
 
 		except Exception as e:
 			print(repr(e))
@@ -313,8 +314,8 @@ def main():
 	#run_chisq('/raid/caltech/moogify/bscl6/moogify.fits.gz', '/raid/gduggan/moogify/bscl6_moogify.fits.gz', 'scl', 'scl6', startstar=0, lines='new')
 
 	# Measure Mn abundances for Sculptor using new 1200B data
-	#run_chisq('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', '/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'scl5_1200B', startstar=0, lines='new', plots=True)
-	plot_fits_postfacto('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', '/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'scl5_1200B', startstar=0, globular=False, lines='new')
+	run_chisq('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', '/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'scl5_1200B', startstar=0, lines='new', plots=True)
+	#plot_fits_postfacto('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', '/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'scl5_1200B', startstar=0, globular=False, lines='new')
 	'''
 	# Measure Mn abundances for Ursa Minor
 	run_chisq('/raid/caltech/moogify/bumi1/moogify.fits.gz', '/raid/gduggan/moogify/bumi1_moogify.fits.gz', 'umi', 'umi1', startstar=0)
