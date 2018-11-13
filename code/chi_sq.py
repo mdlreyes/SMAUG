@@ -256,10 +256,10 @@ class obsSpectrum:
 
 			# Make plots
 			if plots:
-				make_plots(self.lines, self.specname, self.obswvl_final, self.obsflux_final, finalsynth, self.outputname, ivar=self.ivar_final, synthfluxup=finalsynthup, synthfluxdown=finalsynthdown)
+				make_plots(self.lines, self.specname+'_', self.obswvl_final, self.obsflux_final, finalsynth, self.outputname, ivar=self.ivar_final, synthfluxup=finalsynthup, synthfluxdown=finalsynthdown)
 
 		elif plots:
-			make_plots(self.lines, self.specname, self.obswvl_final, self.obsflux_final, finalsynth, self.outputname, ivar=self.ivar_final)
+			make_plots(self.lines, self.specname+'_', self.obswvl_final, self.obsflux_final, finalsynth, self.outputname, ivar=self.ivar_final)
 
 		return best_mn, error
 

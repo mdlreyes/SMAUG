@@ -125,7 +125,7 @@ def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, resids=T
 	#plt.ylabel('Relative flux')
 	#plt.xlabel('Wavelength (A)')
 	plt.legend(loc='best')
-	plt.savefig(outputname+'/'+specname+'_finalfits.png',bbox_inches='tight')
+	plt.savefig(outputname+'/'+specname+'finalfits.png',bbox_inches='tight')
 	plt.close(1)
 
 	if resids:

@@ -141,11 +141,15 @@ def mask_obs_for_division(obswvl, obsflux, ivar, temp=None, logg=None, fe=None, 
 	mask[:5]  = True
 	mask[-5:] = True
 
+	# Mask out more of ends of spectra
+	mask[np.where(obswvl < 4500)] = True
+	mask[np.where(obswvl > 6600)] = True
+
 	# Mask out pixels near chip gap
 	chipgap = int(len(mask)/2 - 1)
 	print('wavelength of chip gap: ', obswvl[chipgap])
 	#print('Chip gap: ', chipgap)
-	mask[(chipgap - 5): (chipgap + 5)] = True
+	mask[(chipgap - 5): (chipgap + 10)] = True
 
 	# Mask out any bad pixels
 	mask[np.where(synthflux <= 0.)] = True
