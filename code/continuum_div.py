@@ -4,7 +4,7 @@
 # - divides obs/synth, fits spline, and divides obs/spline (divide_spec)
 # 
 # Created 22 Feb 18
-# Updated 9 Nov 18
+# Updated 17 Nov 18
 ###################################################################
 
 import os
@@ -142,8 +142,13 @@ def mask_obs_for_division(obswvl, obsflux, ivar, temp=None, logg=None, fe=None, 
 	mask[-5:] = True
 
 	# Mask out more of ends of spectra
-	mask[np.where(obswvl < 4500)] = True
+	mask[np.where(obswvl < 4650)] = True
 	mask[np.where(obswvl > 6550)] = True
+
+	# Mask out Halpha, Hbeta, Hgamma
+	mask[np.where((obswvl > 4340 - 5) & (obswvl < 4340 + 5))] = True #Hgamma
+	mask[np.where((obswvl > 4862 - 5) & (obswvl < 4862 + 5))] = True #Hbeta
+	mask[np.where((obswvl > 6563 - 5) & (obswvl < 6563 + 5))] = True #Halpha
 
 	# Mask out pixels near chip gap
 	chipgap = int(len(mask)/2 - 1)
@@ -240,8 +245,8 @@ def divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask, sigmacli
 			print('Insufficient number of pixels to determine the continuum!')
 			return
 
-		# Compute breakpoints for B-spline 
-		def calc_breakpoints(array, interval):
+		# Compute breakpoints for B-spline (in wavelength space, not pixel space)
+		def calc_breakpoints_wvl(array, interval):
 			"""
 			Helper function for use with a B-spline.
 			Computes breakpoints for an array given an interval.
@@ -256,9 +261,26 @@ def divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask, sigmacli
 					breakpoints.append(array[i])
 
 			return breakpoints
-		
+
+		# Compute breakpoints for B-spline (in pixel space, not wavelength space)
+		def calc_breakpoints_pixels(array, interval):
+			"""
+			Helper function for use with a B-spline.
+			Computes breakpoints for an array given an interval.
+			"""
+
+			breakpoints = []
+			counter = 0
+			for i in range(len(array)):
+
+				if (i - counter) >= interval:
+					counter = i
+					breakpoints.append(array[i])
+
+			return breakpoints
+
 		# Determine initial spline fit, before sigma-clipping
-		breakpoints_old	= calc_breakpoints(obswvlmask[ipart].compressed(), 150.) # Use 150 A spacing
+		breakpoints_old	= calc_breakpoints_wvl(obswvlmask[ipart].compressed(), 150.) # Use 150 A spacing
 		#print('breakpoints: ', breakpoints_old)
 		splinerep_old 	= splrep(obswvlmask[ipart].compressed(), quotient[ipart].compressed(), w=newivarmask.compressed(), t=breakpoints_old)
 		continuum_old	= splev(obswvlmask[ipart].compressed(), splinerep_old)

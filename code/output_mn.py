@@ -2,7 +2,7 @@
 # Produces nice outputs
 #
 # Created 5 June 18
-# Updated 9 Nov 18
+# Updated 17 Nov 18
 ###################################################################
 
 #Backend for python3 on mahler
@@ -26,7 +26,7 @@ import scipy.optimize
 import chi_sq
 from make_plots import make_plots
 
-def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, globular=False, lines='new', plots=False):
+def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, globular=False, lines='new', plots=False, wvlcorr=True):
 	""" Measure Mn abundances from a FITS file.
 
 	Inputs:
@@ -44,6 +44,8 @@ def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, gl
 						else, use original linelist from Judy's code
 	plots 			-- if 'False' (default), don't plot final fits/resids while doing the fits;
 						else, plot them
+	wvlcorr 		-- if 'True' (default), do linear wavelength corrections following G. Duggan's code for 900ZD data;
+						else (for 1200B data), don't do corrections
 
 	"""
 
@@ -87,7 +89,7 @@ def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, gl
 				continue
 
 			# Run optimization code
-			star = chi_sq.obsSpectrum(filename, paramfilename, i, True, galaxyname, slitmaskname, globular, lines)
+			star = chi_sq.obsSpectrum(filename, paramfilename, i, wvlcorr, galaxyname, slitmaskname, globular, lines)
 			#best_mn, error = star.minimize_scipy(fe)
 			best_mn, error, finalchisq = star.plot_chisq(fe, output=True, plots=plots)
 
@@ -314,7 +316,7 @@ def main():
 	#run_chisq('/raid/caltech/moogify/bscl6/moogify.fits.gz', '/raid/gduggan/moogify/bscl6_moogify.fits.gz', 'scl', 'scl6', startstar=0, lines='new')
 
 	# Measure Mn abundances for Sculptor using new 1200B data
-	run_chisq('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', '/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'scl5_1200B', startstar=0, lines='new', plots=True)
+	run_chisq('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', '/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'scl5_1200B', startstar=0, lines='new', plots=True, wvlcorr=False)
 	#plot_fits_postfacto('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', '/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'scl5_1200B', startstar=0, globular=False, lines='new')
 	'''
 	# Measure Mn abundances for Ursa Minor

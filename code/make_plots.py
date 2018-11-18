@@ -133,7 +133,7 @@ def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, resids=T
 		fig2.text(0.5, 0.04, 'Wavelength (A)', fontsize=18, ha='center', va='center')
 		fig2.text(0.06, 0.5, 'Residuals', fontsize=18, ha='center', va='center', rotation='vertical')
 		plt.legend(loc='best')
-		plt.savefig(outputname+'/'+specname+'_resids.png',bbox_inches='tight')
+		plt.savefig(outputname+'/'+specname+'resids.png',bbox_inches='tight')
 		plt.close(2)
 
 	if ivar is not None:
@@ -141,7 +141,7 @@ def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, resids=T
 		fig3.text(0.5, 0.04, 'Wavelength (A)', fontsize=18, ha='center', va='center')
 		fig3.text(0.06, 0.5, 'Inverse variance', fontsize=18, ha='center', va='center', rotation='vertical')
 		#plt.legend(loc='best')
-		plt.savefig(outputname+'/'+specname+'_ivar.png',bbox_inches='tight')
+		plt.savefig(outputname+'/'+specname+'ivar.png',bbox_inches='tight')
 		plt.close(3)
 
 	return
