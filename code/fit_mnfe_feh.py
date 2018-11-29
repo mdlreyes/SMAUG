@@ -1,8 +1,9 @@
-# plot_mn.py
-# Make plots.
+# fit_mnfe_feh.py
+# Use model described in Kirby (in prep.) to determine Type Ia SNe
+# yields for [Mn/H]
 #
-# Created 22 June 18
-# Updated 11 Aug 18
+# Created 20 Nov 18
+# Updated 29 Nov 18
 ###################################################################
 
 import matplotlib
@@ -89,7 +90,7 @@ def fit_mnfe_feh(filenames, outfile, title, fehia, maxerror=None, gratings=None)
 
 	# Remove points with error > maxerror
 	if maxerror is not None:
-		mask 	= np.where((mnfeerr < maxerror) & notoutlier) # & (redchisq < 3.0))
+		mask 	= np.where((mnfeerr < maxerror)) # & notoutlier) # & (redchisq < 3.0))
 		name 	= name[mask]
 		feh 	= feh[mask]
 		mnfe 	= mnfe[mask]
@@ -281,7 +282,7 @@ def fit_mnfe_feh(filenames, outfile, title, fehia, maxerror=None, gratings=None)
 def main():
 
 	# Sculptor 1200B
-	fit_mnfe_feh(['data/scl5_1200B_final.csv'],'figures/scl_fit', 'Sculptor dSph', -2.34, maxerror=0.5, gratings=['k'])
+	fit_mnfe_feh(['data/scl5_1200B.csv'],'figures/scl_fit', 'Sculptor dSph', -2.34, maxerror=None, gratings=['k'])
 
 	return
 

@@ -147,7 +147,9 @@ def plot_mn_fe(filenames, outfile, title, gratings=None, maxerror=None, snr=None
 	# Scatter plot
 	#area = 2*np.reciprocal(np.power(mnfeerr,2.))
 	#ax.scatter(feh, mnfe, s=area, c=colors, alpha=0.5, zorder=100) #, label='N = '+str(len(name)))
-	ax.errorbar(feh, mnfe, yerr=mnfeerr, color='k', marker='o', linestyle='', capsize=3, zorder=100)
+	for i in range(len(feh)):
+		ax.errorbar(feh[i], mnfe[i], yerr=mnfeerr[i], color=colors[i], marker='o', linestyle='', capsize=3, zorder=99)
+	#ax.scatter(feh, mnfe, c=colors, zorder=100) #, label='N = '+str(len(name)))
 	ax.text(0.025, 0.9, 'N = '+str(len(name)), transform=ax.transAxes, fontsize=14)
 
 	# Format plot
@@ -513,7 +515,7 @@ def main():
 	#		'figures/mnfe_scltotal_newlinelist.png','Sculptor',gratings=['k','k','k','r'],maxerror=0.3,solar=False,typei=True,typeii=False) #,snr=[3,5])
 
 	# Sculptor 1200B
-	plot_mn_fe(['data/scl5_1200B_final.csv'],'figures/mnfe_scltotal_newlinelist_updatecontnorm.png','Sculptor',gratings=['k'],maxerror=0.5,solar=False,typei=True,typeii=False) #,snr=[3,5])
+	plot_mn_fe(['data/Sculptor_hires_data/north12_final.csv','data/scl5_1200B_final.csv'],'figures/mnfe_scltotal_newlinelist_updatecontnorm.png','Sculptor',gratings=['gray','k'],maxerror=0.5,solar=False,typei=True,typeii=False) #,snr=[3,5])
 
 	# Ursa Minor
 	#plot_mn_fe(['data/umi1_final.csv','data/umi2_final.csv','data/umi3_final.csv'],'figures/mnfe_umitotal.png','Ursa Minor',snr=[3,5])

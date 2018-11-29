@@ -288,14 +288,15 @@ class obsSpectrum:
 			mn_error  = [params0[1]]
 
 		mn_list = np.array([-3,-2,-1.5,-1,-0.5,-0.1,0,0.1,0.5,1,1.5,2,3])*mn_error[0] + mn_result[0]
-		#dlam 	= mn_result[1]
 		chisq_list = np.zeros(len(mn_list))
-		for i in range(len(mn_list)):
-			finalsynth = self.synthetic(self.obswvl_final, mn_list[i]) #, dlam)
-			chisq = np.sum(np.power(self.obsflux_final - finalsynth, 2.) * self.ivar_final) / (len(self.obsflux_final) - 1.)
-			chisq_list[i] = chisq
 
+		#If [Mn/H] error is small enough, make reduced chi-sq plots
 		if mn_error[0] < 1.0:
+			for i in range(len(mn_list)):
+				finalsynth = self.synthetic(self.obswvl_final, mn_list[i]) #, dlam)
+				chisq = np.sum(np.power(self.obsflux_final - finalsynth, 2.) * self.ivar_final) / (len(self.obsflux_final) - 1.)
+				chisq_list[i] = chisq
+
 			plt.figure()
 			plt.title('Star '+self.specname, fontsize=18)
 			plt.plot(mn_list, chisq_list, '-o')
@@ -303,6 +304,9 @@ class obsSpectrum:
 			plt.xlabel('[Mn/H]', fontsize=16)
 			plt.savefig(self.outputname+'/'+self.specname+'_redchisq.png')
 			plt.close()
+		else:
+			finalsynth = self.synthetic(self.obswvl_final, mn_list[6]) #, dlam)
+			chisq_list[6] = np.sum(np.power(self.obsflux_final - finalsynth, 2.) * self.ivar_final) / (len(self.obsflux_final) - 1.)
 
 		return mn_result, mn_error, chisq_list[6]
 

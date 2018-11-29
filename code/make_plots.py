@@ -110,7 +110,7 @@ def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, resids=T
 					plt.yticks(fontsize=16)
 
 					plt.xlim((lolim, uplim))
-					plt.ylim((0.75, 1.10))
+					#plt.ylim((0.75, 1.10))
 
 					if i==0:
 						leg = plt.legend(fancybox=True, framealpha=0.5, loc='best')

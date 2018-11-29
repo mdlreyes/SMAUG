@@ -211,7 +211,7 @@ def make_chisq_plots(filename, paramfilename, galaxyname, slitmaskname, startsta
 				idx = np.where(name == star.specname)
 				if mnerr[idx][0] < 1:
 					params0 = [[mn[idx][0], dlam[idx][0]],[mnerr[idx][0],dlamerr[idx][0]]]
-					best_mn, error = star.plot_chisq(params0, minimize=False)
+					best_mn, error = star.plot_chisq(params0, minimize=False, plots=True)
 
 		except Exception as e:
 			print(repr(e))
@@ -297,8 +297,8 @@ def plot_fits_postfacto(filename, paramfilename, galaxyname, slitmaskname, start
 
 				idx = np.where(name == star.specname)
 
-				synthfluxup = star.synthetic(obswvl, mn[idx] + 0.1, full=True)
-				synthfluxdown = star.synthetic(obswvl, mn[idx] - 0.1, full=True)
+				synthfluxup = star.synthetic(obswvl, mn[idx] + 0.3, full=True)
+				synthfluxdown = star.synthetic(obswvl, mn[idx] - 0.3, full=True)
 
 				if mnerr[idx][0] < 1:
 					make_plots(lines, star.specname+'_', obswvl, obsflux, synthflux, outputname, ivar=ivar, synthfluxup=synthfluxup, synthfluxdown=synthfluxdown, title=None)
@@ -317,13 +317,13 @@ def main():
 	#medresMn, medresMnerror, hiresMn, hiresMnerror, sep.arcsec = match_hires('Sculptor_hires.tsv','/raid/caltech/moogify/bscl1/moogify.fits.gz')
 
 	# Measure Mn abundances for Sculptor
-	#run_chisq('/raid/caltech/moogify/bscl1/moogify.fits.gz', '/raid/gduggan/moogify/bscl1_moogify.fits.gz', 'scl', 'scl1', startstar=0, lines='new')
-	#run_chisq('/raid/caltech/moogify/bscl2/moogify.fits.gz', '/raid/gduggan/moogify/bscl2_moogify.fits.gz', 'scl', 'scl2', startstar=0, lines='new')
-	#run_chisq('/raid/caltech/moogify/bscl6/moogify.fits.gz', '/raid/gduggan/moogify/bscl6_moogify.fits.gz', 'scl', 'scl6', startstar=0, lines='new')
+	run_chisq('/raid/caltech/moogify/bscl1/moogify.fits.gz', '/raid/gduggan/moogify/bscl1_moogify.fits.gz', 'scl', 'scl1', startstar=0, lines='new', plots=True)
+	run_chisq('/raid/caltech/moogify/bscl2/moogify.fits.gz', '/raid/gduggan/moogify/bscl2_moogify.fits.gz', 'scl', 'scl2', startstar=0, lines='new', plots=True)
+	run_chisq('/raid/caltech/moogify/bscl6/moogify.fits.gz', '/raid/gduggan/moogify/bscl6_moogify.fits.gz', 'scl', 'scl6', startstar=0, lines='new', plots=True)
 
 	# Measure Mn abundances for Sculptor using new 1200B data
 	#run_chisq('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', '/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'scl5_1200B', startstar=0, lines='new', plots=True, wvlcorr=False)
-	plot_fits_postfacto('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', '/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'scl5_1200B', startstar=0, globular=False, lines='new')
+	#plot_fits_postfacto('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', '/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'scl5_1200B', startstar=0, globular=False, lines='new')
 	'''
 	# Measure Mn abundances for Ursa Minor
 	run_chisq('/raid/caltech/moogify/bumi1/moogify.fits.gz', '/raid/gduggan/moogify/bumi1_moogify.fits.gz', 'umi', 'umi1', startstar=0)
