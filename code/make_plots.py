@@ -38,13 +38,16 @@ def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, resids=T
 
 	# Define lines to plot
 	if lines == 'new':
-		linelist = np.array([4739.,4754.,4761.5,4765.5,4783.,4823.,5394.,5399.,
-							 5407.,5420.,5432.,5516.,5537.,6013.,6016.,6021.,6384.,6491.])
+		#linelist = np.array([4739.,4754.,4761.5,4765.5,4783.,4823.,5394.,5399.,
+		#					 5407.,5420.,5432.,5516.,5537.,6013.,6016.,6021.,6384.,6491.])
+		linelist = np.array([4739.,4754.,4761.5,4765.5,4783.,4823.,5394.,
+							 5407.,5420.,5432.,5516.,5537.,6013.,6016.,6021.])
 		linewidth = np.array([1.,1.,1.5,1.5,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.])
 
 		nrows = 3
-		ncols = 6
-		figsize = (24,12)
+		ncols = 5
+		#figsize = (24,12)
+		figsize = (20,12)
 
 	elif lines == 'old':
 		linelist = np.array([4739.,4783.,4823.,5394.,5432.,5516.,5537.,6013.,6021.,6384.,6491.])
@@ -59,6 +62,7 @@ def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, resids=T
 		title = 'Star'+specname
 
 	# Plot showing fits
+	#f, axes = plt.subplots(nrows, ncols, sharey='row', num=1, figsize=figsize)
 	plt.figure(num=1, figsize=figsize)
 	plt.title(title)
 
@@ -73,6 +77,8 @@ def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, resids=T
 		plt.title(title)
 
 	for i in range(len(linelist)):
+		#f = plt.figure(1)
+		#for i, ax in enumerate(f.axes):
 
 		# Range over which to plot
 		lolim = linelist[i] - 5
@@ -90,14 +96,26 @@ def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, resids=T
 					yerr=None
 
 				# Plot fits
-				plt.figure(1)
-				plt.subplot(nrows,ncols,i+1)
-				plt.axvspan(linelist[i] - linewidth[i], linelist[i] + linewidth[i], color='green', alpha=0.25)
-				if (synthfluxup is not None) and (synthfluxdown is not None):
-					plt.fill_between(obswvl[mask], synthfluxup[mask], synthfluxdown[mask], facecolor='red', alpha=0.75, label='Synthetic')
-				else:
-					plt.plot(obswvl[mask], synthflux[mask], 'r-', label='Synthetic')
-				plt.errorbar(obswvl[mask], obsflux[mask], yerr=yerr, color='k', fmt='o', label='Observed')
+				with plt.rc_context({'axes.linewidth':4, 'axes.edgecolor':'#594F4F', 'xtick.color':'#594F4F', 'ytick.color':'#594F4F'}):
+					plt.figure(1)
+					plt.subplot(nrows,ncols,i+1)
+					plt.axvspan(linelist[i] - linewidth[i], linelist[i] + linewidth[i], color='#45ADA8', zorder=1)
+					if (synthfluxup is not None) and (synthfluxdown is not None):
+						plt.fill_between(obswvl[mask], synthfluxup[mask], synthfluxdown[mask], facecolor='red', edgecolor='red', alpha=0.75, linewidth=3, label='Synthetic', zorder=2)
+					else:
+						plt.plot(obswvl[mask], synthflux[mask], 'r-', label='Synthetic')
+					plt.errorbar(obswvl[mask], obsflux[mask], yerr=yerr, color='#594F4F', fmt='o', markersize=8, elinewidth=2, label='Observed', zorder=3)
+
+					plt.xticks([linelist[i]], fontsize=18)
+					plt.yticks(fontsize=16)
+
+					plt.xlim((lolim, uplim))
+					plt.ylim((0.75, 1.10))
+
+					if i==0:
+						leg = plt.legend(fancybox=True, framealpha=0.5, loc='best')
+						for text in leg.get_texts():
+							plt.setp(text, color='#594F4F', fontsize=18)
 
 				if resids:
 					# Only plot residuals if synth spectrum has been smoothed to match obswvl
@@ -116,16 +134,17 @@ def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, resids=T
 					#plt.axhline(0, color='r', linestyle='solid', label='Zero')
 
 		except:
+			#ax.set_visible(False)
 			continue
 
 	# Legend for plot showing fits
 	fig = plt.figure(1)
-	fig.text(0.5, 0.04, 'Wavelength (A)', fontsize=18, ha='center', va='center')
-	fig.text(0.06, 0.5, 'Relative flux', fontsize=18, ha='center', va='center', rotation='vertical')
+	#fig.text(0.5, 0.04, 'Wavelength (A)', fontsize=18, ha='center', va='center', color='#594F4F')
+	#fig.text(0.06, 0.5, 'Relative flux', fontsize=18, ha='center', va='center', rotation='vertical', color='#594F4F')
 	#plt.ylabel('Relative flux')
 	#plt.xlabel('Wavelength (A)')
-	plt.legend(loc='best')
-	plt.savefig(outputname+'/'+specname+'finalfits.png',bbox_inches='tight')
+
+	plt.savefig(outputname+'/'+specname+'finalfits.png',bbox_inches='tight',transparent=False)
 	plt.close(1)
 
 	if resids:

@@ -27,8 +27,6 @@ def plot_mn_fe(filenames, outfile, title, gratings=None, maxerror=None, snr=None
 	title 		-- title of graph
 
 	Keywords:
-	gratings 	-- if not None, must be list of gratings used for input filenames.
-					Plot points from different gratings in different colors.
 	maxerror 	-- if not None, points with error > maxerror will not be plotted
 	solar 		-- if 'True', plot line marking solar abundance
 	typeii 		-- if 'True', plot theoretical Type II yield
@@ -147,8 +145,9 @@ def plot_mn_fe(filenames, outfile, title, gratings=None, maxerror=None, snr=None
 	#if fit == 'scl':
 
 	# Scatter plot
-	area = 2*np.reciprocal(np.power(mnfeerr,2.))
-	ax.scatter(feh, mnfe, s=area, c=colors, alpha=0.5, zorder=100) #, label='N = '+str(len(name)))
+	#area = 2*np.reciprocal(np.power(mnfeerr,2.))
+	#ax.scatter(feh, mnfe, s=area, c=colors, alpha=0.5, zorder=100) #, label='N = '+str(len(name)))
+	ax.errorbar(feh, mnfe, yerr=mnfeerr, color='k', marker='o', linestyle='', capsize=3, zorder=100)
 	ax.text(0.025, 0.9, 'N = '+str(len(name)), transform=ax.transAxes, fontsize=14)
 
 	# Format plot
@@ -513,6 +512,9 @@ def main():
 	#plot_mn_fe(['data/scl1_final.csv','data/scl2_final.csv','data/scl6_final.csv','data/scl5_1200B_final.csv'],
 	#		'figures/mnfe_scltotal_newlinelist.png','Sculptor',gratings=['k','k','k','r'],maxerror=0.3,solar=False,typei=True,typeii=False) #,snr=[3,5])
 
+	# Sculptor 1200B
+	plot_mn_fe(['data/scl5_1200B_final.csv'],'figures/mnfe_scltotal_newlinelist_updatecontnorm.png','Sculptor',gratings=['k'],maxerror=0.5,solar=False,typei=True,typeii=False) #,snr=[3,5])
+
 	# Ursa Minor
 	#plot_mn_fe(['data/umi1_final.csv','data/umi2_final.csv','data/umi3_final.csv'],'figures/mnfe_umitotal.png','Ursa Minor',snr=[3,5])
 
@@ -526,7 +528,7 @@ def main():
 	#plot_mn_vs_something('data/n2419b_blue_final.csv', 'temp', 'figures/gc_checks/n2419b_mnh_temp.png','NGC 2419', membercheck='NGC 2419', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True)
 
 	# Check if adding smoothing parameter does anything
-	comparison_plot(['data/no_dlam/scl5_1200B_final.csv','data/scl5_1200B.csv'],['Don\'t fit smoothing [Mn/H]', 'Fit smoothing [Mn/H]'],'figures/scl5_1200B_smoothcheck.png','Sculptor', maxerror=1) #, weighted=False)
+	#comparison_plot(['data/no_dlam/scl5_1200B_final.csv','data/scl5_1200B.csv'],['Don\'t fit smoothing [Mn/H]', 'Fit smoothing [Mn/H]'],'figures/scl5_1200B_smoothcheck.png','Sculptor', maxerror=1) #, weighted=False)
 
 	'''
 	newlinelist = [4739.087, 4754.042, 4761.512, 4762.367, 4765.846, 

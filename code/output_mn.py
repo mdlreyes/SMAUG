@@ -254,10 +254,12 @@ def plot_fits_postfacto(filename, paramfilename, galaxyname, slitmaskname, start
 		outputname = '/raid/madlr/dsph/'+galaxyname+'/'+slitmaskname
 
 	name  = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=0, dtype='str')
-	mn    = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=10)
-	mnerr = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=11)
-	dlam = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=8)
-	dlamerr = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=9)
+	mn    = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=8)
+	mnerr = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=9)
+	#mn    = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=10)
+	#mnerr = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=11)
+	#dlam = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=8)
+	#dlamerr = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=9)
 
 	# Get number of stars in file with observed spectra
 	Nstars = open_obs_file(filename)
@@ -286,16 +288,20 @@ def plot_fits_postfacto(filename, paramfilename, galaxyname, slitmaskname, start
 					datafile = '/raid/madlr/dsph/'+galaxyname+'/'+slitmaskname+'/'+str(star.specname)+'_data.csv'
 
 				# Get observed and synthetic spectra and inverse variance array
-				obswvl 		= np.genfromtxt(datafile, delimiter=',', skip_header=3, usecols=0)
-				obsflux 	= np.genfromtxt(datafile, delimiter=',', skip_header=3, usecols=1)
-				synthflux 	= np.genfromtxt(datafile, delimiter=',', skip_header=3, usecols=2)
-				synthfluxup = np.genfromtxt(datafile, delimiter=',', skip_header=3, usecols=3)
-				synthfluxdown = np.genfromtxt(datafile, delimiter=',', skip_header=3, usecols=4)
-				ivar 		= np.genfromtxt(datafile, delimiter=',', skip_header=3, usecols=5)
+				obswvl 		= np.genfromtxt(datafile, delimiter=',', skip_header=2, usecols=0)
+				obsflux 	= np.genfromtxt(datafile, delimiter=',', skip_header=2, usecols=1)
+				synthflux 	= np.genfromtxt(datafile, delimiter=',', skip_header=2, usecols=2)
+				#synthfluxup = np.genfromtxt(datafile, delimiter=',', skip_header=2, usecols=3)
+				#synthfluxdown = np.genfromtxt(datafile, delimiter=',', skip_header=2, usecols=4)
+				ivar 		= np.genfromtxt(datafile, delimiter=',', skip_header=2, usecols=5)
 
 				idx = np.where(name == star.specname)
+
+				synthfluxup = star.synthetic(obswvl, mn[idx] + 0.1, full=True)
+				synthfluxdown = star.synthetic(obswvl, mn[idx] - 0.1, full=True)
+
 				if mnerr[idx][0] < 1:
-					make_plots(lines, star.specname, obswvl, obsflux, synthflux, outputname, ivar=ivar, synthfluxup=synthfluxup, synthfluxdown=synthfluxdown, title=None)
+					make_plots(lines, star.specname+'_', obswvl, obsflux, synthflux, outputname, ivar=ivar, synthfluxup=synthfluxup, synthfluxdown=synthfluxdown, title=None)
 
 		except Exception as e:
 			print(repr(e))
@@ -316,8 +322,8 @@ def main():
 	#run_chisq('/raid/caltech/moogify/bscl6/moogify.fits.gz', '/raid/gduggan/moogify/bscl6_moogify.fits.gz', 'scl', 'scl6', startstar=0, lines='new')
 
 	# Measure Mn abundances for Sculptor using new 1200B data
-	run_chisq('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', '/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'scl5_1200B', startstar=0, lines='new', plots=True, wvlcorr=False)
-	#plot_fits_postfacto('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', '/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'scl5_1200B', startstar=0, globular=False, lines='new')
+	#run_chisq('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', '/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'scl5_1200B', startstar=0, lines='new', plots=True, wvlcorr=False)
+	plot_fits_postfacto('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', '/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'scl5_1200B', startstar=0, globular=False, lines='new')
 	'''
 	# Measure Mn abundances for Ursa Minor
 	run_chisq('/raid/caltech/moogify/bumi1/moogify.fits.gz', '/raid/gduggan/moogify/bumi1_moogify.fits.gz', 'umi', 'umi1', startstar=0)
