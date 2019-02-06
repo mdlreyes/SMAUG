@@ -55,7 +55,8 @@ def open_obs_file(filename, retrievespec=None, specparams=False, objname=None, c
 			wavearray = data['LAMBDA']
 			fluxarray = data['SPEC']
 			ivararray = data['IVAR']
-			dlamarray = data['DLAM']
+			#dlamarray = data['DLAM']
+			dlamarray = np.ones(len(namearray))*0.7086
 
 			# Get spectrum of a single star
 			name = namearray[retrievespec]

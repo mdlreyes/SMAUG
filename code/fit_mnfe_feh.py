@@ -19,7 +19,7 @@ import scipy.optimize as op
 import math
 from astropy.io import fits, ascii
 import pandas
-from matplotlib.ticker import NullFormatter
+import matplotlib.ticker as ticker
 from statsmodels.stats.weightstats import DescrStatsW
 
 def fit_mnfe_feh(filenames, outfile, title, fehia, maxerror=None, gratings=None):
@@ -33,8 +33,8 @@ def fit_mnfe_feh(filenames, outfile, title, fehia, maxerror=None, gratings=None)
 
 	Keywords:
 	maxerror 	-- if not None, points with error > maxerror will not be used in computation
-	gratings 	-- if not None, must be list of gratings used for input filenames.
-					Plot points from different gratings in different colors.
+	gratings 	-- if not None, must be list of colors for different input filenames.
+					Plot points from different filenames in different colors.
 	"""
 
 	# Get data from files
@@ -83,7 +83,7 @@ def fit_mnfe_feh(filenames, outfile, title, fehia, maxerror=None, gratings=None)
 	mnfe = mnh - feh
 	mnfeerr = np.sqrt(np.power(feherr,2.)+np.power(mnherr,2.))
 
-	outlier = np.where(mnfe > 0)[0]
+	outlier = np.where((mnfe > 0) | (mnfe < -1.0))[0]
 	print(name[outlier])
 	notoutlier = np.ones(len(mnfe), dtype='bool')
 	notoutlier[outlier] = False
@@ -186,41 +186,25 @@ def fit_mnfe_feh(filenames, outfile, title, fehia, maxerror=None, gratings=None)
 	# Create figure
 	fig, ax = plt.subplots(figsize=(10,5))
 
-	# Plot other lines
-	'''
-	if typeii:
-		typeii_Z  = np.array([0.000000000001, 0.001,0.004,0.02])			# Metallicities from Nomoto+2006 (in total Z)
-		typeii_mn = np.array([8.72e-7, 9.72e-7, 1.16e-6, 1.54e-6])	# Mn yields from Nomoto+2006 (in units of Msun)
-		typeii_fe54 = np.array([7.32e-6, 8.34e-6, 9.03e-6, 1.13e-5]) # Fe-54 yields from Nomoto+2006 (in units of Msun)
-		typeii_fe56 = np.array([3.17e-4, 3.38e-4, 3.22e-4, 3.48e-4]) # Fe-56 yields from Nomoto+2006 (in units of Msun)
-		typeii_fe57 = np.array([4.66e-6, 6.03e-6, 6.79e-6, 9.57e-6]) # Fe-57 yields from Nomoto+2006 (in units of Msun)
-		typeii_fe58 = np.array([6.15e-12, 1.81e-7, 5.26e-7, 2.15e-6]) # Fe-58 yields from Nomoto+2006 (in units of Msun)
-
-		solar_mn = 5.43
-		solar_fe = 7.50
-
-		typeii_mnh = np.log10((typeii_mn/55.) / ((typeii_fe54/54.) + (typeii_fe56/56.) + (typeii_fe57/57.) + (typeii_fe58/58.))) - (solar_mn - solar_fe)
-		typeii_feh = np.log10(typeii_Z/0.0134) # Solar metallicity from Asplund+2009
-
-		ax.plot(typeii_feh, typeii_mnh, 'b-', label='CCSNe yield')
-
-	if typei:
-		#xmin=(-2.34+3)/2.5, 
-		ax.axhline(0.18, color='b', linestyle='dashed', label='DDT(T16)')
-		ax.axhspan(0.01, 0.53, color='g', hatch='\\', alpha=0.2, label='DDT(S13)')
-		ax.axhspan(0.36, 0.52, color='darkorange', hatch='//', alpha=0.3, label='Def(F14)')
-		ax.axhspan(-1.69, -1.21, color='r', alpha=0.2, label='Sub(B)')
-		ax.axhspan(-1.52, -0.68, color='b', hatch='//', alpha=0.2, label='Sub(S18)')
-
-	if solar:
-		ax.axhline(0, color='gold', linestyle='solid')
-	'''
-
 	# Scatter plot
 	#area = 2*np.reciprocal(np.power(mnfeerr,2.))
 	#ax.scatter(feh, mnfe, s=area, c=colors, alpha=0.5, zorder=100) #, label='N = '+str(len(name)))
-	ax.errorbar(feh, mnfe, yerr=mnfeerr, color='k', marker='o', linestyle='', capsize=3, zorder=100)
-	ax.text(0.025, 0.9, 'N = '+str(len(name)), transform=ax.transAxes, fontsize=14)
+	plotcolors = np.zeros(len(gratings), dtype='bool')
+	for i in range(len(feh)):
+		if plotcolors[0] == False and colors[i] == '#B0B0B0':
+			ax.errorbar(feh[i], mnfe[i], yerr=mnfeerr[i], color=colors[i], marker='o', linestyle='', capsize=3, zorder=100, label='North+12')
+			plotcolors[0] = True
+		
+		elif plotcolors[1] == False and colors[i] == '#594F4F':
+			ax.errorbar(feh[i], mnfe[i], yerr=mnfeerr[i], color=colors[i], marker='o', linestyle='', capsize=3, zorder=100, label='This work')
+			plotcolors[1] = True
+
+		else:
+			ax.errorbar(feh[i], mnfe[i], yerr=mnfeerr[i], color=colors[i], marker='o', linestyle='', capsize=3, zorder=100)
+
+
+	#ax.errorbar(feh, mnfe, yerr=mnfeerr, color='k', marker='o', linestyle='', capsize=3, zorder=100)
+	ax.text(0.025, 0.9, 'N = '+str(len(name)), transform=ax.transAxes, fontsize=18)
 
 	#for i in range(len(outlier)):
 	#	idx = outlier[i]
@@ -229,6 +213,7 @@ def fit_mnfe_feh(filenames, outfile, title, fehia, maxerror=None, gratings=None)
 	# Plot best fit
 	xfit = np.linspace(np.min(feh), ax.get_xlim()[1], 100)
 	mnfe_cc = (bperp + fehia*np.sin(theta))/np.cos(theta)
+	print(mnfe_cc)
 
 	yfit = np.zeros((3, len(xfit)))
 	for i in range(len(xfit)):
@@ -237,8 +222,8 @@ def fit_mnfe_feh(filenames, outfile, title, fehia, maxerror=None, gratings=None)
 		else:
 			yfit[:,i] = xfit[i]*np.tan(theta) + bperp/(np.cos(theta))
 
-	ax.fill_between(xfit, yfit[2], yfit[0], color='r', alpha=0.25)
-	ax.plot(xfit, yfit[1], 'r-', linewidth=2)
+	ax.fill_between(xfit, yfit[2], yfit[0], color='r', alpha=0.25, zorder=200)
+	ax.plot(xfit, yfit[1], 'r-', linewidth=3, zorder=200)
 
 	# Determine the Type Ia yield of Mn
 
@@ -260,8 +245,16 @@ def fit_mnfe_feh(filenames, outfile, title, fehia, maxerror=None, gratings=None)
 
 	# Plot it!
 	mask = np.where(xfit > fehia)
-	ax.fill_between(xfit[mask], mnfe_ia[2][mask], mnfe_ia[0][mask], color='g', alpha=0.25)
-	ax.plot(xfit[mask], mnfe_ia[1][mask], 'g-', linewidth=2)
+	ax.fill_between(xfit[mask], mnfe_ia[2][mask], mnfe_ia[0][mask], color='#547980', alpha=0.25)
+	ax.plot(xfit[mask], mnfe_ia[1][mask], color='#547980', linestyle=':', linewidth=3)
+	print(mnfe_ia[1][-1])
+	print(mnfe_ia[2][-1]-mnfe_ia[1][-1])
+	print(mnfe_ia[1][-1]-mnfe_ia[0][-1])
+
+
+	# Also plot core-collapse yield
+	ax.fill_between(ax.get_xlim(), mnfe_cc[2], mnfe_cc[0], color='#45ADA8', alpha=0.25, zorder=0)
+	ax.plot(ax.get_xlim(), mnfe_cc[1]*np.ones(2), color='#45ADA8', linestyle='--', linewidth=3, zorder=0)
 
 	# Format plot
 	ax.set_title(title, fontsize=18)
@@ -270,19 +263,98 @@ def fit_mnfe_feh(filenames, outfile, title, fehia, maxerror=None, gratings=None)
 	for label in (ax.get_xticklabels() + ax.get_yticklabels()):
 		label.set_fontsize(14)
 
-	ax.set_xlim([-3,-0.75])
+	ax.set_xlim([-2.75,-0.75])
+	ax.tick_params(direction='in', bottom=True, top=True, left=True, right=True)
 	#ax.set_ylim([-2,2])
-	ax.set_ylim([-1.5,1.1])
-	#plt.legend(loc='best')
+	#ax.set_ylim([-1.5,1.1])
+	leg = plt.legend(fancybox=True, framealpha=0.5, loc='best')
+	for text in leg.get_texts():
+		plt.setp(text, color='#594F4F', fontsize=18)
 
 	# Output file
-	plt.savefig(outfile+'_mnfe.png', bbox_inches='tight')
+	plt.savefig(outfile+'_mnfe.png', bbox_inches='tight', transparent=True)
 	plt.show()
+
+def compare_mnfe(outfile):
+	"""Plot [Mn/Fe] values on number line.
+
+	Inputs:
+	outfile 	-- name of output file
+
+	Keywords:
+	"""
+
+	'''
+	if typeii:
+		typeii_Z  = np.array([0.000000000001, 0.001,0.004,0.02])			# Metallicities from Nomoto+2006 (in total Z)
+		typeii_mn = np.array([8.72e-7, 9.72e-7, 1.16e-6, 1.54e-6])	# Mn yields from Nomoto+2006 (in units of Msun)
+		typeii_fe54 = np.array([7.32e-6, 8.34e-6, 9.03e-6, 1.13e-5]) # Fe-54 yields from Nomoto+2006 (in units of Msun)
+		typeii_fe56 = np.array([3.17e-4, 3.38e-4, 3.22e-4, 3.48e-4]) # Fe-56 yields from Nomoto+2006 (in units of Msun)
+		typeii_fe57 = np.array([4.66e-6, 6.03e-6, 6.79e-6, 9.57e-6]) # Fe-57 yields from Nomoto+2006 (in units of Msun)
+		typeii_fe58 = np.array([6.15e-12, 1.81e-7, 5.26e-7, 2.15e-6]) # Fe-58 yields from Nomoto+2006 (in units of Msun)
+
+		solar_mn = 5.43
+		solar_fe = 7.50
+
+		typeii_mnh = np.log10((typeii_mn/55.) / ((typeii_fe54/54.) + (typeii_fe56/56.) + (typeii_fe57/57.) + (typeii_fe58/58.))) - (solar_mn - solar_fe)
+		typeii_feh = np.log10(typeii_Z/0.0134) # Solar metallicity from Asplund+2009
+
+		ax.plot(typeii_feh, typeii_mnh, 'b-', label='CCSNe yield')
+	'''
+
+	# Setup a plot so that only the bottom spine is shown
+	def setup(ax):
+		ax.spines['right'].set_color('none')
+		ax.spines['left'].set_color('none')
+		ax.yaxis.set_major_locator(ticker.NullLocator())
+		ax.spines['top'].set_color('none')
+		ax.spines['bottom'].set_position('center')
+		ax.spines['bottom'].set_linewidth(2)
+		ax.xaxis.set_ticks_position('bottom')
+		ax.tick_params(which='major', width=2)
+		ax.tick_params(which='major', length=12)
+		ax.tick_params(which='minor', width=2)
+		ax.tick_params(which='minor', length=8)
+		ax.set_xlim(-2, 1)
+		ax.set_ylim(-0.5, 0.5)
+		ax.patch.set_alpha(0.0)
+
+		ax.xaxis.set_ticklabels([])
+		ax.yaxis.set_ticklabels([])
+
+	plt.figure(figsize=(20,1))
+
+	# Make plot
+	ax = plt.subplot(1,1,1)
+	setup(ax)
+	ax.xaxis.set_major_locator(ticker.AutoLocator())
+	ax.xaxis.set_minor_locator(ticker.AutoMinorLocator())
+	#ax.text(0.0, 0.1, "AutoLocator()", fontsize=14, transform=ax.transAxes)
+	#ax.set_xlabel('[Mn/Fe]', fontsize=16)
+
+	# Plot observed [Mn/Fe]
+	ax.errorbar(-0.87, 0, xerr=0.085, color='r', marker='o', linestyle='', capsize=10, elinewidth=6, capthick=6, markersize=20, zorder=100)
+
+	# Plot models
+	ax.axvline(0.18, color='#45ADA8', linestyle=':', linewidth=6, label='DDT(T16)')
+	ax.axvspan(0.01, 0.53, color='#B0B0B0', hatch='\\', alpha=0.6, label='DDT(S13)')
+	ax.axvspan(0.36, 0.52, color='#45ADA8', hatch='//', alpha=0.75, label='Def(F14)')
+	ax.axvspan(-1.69, -1.21, color='#9DE0AD', alpha=0.8, label='Sub(B)')
+	ax.axvspan(-1.52, -0.68, color='#547980', hatch='//', alpha=0.5, label='Sub(S18)')
+
+	# Output file
+	plt.savefig(outfile, bbox_inches='tight', transparent=True)
+	plt.show()
+
+	return
 
 def main():
 
-	# Sculptor 1200B
-	fit_mnfe_feh(['data/scl5_1200B.csv'],'figures/scl_fit', 'Sculptor dSph', -2.34, maxerror=None, gratings=['k'])
+	# Plot for Sculptor
+	fit_mnfe_feh(['data/Sculptor_hires_data/north12_final.csv','data/scl5_1200B_final.csv'],'figures/scl_fit', 'Sculptor dSph', -2.34, maxerror=0.3, gratings=['#B0B0B0','#594F4F'])
+
+	# Plot [Mn/Fe] values on number line
+	#compare_mnfe('figures/scl_mnfe_comparison.png')
 
 	return
 

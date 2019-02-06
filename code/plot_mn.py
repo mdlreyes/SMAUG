@@ -14,6 +14,8 @@ import sys
 import numpy as np
 import math
 from astropy.io import fits, ascii
+from astropy.coordinates import SkyCoord
+from astropy import units as u
 import pandas
 from matplotlib.ticker import NullFormatter
 from statsmodels.stats.weightstats import DescrStatsW
@@ -172,7 +174,7 @@ def plot_mn_fe(filenames, outfile, title, gratings=None, maxerror=None, snr=None
 	plt.savefig(outfile, bbox_inches='tight')
 	plt.show()
 
-def comparison_plot(filenames, labels, outfile, title, membercheck=None, memberlist=None, maxerror=None, weighted=True):
+def comparison_plot(filenames, labels, outfile, title, membercheck=None, memberlist=None, maxerror=None, weighted=True, checkcoords=False):
 	"""Compare [Mn/H] vs [Mn/H] for two different files.
 
 	Inputs:
@@ -186,6 +188,7 @@ def comparison_plot(filenames, labels, outfile, title, membercheck=None, memberl
 	memberlist	-- member list
 	maxerror	-- if not 'None', throw out any objects with measurement error > maxerror
 	weighted 	-- if 'True', compute weighted mean/std; else, compute unweighted mean/std
+	checkcoords -- if 'True', check both files to see if coordinates overlap
 	"""
 
 	# Check that the right number of files is specified
@@ -204,13 +207,37 @@ def comparison_plot(filenames, labels, outfile, title, membercheck=None, memberl
 	y_mnh 	= np.genfromtxt(filenames[1], delimiter='\t', skip_header=1, usecols=8)
 	y_mnherr 	= np.genfromtxt(filenames[1], delimiter='\t', skip_header=1, usecols=9)
 
-	# Match catalogs to make sure correct values are being plotted against one another
+	# Match catalogs
 	x = []
 	y = []
 	xerr = []
 	yerr = []
 	name_final = []
 
+	# If checkcoords==True, match catalogs based on separation
+	if checkcoords:
+		x_ra 	= np.genfromtxt(filenames[0], delimiter='\t', skip_header=1, usecols=1, dtype='str')
+		x_dec	= np.genfromtxt(filenames[0], delimiter='\t', skip_header=1, usecols=2, dtype='str')
+
+		y_ra 	= np.genfromtxt(filenames[1], delimiter='\t', skip_header=1, usecols=1, dtype='str')
+		y_dec	= np.genfromtxt(filenames[1], delimiter='\t', skip_header=1, usecols=2, dtype='str')
+
+		x_coord = SkyCoord(x_ra, x_dec, frame='icrs', unit='deg')
+		y_coord = SkyCoord(y_ra, y_dec, frame='icrs', unit='deg')
+
+		for i in range(len(x_name)):
+			idx, sep, _ = x_coord[i].match_to_catalog_sky(y_coord) 
+
+			if sep.arcsec < 10:
+				print('Got one! Separation: ', sep.arcsecond, 'Name: ', x_name[i], y_name[idx])
+				x.append(x_mnh[i])
+				xerr.append(x_mnherr[i])
+
+				print(x_mnh[i], y_mnh[idx])
+				y.append(y_mnh[idx])
+				yerr.append(y_mnherr[idx])
+
+	# Else, match catalogs to make sure correct values are being plotted against one another
 	for i in range(len(x_name)):
 		if x_name[i] in y_name:
 			x.append(x_mnh[i])
@@ -292,10 +319,10 @@ def comparison_plot(filenames, labels, outfile, title, membercheck=None, memberl
 	axScatter.set_xlabel(labels[0], fontsize=16)
 	axScatter.set_ylabel(labels[1], fontsize=16)
 
-	textx_left = -2.85
-	textx_right = 1
-	texty_up = 5.
-	texty_down = -1.2
+	textx_left = -1.95
+	textx_right = -1.55
+	texty_up = -1.6
+	texty_down = -3.0
 	texty_down_adjscatter = 0.1
 
 	axScatter.text(textx_left, texty_down + texty_down_adjscatter, 'N = '+str(len(x)), fontsize=13)
@@ -515,7 +542,7 @@ def main():
 	#		'figures/mnfe_scltotal_newlinelist.png','Sculptor',gratings=['k','k','k','r'],maxerror=0.3,solar=False,typei=True,typeii=False) #,snr=[3,5])
 
 	# Sculptor 1200B
-	plot_mn_fe(['data/Sculptor_hires_data/north12_final.csv','data/scl5_1200B_final.csv'],'figures/mnfe_scltotal_newlinelist_updatecontnorm.png','Sculptor',gratings=['gray','k'],maxerror=0.5,solar=False,typei=True,typeii=False) #,snr=[3,5])
+	#plot_mn_fe(['data/Sculptor_hires_data/north12_final.csv','data/scl5_1200B_final.csv'],'figures/mnfe_scltotal_newlinelist_updatecontnorm.png','Sculptor',gratings=['gray','k'],maxerror=0.5,solar=False,typei=True,typeii=False) #,snr=[3,5])
 
 	# Ursa Minor
 	#plot_mn_fe(['data/umi1_final.csv','data/umi2_final.csv','data/umi3_final.csv'],'figures/mnfe_umitotal.png','Ursa Minor',snr=[3,5])
@@ -532,6 +559,8 @@ def main():
 	# Check if adding smoothing parameter does anything
 	#comparison_plot(['data/no_dlam/scl5_1200B_final.csv','data/scl5_1200B.csv'],['Don\'t fit smoothing [Mn/H]', 'Fit smoothing [Mn/H]'],'figures/scl5_1200B_smoothcheck.png','Sculptor', maxerror=1) #, weighted=False)
 
+	# Compare my data with Sculptor data
+	comparison_plot(['data/Sculptor_hires_data/north12_final.csv','data/scl5_1200B_final.csv'],['North+12 [Mn/H]','This work [Mn/H]'], 'figures/north12_scl_comparison.png', 'Sculptor dSph', weighted=False, checkcoords=True)
 	'''
 	newlinelist = [4739.087, 4754.042, 4761.512, 4762.367, 4765.846, 
 					4766.418, 4783.427, 4823.524, 5394.677, 5399.5, 

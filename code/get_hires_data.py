@@ -56,21 +56,24 @@ def north_etal_12(coordfile, datafile1, datafile2, outfile):
 		# Check to see if star has values in datafiles
 		if (starname in name1.values) and (starname in name2.values):
 
+			idx1 = np.where((name1.values == starname))[0]
+			idx2 = np.where((name2.values == starname))[0]
+
 			# Check to see if star has [Mn/Fe] for all the requisite lines
-			if (pd.isnull(data1['[Mn/Fe]5407'][i]) == False) and (pd.isnull(data1['[Mn/Fe]5420'][i]) == False) and (pd.isnull(data2['[Mn/Fe]5516'][i]) == False):
+			if (pd.isnull(data1['[Mn/Fe]5407'].values[idx1][0]) == False) and (pd.isnull(data1['[Mn/Fe]5420'].values[idx1][0]) == False) and (pd.isnull(data2['[Mn/Fe]5516'].values[idx2][0]) == False):
 			
 				# Get [Mn/H], [Mn/H]error for each line, [Fe/H]
-				mnfe5407 = pd.to_numeric(data1['[Mn/Fe]5407'])[i]
-				mnfe5420 = pd.to_numeric(data1['[Mn/Fe]5420'])[i]
-				mnfe5516 = pd.to_numeric(data2['[Mn/Fe]5516'])[i]
+				mnfe5407 = pd.to_numeric(data1['[Mn/Fe]5407'])[idx1].values[0]
+				mnfe5420 = pd.to_numeric(data1['[Mn/Fe]5420'])[idx1].values[0]
+				mnfe5516 = pd.to_numeric(data2['[Mn/Fe]5516'])[idx2].values[0]
 
-				mnh5407 = pd.to_numeric(data1['[Mn/H]5407'])[i]
-				mnh5420 = pd.to_numeric(data1['[Mn/H]5420'])[i]
-				mnh5516 = pd.to_numeric(data2['[Mn/H]5516'])[i]
+				mnh5407 = pd.to_numeric(data1['[Mn/H]5407'])[idx1].values[0]
+				mnh5420 = pd.to_numeric(data1['[Mn/H]5420'])[idx1].values[0]
+				mnh5516 = pd.to_numeric(data2['[Mn/H]5516'])[idx2].values[0]
 
-				mnherr5407 = pd.to_numeric(data1['[Mn/Fe]error5407'])[i]
-				mnherr5420 = pd.to_numeric(data1['[Mn/Fe]error5420'])[i]
-				mnherr5516 = pd.to_numeric(data2['[Mn/Fe]error5516'])[i]
+				mnherr5407 = pd.to_numeric(data1['[Mn/Fe]error5407'])[idx1].values[0]
+				mnherr5420 = pd.to_numeric(data1['[Mn/Fe]error5420'])[idx1].values[0]
+				mnherr5516 = pd.to_numeric(data2['[Mn/Fe]error5516'])[idx2].values[0]
 
 				feh = mnh5407 - mnfe5407
 

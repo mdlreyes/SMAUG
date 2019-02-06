@@ -301,7 +301,7 @@ def divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask, sigmacli
 				clipmask[np.where((resid < -5*sigma) | (resid > 5*sigma))] = False
 
 				# Recalculate the fit after sigma-clipping
-				breakpoints_new = calc_breakpoints((obswvlmask[ipart].compressed())[clipmask], 150.)
+				breakpoints_new = calc_breakpoints_wvl((obswvlmask[ipart].compressed())[clipmask], 150.)
 				splinerep_new 	= splrep((obswvlmask[ipart].compressed())[clipmask], (quotient.compressed())[clipmask], w=(newivarmask.compressed())[clipmask], t=breakpoints_new)
 				continuum_new 	= splev(obswvlmask[ipart].compressed(), splinerep_new)
 
@@ -467,7 +467,6 @@ def mask_obs_for_abundance(obswvl, obsflux_norm, ivar_norm, dlam, lines = 'new')
 
 	skip = np.arange(len(lines))
 	for line in range(len(lines)):
-		#print(lines[line][1], obswvl[~mask][-1])
 
 		# Skip spectral regions where the chip gap falls
 		if (obswvl[chipgap + 5] > lines[line][0]) and (obswvl[chipgap + 5] < lines[line][1]):
@@ -478,7 +477,5 @@ def mask_obs_for_abundance(obswvl, obsflux_norm, ivar_norm, dlam, lines = 'new')
 		# Skip spectral regions that are outside the observed wavelength range (with bad pixels masked out)
 		elif (lines[line][0] < obswvl[~mask][0]) or (lines[line][1] > obswvl[~mask][-1]):
 			skip = np.delete(skip, np.where(skip==line))
-
-	#print(obswvl[~mask], obswvl[~mask][0], obswvl[~mask][-1])
 
 	return np.asarray(obsfluxmask), np.asarray(obswvlmask), np.asarray(ivarmask), np.asarray(dlammask), np.asarray(skip)
