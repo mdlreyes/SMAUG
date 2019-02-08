@@ -63,8 +63,8 @@ def open_obs_file(filename, retrievespec=None, specparams=False, objname=None, c
 			flux = fluxarray[retrievespec] 
 			ivar = ivararray[retrievespec]
 			dlam = dlamarray[retrievespec]
-			#dlam = 0.7086*np.ones(len(dlam))
-			dlam = 1.67*np.ones(len(dlam))
+			dlam = 0.7086*np.ones(len(dlam))
+			#dlam = 1.67*np.ones(len(dlam))
 
 			# Correct for wavelength
 			zrest = data['ZREST'][retrievespec]
