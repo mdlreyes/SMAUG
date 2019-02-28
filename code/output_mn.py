@@ -222,7 +222,7 @@ def make_chisq_plots(filename, paramfilename, galaxyname, slitmaskname, startsta
 
 	return
 
-def plot_fits_postfacto(filename, paramfilename, galaxyname, slitmaskname, startstar=0, globular=False, lines='new'):
+def plot_fits_postfacto(filename, paramfilename, galaxyname, slitmaskname, startstar=0, globular=False, lines='new', mn_cluster=None):
 	""" Plot fits, residuals, and ivar for stars whose [Mn/H] abundances have already been measured.
 
 	Inputs:
@@ -238,6 +238,7 @@ def plot_fits_postfacto(filename, paramfilename, galaxyname, slitmaskname, start
 						else, put into globular cluster path
 	lines 			-- if 'new' (default), use new revised linelist;
 						else, use original linelist from Judy's code
+	mn_cluster 		-- if not None (default), also plot spectrum with [Mn/H] = mean [Mn/H] of cluster
 
 	"""
 
@@ -256,15 +257,11 @@ def plot_fits_postfacto(filename, paramfilename, galaxyname, slitmaskname, start
 	name  = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=0, dtype='str')
 	mn    = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=8)
 	mnerr = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=9)
-	#mn    = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=10)
-	#mnerr = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=11)
-	#dlam = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=8)
-	#dlamerr = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=9)
 
 	# Get number of stars in file with observed spectra
 	Nstars = open_obs_file(filename)
 
-	# Plot chi-sq contours for each star
+	# Plot spectra for each star
 	for i in range(startstar, Nstars):
 
 		try:
@@ -297,11 +294,17 @@ def plot_fits_postfacto(filename, paramfilename, galaxyname, slitmaskname, start
 
 				idx = np.where(name == star.specname)
 
-				synthfluxup = star.synthetic(obswvl, mn[idx] + 0.3, full=True)
-				synthfluxdown = star.synthetic(obswvl, mn[idx] - 0.3, full=True)
+				synthfluxup 	= star.synthetic(obswvl, mn[idx] + 0.15, full=True)
+				synthfluxdown 	= star.synthetic(obswvl, mn[idx] - 0.15, full=True)
+				synthflux_nomn 	= star.synthetic(obswvl, -10.0, full=True)
+
+				if mn_cluster is not None:
+					synthflux_cluster = [mn_cluster, star.synthetic(obswvl, mn_cluster, full=True)]
+				else:
+					synthflux_cluster=None
 
 				if mnerr[idx][0] < 1:
-					make_plots(lines, star.specname+'_', obswvl, obsflux, synthflux, outputname, ivar=ivar, synthfluxup=synthfluxup, synthfluxdown=synthfluxdown, title=None)
+					make_plots(lines, star.specname+'_', obswvl, obsflux, synthflux, outputname, ivar=ivar, resids=True, synthfluxup=synthfluxup, synthfluxdown=synthfluxdown, synthflux_nomn=synthflux_nomn, synthflux_cluster=synthflux_cluster, title=None)
 
 		except Exception as e:
 			print(repr(e))
@@ -322,7 +325,7 @@ def main():
 	#run_chisq('/raid/caltech/moogify/bscl6/moogify.fits.gz', '/raid/gduggan/moogify/bscl6_moogify.fits.gz', 'scl', 'scl6', startstar=0, lines='new', plots=True)
 
 	# Measure Mn abundances for Sculptor using new 1200B data
-	run_chisq('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', '/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'scl5_1200B', startstar=0, lines='new', plots=True, wvlcorr=False)
+	#run_chisq('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', '/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'scl5_1200B', startstar=0, lines='new', plots=True, wvlcorr=False)
 	#plot_fits_postfacto('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', '/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'scl5_1200B', startstar=0, globular=False, lines='new')
 	'''
 	# Measure Mn abundances for Ursa Minor
@@ -346,11 +349,15 @@ def main():
 	# Measure Mn abundances for Fornax using new 1200B data
 	#run_chisq('/raid/caltech/moogify/bfor7_1200B/moogify.fits.gz', '/raid/caltech/moogify/bfor7_1200B/moogify.fits.gz', 'for', 'for7_1200B', startstar=0, lines='new')
 
-	# Measure Mn abundances for a test globular cluster (NGC 2419)
+	# Measure Mn abundances for globular clusters
 	#run_chisq('/raid/caltech/moogify/n2419b_blue/moogify.fits.gz', '/raid/gduggan/moogify/n2419b_blue_moogify.fits.gz', 'n2419', 'n2419b_blue', startstar=0, globular=True, lines='new')
-
-	# Measure Mn abundances for a test globular cluster (M15) using new 1200B data
-	#run_chisq('/raid/caltech/moogify/7078l1_1200B/moogify.fits.gz', '/raid/caltech/moogify/7078l1_1200B/moogify.fits.gz', 'm15', '7078l1_1200B', startstar=0, globular=True, lines='new')
+	#run_chisq('/raid/caltech/moogify/7078l1_1200B/moogify.fits.gz', '/raid/caltech/moogify/7078l1_1200B/moogify.fits.gz', 'n7078', '7078l1_1200B', startstar=0, globular=True, lines='new', plots=True, wvlcorr=False)
+	#run_chisq('/raid/caltech/moogify/7089l1_1200B/moogify.fits.gz', '/raid/caltech/moogify/7089l1_1200B/moogify.fits.gz', 'n7089', '7089l1_1200B', startstar=0, globular=True, lines='new', plots=True, wvlcorr=False)
+	#run_chisq('/raid/caltech/moogify/7089l3_1200B/moogify.fits.gz', '/raid/caltech/moogify/7089l3_1200B/moogify.fits.gz', 'n7089', '7089l3_1200B', startstar=0, globular=True, lines='new', plots=True, wvlcorr=False)
+	#run_chisq('/raid/caltech/moogify/ng1904_1200B/moogify.fits.gz', '/raid/caltech/moogify/ng1904_1200B/moogify.fits.gz', 'n1904', 'ng1904_1200B', startstar=0, globular=True, lines='new', plots=True, wvlcorr=False)
+	plot_fits_postfacto('/raid/caltech/moogify/7089l1_1200B/moogify.fits.gz', '/raid/caltech/moogify/7089l1_1200B/moogify.fits.gz', 'n7089', '7089l1_1200B', startstar=0, globular=True, lines='new', mn_cluster=-1.66)
+	plot_fits_postfacto('/raid/caltech/moogify/7089l3_1200B/moogify.fits.gz', '/raid/caltech/moogify/7089l3_1200B/moogify.fits.gz', 'n7089', '7089l3_1200B', startstar=0, globular=True, lines='new', mn_cluster=-1.66)
+	plot_fits_postfacto('/raid/caltech/moogify/7078l1_1200B/moogify.fits.gz', '/raid/caltech/moogify/7078l1_1200B/moogify.fits.gz', 'n7078', '7078l1_1200B', startstar=0, globular=True, lines='new', mn_cluster=-2.38)
 
 	# Plot chi-sq contours for stars that already have [Mn/H] measured
 	#make_chisq_plots('/raid/caltech/moogify/n2419b_blue/moogify.fits.gz', '/raid/gduggan/moogify/n2419b_blue_moogify.fits.gz', 'n2419b_blue', 'n2419b_blue', startstar=11, globular=True)

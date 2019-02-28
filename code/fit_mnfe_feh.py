@@ -83,14 +83,14 @@ def fit_mnfe_feh(filenames, outfile, title, fehia, maxerror=None, gratings=None)
 	mnfe = mnh - feh
 	mnfeerr = np.sqrt(np.power(feherr,2.)+np.power(mnherr,2.))
 
-	outlier = np.where((mnfe > 0) | (mnfe < -1.0))[0]
+	outlier = np.where((feh < -2.5))[0]
 	print(name[outlier])
 	notoutlier = np.ones(len(mnfe), dtype='bool')
 	notoutlier[outlier] = False
 
 	# Remove points with error > maxerror
 	if maxerror is not None:
-		mask 	= np.where((mnfeerr < maxerror)) # & notoutlier) # & (redchisq < 3.0))
+		mask 	= np.where((mnfeerr < maxerror) & notoutlier) # & (redchisq < 3.0))
 		name 	= name[mask]
 		feh 	= feh[mask]
 		mnfe 	= mnfe[mask]
@@ -351,7 +351,9 @@ def compare_mnfe(outfile):
 def main():
 
 	# Plot for Sculptor
-	fit_mnfe_feh(['data/Sculptor_hires_data/north12_final.csv','data/scl5_1200B_final.csv'],'figures/scl_fit', 'Sculptor dSph', -2.34, maxerror=0.3, gratings=['#B0B0B0','#594F4F'])
+	fit_mnfe_feh(['data/Sculptor_hires_data/north12_final.csv','data/scl5_1200B_final.csv'],'figures/scl_fit', 'Sculptor dSph', fehia=-2.34, maxerror=0.3, gratings=['#B0B0B0','#594F4F'])
+	#fit_mnfe_feh(['data/scl5_1200B_final.csv'],'figures/scl_fit', 'Sculptor dSph', fehia=-2.34, maxerror=0.3, gratings=['#594F4F','#594F4F'])
+	#fit_mnfe_feh(['data/Sculptor_hires_data/north12_final.csv'],'figures/scl_fit', 'Sculptor dSph', fehia=-2.34, maxerror=0.3, gratings=['#B0B0B0','#B0B0B0'])
 
 	# Plot [Mn/Fe] values on number line
 	#compare_mnfe('figures/scl_mnfe_comparison.png')

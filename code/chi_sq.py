@@ -228,11 +228,15 @@ class obsSpectrum:
 		if output:
 
 			if len(np.atleast_1d(best_mn)) == 1:
-				finalsynthup 	= self.synthetic(self.obswvl_final, best_mn + error, full=True)
-				finalsynthdown 	= self.synthetic(self.obswvl_final, best_mn - error, full=True)
+				#finalsynthup 	= self.synthetic(self.obswvl_final, best_mn + error, full=True)
+				#finalsynthdown 	= self.synthetic(self.obswvl_final, best_mn - error, full=True)
+				finalsynthup 	= self.synthetic(self.obswvl_final, best_mn + 0.15, full=True)
+				finalsynthdown 	= self.synthetic(self.obswvl_final, best_mn - 0.15, full=True)
 			else:
-				finalsynthup = self.synthetic(self.obswvl_final, best_mn[0] + error[0], best_mn[1], full=True)
-				finalsynthdown = self.synthetic(self.obswvl_final, best_mn[0] - error[0], best_mn[1], full=True)
+				#finalsynthup = self.synthetic(self.obswvl_final, best_mn[0] + error[0], best_mn[1], full=True)
+				#finalsynthdown = self.synthetic(self.obswvl_final, best_mn[0] - error[0], best_mn[1], full=True)
+				finalsynthup = self.synthetic(self.obswvl_final, best_mn[0] + 0.15, best_mn[1], full=True)
+				finalsynthdown = self.synthetic(self.obswvl_final, best_mn[0] - 0.15, best_mn[1], full=True)
 
 			# Create file
 			filename = self.outputname+'/'+self.specname+'_data.csv'

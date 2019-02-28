@@ -16,6 +16,7 @@ import math
 from astropy.io import fits, ascii
 from astropy.coordinates import SkyCoord
 from astropy import units as u
+import scipy.optimize as op
 import pandas
 from matplotlib.ticker import NullFormatter
 from statsmodels.stats.weightstats import DescrStatsW
@@ -29,6 +30,7 @@ def plot_mn_fe(filenames, outfile, title, gratings=None, maxerror=None, snr=None
 	title 		-- title of graph
 
 	Keywords:
+	gratings 	-- if not None, list of colors for different gratings
 	maxerror 	-- if not None, points with error > maxerror will not be plotted
 	solar 		-- if 'True', plot line marking solar abundance
 	typeii 		-- if 'True', plot theoretical Type II yield
@@ -71,6 +73,7 @@ def plot_mn_fe(filenames, outfile, title, gratings=None, maxerror=None, snr=None
 	# Convert back to numpy arrays
 	name 	= np.hstack(name)
 	feh 	= np.hstack(feh)
+	#feherr 	= np.ones(len(feh))*0.1
 	feherr 	= np.hstack(feherr)
 	mnh 	= np.hstack(mnh)
 	mnherr  = np.hstack(mnherr)
@@ -92,7 +95,7 @@ def plot_mn_fe(filenames, outfile, title, gratings=None, maxerror=None, snr=None
 
 	# Testing: Label some stuff
 	outlier = np.where(mnfe > 1)[0]
-	print(name[outlier])
+	#print(name[outlier])
 	notoutlier = np.where(mnfe > 0.5)[0]
 
 	#for i in range(len(outlier)):
@@ -375,12 +378,12 @@ def comparison_plot(filenames, labels, outfile, title, membercheck=None, memberl
 
 	return
 
-def plot_mn_vs_something(filename, quantity, outfile, title, membercheck=None, memberlist=None, maxerror=None, weighted=True):
-	"""Compare [Mn/H] vs another quantity for two different files.
+def plot_mn_vs_something(filename, quantity, outfile, title, membercheck=None, memberlist=None, maxerror=None, weighted=True, plotfeh=False, sigmasys=False):
+	"""Compare [Mn/Fe] vs another quantity for two different files.
 
 	Inputs:
 	filename 	-- list of input filename
-	quantity 	-- quantity against which to plot [Mn/H]; options: 'temp', 'feh'
+	quantity 	-- quantity against which to plot [Mn/H]; options: 'temp', 'feh', 'logg'
 	outfile 	-- name of output file
 	title 		-- title of graph
 
@@ -389,27 +392,48 @@ def plot_mn_vs_something(filename, quantity, outfile, title, membercheck=None, m
 	memberlist	-- member list
 	maxerror	-- if not 'None', throw out any objects with measurement error > maxerror
 	weighted 	-- if 'True', compute weighted mean/std; else, compute unweighted mean/std
+	plotfeh 	-- if 'True', plot [Fe/H] instead of [Mn/Fe] on y-axis
+	sigmasys 	-- if 'True', compute sigma_sys
 	"""
 
 	# Get data
 	name 	= np.genfromtxt(filename, delimiter='\t', skip_header=1, usecols=0, dtype='str')
 	mnh 	= np.genfromtxt(filename, delimiter='\t', skip_header=1, usecols=8)
 	mnherr 	= np.genfromtxt(filename, delimiter='\t', skip_header=1, usecols=9)
+	feh 	= np.genfromtxt(filename, delimiter='\t', skip_header=1, usecols=5)
+	feherr 	= np.genfromtxt(filename, delimiter='\t', skip_header=1, usecols=6)
+	#feherr 	= np.ones(len(feh))*0.1
+
+	# Convert [Mn/H] to [Mn/Fe]
+	mnfe 	= mnh - feh
+	mnfeerr = mnherr #np.sqrt(np.power(feherr,2.)+np.power(mnherr,2.))
+	print(np.average(mnh))
 
 	if quantity=='temp':
-		x 	= np.genfromtxt(filename, delimiter='\t', skip_header=1, usecols=3)
+		x = np.genfromtxt(filename, delimiter='\t', skip_header=1, usecols=3)
 		xlabel = r'$T_{eff}$' + ' (K)'
 
 	if quantity=='feh':
-		x = np.genfromtxt(filename, delimiter='\t', skip_header=1, usecols=5)
+		x = feh
 		xlabel = '[Fe/H]'
+
+	if quantity=='logg':
+		x = np.genfromtxt(filename, delimiter='\t', skip_header=1, usecols=4)
+		xlabel = 'Log(g) [cm/s'+r'$^{2}$]'
+
+	if plotfeh:
+		# Use [Fe/H] instead of [Mn/Fe]
+		mnfe = feh
+		mnfeerr = feherr
+
+	#print(mnfeerr, feherr)
 
 	# Do membership check
 	if membercheck is not None:
 		name_new = []
 		x_new = []
-		mnh_new = []
-		mnherr_new = []
+		mnfe_new = []
+		mnfeerr_new = []
 
 		table = ascii.read(memberlist)
 		memberindex = np.where(table.columns[0] == membercheck)
@@ -418,49 +442,91 @@ def plot_mn_vs_something(filename, quantity, outfile, title, membercheck=None, m
 		for i in range(len(name)):
 			if name[i] in membernames:
 				x_new.append(x[i])
-				mnh_new.append(mnh[i])
-				mnherr_new.append(mnherr[i])
+				mnfe_new.append(mnfe[i])
+				mnfeerr_new.append(mnfeerr[i])
 				name_new.append(name[i])
 
 		x = x_new
-		mnh = mnh_new
-		mnherr = mnherr_new
+		mnfe = mnfe_new
+		mnfeerr = mnfeerr_new
 		name = name_new
 
 	# Do check for max errors
 	if maxerror is not None:
 		x_new = []
-		mnh_new = []
-		mnherr_new = []
+		mnfe_new = []
+		mnfeerr_new = []
 		name_new = []
 
 		for i in range(len(x)):
-			if (mnherr[i] < maxerror):
+			if (mnfeerr[i] < maxerror):
 				x_new.append(x[i])
-				mnh_new.append(mnh[i])
-				mnherr_new.append(mnherr[i])
+				mnfe_new.append(mnfe[i])
+				mnfeerr_new.append(mnfeerr[i])
 				name_new.append(name[i])
 
 		x = x_new
-		mnh = mnh_new
-		mnherr = mnherr_new
+		mnfe = mnfe_new
+		mnfeerr = mnfeerr_new
 		name = name_new
+
+	'''
+	outliers = np.where((np.asarray(mnfe) > -1.1) | (np.asarray(mnfe) < -2.5))[0]
+	print(np.asarray(name)[outliers])
+	print(np.asarray(mnfe)[outliers])
+	print(np.asarray(x)[outliers])
+
+	check = np.where((np.asarray(mnfe) < -1.1) & (np.asarray(mnfe) > -2.5))[0]
+	x = np.asarray(x)[check]
+	mnfe = np.asarray(mnfe)[check]
+	mnfeerr = np.asarray(mnfeerr)[check]
+	name = np.asarray(name)[check]
+	'''
+
+	# Compute sigma_sys
+	if sigmasys:
+		avg = np.mean(mnfe)
+
+		test = np.linspace(0,1,1000)
+
+		check = []
+		for i in range(len(test)):
+			disp = np.std( (mnfe-avg)/np.sqrt(np.power(mnfeerr,2.) + np.power(test[i],2.)) ) - 1.
+			check.append(disp)
+			#print(test[i], disp)
+
+		#print(np.min(np.abs(np.asarray(check))))
+		sigma_sys = test[np.argmin(np.abs(np.asarray(check)))]
+		print('Sigma_sys: ', sigma_sys)
+		print('Sigma_stat: ', np.average(mnfeerr))
+
+		'''
+		# Make plot
+		fig, ax = plt.subplots(1, 1, tight_layout=True)
+		ax.hist((mnfe-avg)/np.sqrt(np.power(mnfeerr,2.) + np.power(sigma_sys,2.)) )
+		plt.savefig(outfile[:-4]+'hist.png', bbox_inches='tight')
+		plt.show()
+		'''
+
+		# Double check and compute reduced chisq!
+		rchisq = np.sum( np.power((mnfe - avg),2.)/np.power(mnfeerr,2.) ) /len(mnfe)
+		print(rchisq)
 
 	# Plot stuff
 	# Scatter plot
 	fig, ax = plt.subplots(figsize=(8,6))
 	#area = 2*np.reciprocal(np.power(mnfeerr,2.))
-	ax.errorbar(x, mnh, yerr=mnherr, marker='o', linestyle='None')
+	ax.errorbar(x, mnfe, yerr=mnfeerr, marker='o', linestyle='None')
 
 	if weighted:
-		stats = DescrStatsW(mnh, weights=np.reciprocal(np.asarray(mnherr)**2.), ddof=0)
+		stats = DescrStatsW(mnfe, weights=np.reciprocal(np.asarray(mnfeerr)**2.), ddof=0)
 
 		mean = stats.mean
 		std  = stats.std
 
 	else:
-		mean = np.average(mnh)
-		std  = np.std(mnh)
+		mean = np.average(mnfe)
+		std  = np.std(mnfe)
 
 	ax.axhline(mean, color='r', linestyle='--')
 	ax.axhspan(mean - std, mean + std, color='r', alpha=0.25)
@@ -471,15 +537,15 @@ def plot_mn_vs_something(filename, quantity, outfile, title, membercheck=None, m
 	# Format plot
 	ax.set_title(title, fontsize=18)
 	ax.set_xlabel(xlabel, fontsize=16)
-	ax.set_ylabel('[Mn/H]', fontsize=16)
+	ax.set_ylabel('[Mn/Fe]', fontsize=16)
 	for label in (ax.get_xticklabels() + ax.get_yticklabels()):
 		label.set_fontsize(14)
-	ax.set_ylim([-3.3,-1.1])
+	#ax.set_ylim([-3.3,-1.1])
 
 	# Print labels
 	#for i in range(len(x)):
-	#	if mnh[i] > -1.75:
-	#		ax.text(x[i], mnh[i], name[i])
+	#	if mnfe[i] > -1.75:
+	#		ax.text(x[i], mnfe[i], name[i])
 
 	# Output file
 	plt.savefig(outfile, bbox_inches='tight')
@@ -550,17 +616,33 @@ def main():
 	# Draco
 	#plot_mn_fe(['data/dra1_final.csv','data/dra2_final.csv','data/dra3_final.csv'],'figures/mnfe_dratotal.png','Draco',snr=[3,5])
 
+	# Globular cluster checks
 	# Linelist check using globular cluster
 	#comparison_plot(['data/newlinelist_data/n2419b_blue_final.csv','data/oldlinelist_data/n2419b_blue_final.csv'],['New linelist [Mn/H]', 'Old linelist [Mn/H]'],'figures/gc_checks/n2419b_linelistcheck.png','NGC 2419', membercheck='NGC 2419', memberlist='data/gc_checks/table_catalog.dat', maxerror=1) #, weighted=False)
 	#plot_mn_fe(['data/newlinelist_data/n2419b_blue_final.csv',],'figures/gc_checks/mnfe_n2419total.png','NGC 2419') #,snr=[3,5])
 	#plot_mn_vs_something('data/newlinelist_data/n2419b_blue_final.csv', 'feh', 'figures/gc_checks/n2419b_mnh_temp.png','NGC 2419', membercheck='NGC 2419', memberlist='data/gc_checks/table_catalog.dat', maxerror=1, weighted=True)
 	#plot_mn_vs_something('data/n2419b_blue_final.csv', 'temp', 'figures/gc_checks/n2419b_mnh_temp.png','NGC 2419', membercheck='NGC 2419', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True)
 
+	plot_mn_vs_something('data/7078l1_1200B_final.csv', 'temp', 'figures/gc_checks/n7078l1_mnfe_temp.png', 'M15', membercheck='M15', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True, sigmasys=True)
+	#plot_mn_vs_something('data/7078l1_1200B_final.csv', 'logg', 'figures/gc_checks/n7078l1_mnfe_logg.png', 'M15', membercheck='M15', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True)
+	#plot_mn_vs_something('data/7078l1_1200B_final.csv', 'feh', 'figures/gc_checks/n7078l1_mnfe_feh.png', 'M15', membercheck='M15', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True)
+	#plot_mn_vs_something('data/7078l1_1200B_final.csv', 'temp', 'figures/gc_checks/n7078l1_feh_temp.png', 'M15', membercheck='M15', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True, plotfeh=True)
+
+	#plot_mn_vs_something('data/7089_1200B_final.csv', 'temp', 'figures/gc_checks/n7089_mnfe_temp.png', 'M2', membercheck='M2', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True, sigmasys=True)
+	#plot_mn_vs_something('data/7089_1200B_final.csv', 'logg', 'figures/gc_checks/n7089_mnfe_logg.png', 'M2', membercheck='M2', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True)
+	#plot_mn_vs_something('data/7089_1200B_final.csv', 'feh', 'figures/gc_checks/n7089_mnfe_feh.png', 'M2', membercheck='M2', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True)
+	#plot_mn_vs_something('data/7089_1200B_final.csv', 'temp', 'figures/gc_checks/n7089_feh_temp.png', 'M2', membercheck='M2', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True, plotfeh=True)
+
+	#plot_mn_vs_something('data/ng1904_1200B_final.csv', 'temp', 'figures/gc_checks/n1904_mnfe_temp.png', 'M79', membercheck='M79', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True, sigmasys=True)
+	#plot_mn_vs_something('data/ng1904_1200B_final.csv', 'logg', 'figures/gc_checks/n1904_mnfe_logg.png', 'M79', membercheck='M79', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True)
+	#plot_mn_vs_something('data/ng1904_1200B_final.csv', 'feh', 'figures/gc_checks/n1904_mnfe_feh.png', 'M79', membercheck='M79', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True)
+	#plot_mn_vs_something('data/ng1904_1200B_final.csv', 'temp', 'figures/gc_checks/n1904_feh_temp.png', 'M79', membercheck='M79', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True, plotfeh=True)
+
 	# Check if adding smoothing parameter does anything
 	#comparison_plot(['data/no_dlam/scl5_1200B_final.csv','data/scl5_1200B.csv'],['Don\'t fit smoothing [Mn/H]', 'Fit smoothing [Mn/H]'],'figures/scl5_1200B_smoothcheck.png','Sculptor', maxerror=1) #, weighted=False)
 
 	# Compare my data with Sculptor data
-	comparison_plot(['data/Sculptor_hires_data/north12_final.csv','data/scl5_1200B_final.csv'],['North+12 [Mn/H]','This work [Mn/H]'], 'figures/north12_scl_comparison.png', 'Sculptor dSph', weighted=False, checkcoords=True)
+	#comparison_plot(['data/Sculptor_hires_data/north12_final.csv','data/scl5_1200B_final.csv'],['North+12 [Mn/H]','This work [Mn/H]'], 'figures/north12_scl_comparison.png', 'Sculptor dSph', weighted=False, checkcoords=True)
 	'''
 	newlinelist = [4739.087, 4754.042, 4761.512, 4762.367, 4765.846, 
 					4766.418, 4783.427, 4823.524, 5394.677, 5399.5, 
