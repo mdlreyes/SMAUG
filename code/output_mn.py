@@ -100,6 +100,7 @@ def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, gl
 			# Do membership check
 			if membercheck is not None:
 				if specname not in membernames:
+					print('Not in member list! Skipped #'+str(i+1)+'/'+str(Nstars)+' stars')
 					continue
 
 			# Run optimization code
