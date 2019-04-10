@@ -18,7 +18,7 @@ from run_moog import runMoog
 from match_spectrum import open_obs_file
 from continuum_div import get_synth, mask_obs_for_division, divide_spec, mask_obs_for_abundance
 import subprocess
-from astropy.io import fits
+from astropy.io import fits, ascii
 from astropy import units as u
 from astropy.coordinates import SkyCoord
 import pandas
