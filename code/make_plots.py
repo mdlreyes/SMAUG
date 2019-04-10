@@ -16,7 +16,7 @@ import numpy as np
 import math
 
 # Code to make plots
-def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, resids=True, ivar=None, title=None, synthfluxup=None, synthfluxdown=None, synthflux_nomn=None, synthflux_cluster=None):
+def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, resids=True, ivar=None, title=None, synthfluxup=None, synthfluxdown=None, synthflux_nomn=None, synthflux_cluster=None, savechisq=None):
 	"""Make plots.
 
 	Inputs:
@@ -34,6 +34,7 @@ def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, resids=T
 	synthfluxup & synthfluxdown -- if not 'None' (default), then plot synthetic spectrum as region between [Mn/H]_best +/- 0.3dex
 	synthflux_nomn 		-- if not 'None' (default), then plot synthetic spectrum with [Mn/H] = -10.0
 	synthflux_cluster 	-- if not 'None' (default), then plot synthetic spectrum with mean [Mn/H] of cluster; in format synthflux_cluster = [mean [Mn/H], spectrum]
+	savechisq 	-- if not 'None' (default), compute & save reduced chi-sq for each line in output file with path savechisq
 
 	Outputs:
 	"""
@@ -80,6 +81,12 @@ def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, resids=T
 	if ivar is not None:
 		plt.figure(num=3, figsize=figsize)
 		plt.title(title)
+
+	# Prep for computing reduced chi-sq:
+	if savechisq is not None:
+		chisq = np.zeros(len(linelist))
+		chisq_up = np.zeros(len(linelist))
+		chisq_down = np.zeros(len(linelist))
 
 	for i in range(len(linelist)):
 		#f = plt.figure(1)
@@ -139,6 +146,16 @@ def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, resids=T
 						for text in leg.get_texts():
 							plt.setp(text, color='#594F4F', fontsize=18)
 
+				# Compute reduced chi-sq
+				if savechisq is not None:
+					current_chisq = np.sum(np.power(obsflux[mask] - synthflux[mask], 2.) * ivar[mask]) / (len(obsflux[mask]) - 1.)
+					current_chisq_up = np.sum(np.power(obsflux[mask] - synthfluxup[mask], 2.) * ivar[mask]) / (len(obsflux[mask]) - 1.)
+					current_chisq_down = np.sum(np.power(obsflux[mask] - synthfluxdown[mask], 2.) * ivar[mask]) / (len(obsflux[mask]) - 1.)
+
+					chisq[i] = current_chisq
+					chisq_up[i] = current_chisq_up
+					chisq_down[i] = current_chisq_down
+
 				'''
 				if resids:
 					# Only plot residuals if synth spectrum has been smoothed to match obswvl
@@ -188,5 +205,11 @@ def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, resids=T
 		plt.savefig(outputname+'/'+specname+'ivar.png',bbox_inches='tight')
 		plt.close(3)
 	'''
+
+	# Save the reduced chi-sq values!
+	if savechisq is not None:
+		with open(outputname, 'a') as f:
+			for i in range(len(linelist)):
+				f.write(specname+'\t'+str(chisq[i])+'\t'+str(chisq_up[i])+'\t'+str(chisq_down[i])+'\n')
 
 	return
