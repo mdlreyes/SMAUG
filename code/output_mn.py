@@ -26,7 +26,7 @@ import scipy.optimize
 import chi_sq
 from make_plots import make_plots
 
-def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, globular=False, lines='new', plots=False, wvlcorr=True):
+def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, globular=False, lines='new', plots=False, wvlcorr=True, membercheck=None, memberlist=None):
 	""" Measure Mn abundances from a FITS file.
 
 	Inputs:
@@ -46,6 +46,8 @@ def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, gl
 						else, plot them
 	wvlcorr 		-- if 'True' (default), do linear wavelength corrections following G. Duggan's code for 900ZD data;
 						else (for 1200B data), don't do corrections
+	membercheck 	-- do membership check for this object
+	memberlist		-- member list
 
 	"""
 
@@ -59,6 +61,12 @@ def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, gl
 	if startstar<1:
 		with open(outputname, 'w+') as f:
 			f.write('Name\tRA\tDec\tTemp\tlog(g)\t[Fe/H]\terror([Fe/H])\t[alpha/Fe]\t[Mn/H]\terror([Mn/H])\tchisq(reduced)\n')
+
+	# Prep for member check
+	if membercheck is not None:
+		table = ascii.read(memberlist)
+		memberindex = np.where(table.columns[0] == membercheck)
+		membernames = table.columns[1][memberindex]
 
 	# Get number of stars in file
 	Nstars = open_obs_file(filename)
@@ -84,13 +92,18 @@ def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, gl
 			# Get dlam (FWHM) of star to use for initial guess
 			specname, obswvl, obsflux, ivar, dlam, zrest = open_obs_file(filename, retrievespec=i)
 
+			# Check for bad parameter measurement
 			if np.isclose(temp, 4750.) and np.isclose(fe,-1.5) and np.isclose(alpha,0.2):
 				print('Bad parameter measurement! Skipped #'+str(i+1)+'/'+str(Nstars)+' stars')
 				continue
 
+			# Do membership check
+			if membercheck is not None:
+				if specname not in membernames:
+					continue
+
 			# Run optimization code
 			star = chi_sq.obsSpectrum(filename, paramfilename, i, wvlcorr, galaxyname, slitmaskname, globular, lines)
-			#best_mn, error = star.minimize_scipy(fe)
 			best_mn, error, finalchisq = star.plot_chisq(fe, output=True, plots=plots)
 
 		except Exception as e:
@@ -351,9 +364,9 @@ def main():
 
 	# Measure Mn abundances for globular clusters
 	#run_chisq('/raid/caltech/moogify/n2419b_blue/moogify.fits.gz', '/raid/gduggan/moogify/n2419b_blue_moogify.fits.gz', 'n2419', 'n2419b_blue', startstar=0, globular=True, lines='new')
-	run_chisq('/raid/caltech/moogify/7078l1_1200B/moogify.fits.gz', '/raid/caltech/moogify/7078l1B/moogify7_flexteff.fits.gz', 'n7078', '7078l1_1200B', startstar=0, globular=True, lines='new', plots=True, wvlcorr=False)
-	run_chisq('/raid/caltech/moogify/7089l1_1200B/moogify.fits.gz', '/raid/caltech/moogify/7089l1/moogify7_flexteff.fits.gz', 'n7089', '7089l1_1200B', startstar=0, globular=True, lines='new', plots=True, wvlcorr=False)
-	run_chisq('/raid/caltech/moogify/7089l3_1200B/moogify.fits.gz', '/raid/caltech/moogify/7089l3/moogify7_flexteff.fits.gz', 'n7089', '7089l3_1200B', startstar=0, globular=True, lines='new', plots=True, wvlcorr=False)
+	run_chisq('/raid/caltech/moogify/7078l1_1200B/moogify.fits.gz', '/raid/caltech/moogify/7078l1B/moogify7_flexteff.fits.gz', 'n7078', '7078l1_1200B', startstar=0, globular=True, lines='new', plots=True, wvlcorr=False, membercheck='M15', memberlist='/raid/caltech/articles/kirby_gclithium/table_catalog.dat')
+	run_chisq('/raid/caltech/moogify/7089l1_1200B/moogify.fits.gz', '/raid/caltech/moogify/7089l1/moogify7_flexteff.fits.gz', 'n7089', '7089l1_1200B', startstar=0, globular=True, lines='new', plots=True, wvlcorr=False, membercheck='M2', memberlist='/raid/caltech/articles/kirby_gclithium/table_catalog.dat')
+	run_chisq('/raid/caltech/moogify/7089l3_1200B/moogify.fits.gz', '/raid/caltech/moogify/7089l3/moogify7_flexteff.fits.gz', 'n7089', '7089l3_1200B', startstar=0, globular=True, lines='new', plots=True, wvlcorr=False, membercheck='M2', memberlist='/raid/caltech/articles/kirby_gclithium/table_catalog.dat')
 	#run_chisq('/raid/caltech/moogify/ng1904_1200B/moogify.fits.gz', '/raid/caltech/moogify/ng1904_1200B/moogify.fits.gz', 'n1904', 'ng1904_1200B', startstar=0, globular=True, lines='new', plots=True, wvlcorr=False)
 	#plot_fits_postfacto('/raid/caltech/moogify/7089l1_1200B/moogify.fits.gz', '/raid/caltech/moogify/7089l1/moogify7_flexteff.fits.gz', 'n7089', '7089l1_1200B', startstar=0, globular=True, lines='new', mn_cluster=-1.66)
 	#plot_fits_postfacto('/raid/caltech/moogify/7089l3_1200B/moogify.fits.gz', '/raid/caltech/moogify/7089l3/moogify7_flexteff.fits.gz', 'n7089', '7089l3_1200B', startstar=0, globular=True, lines='new', mn_cluster=-1.66)
