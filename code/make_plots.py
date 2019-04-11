@@ -208,8 +208,8 @@ def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, resids=T
 
 	# Save the reduced chi-sq values!
 	if savechisq is not None:
-		with open(outputname, 'a') as f:
+		with open(savechisq, 'a') as f:
 			for i in range(len(linelist)):
-				f.write(specname+'\t'+str(chisq[i])+'\t'+str(chisq_up[i])+'\t'+str(chisq_down[i])+'\n')
+				f.write(specname[:-1]+'\t'+str(i)+'\t'+str(chisq[i])+'\t'+str(chisq_up[i])+'\t'+str(chisq_down[i])+'\n')
 
 	return

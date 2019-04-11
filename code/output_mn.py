@@ -275,6 +275,12 @@ def plot_fits_postfacto(filename, paramfilename, galaxyname, slitmaskname, start
 	# Get number of stars in file with observed spectra
 	Nstars = open_obs_file(filename)
 
+	# Open file to store reduced chi-sq values
+	chisqfile = outputname+'_chisq.txt'
+	with open(chisqfile, 'w+') as f:
+		print('made it here')
+		f.write('Star'+'\t'+'Line'+'\t'+'redChiSq (best[Mn/H])'+'\t'+'redChiSq (best[Mn/H]+0.15)'+'\t'+'redChiSq (best[Mn/H]-0.15)'+'\n')
+
 	# Plot spectra for each star
 	for i in range(startstar, Nstars):
 
@@ -318,11 +324,6 @@ def plot_fits_postfacto(filename, paramfilename, galaxyname, slitmaskname, start
 					synthflux_cluster=None
 
 				if mnerr[idx][0] < 1:
-					# Open file to store reduced chi-sq values
-					chisqfile = outputname+'_chisq.txt'
-					with open(chisqfile, 'w+') as f:
-						f.write('Star'+'\t'+'Line'+'\t'+'redChiSq (best[Mn/H])'+'\t'+'redChiSq (best[Mn/H]+0.15)'+'\t'+'redChiSq (best[Mn/H]-0.15)'+'\n')
-
 					# Run code to make plots
 					make_plots(lines, star.specname+'_', obswvl, obsflux, synthflux, outputname, ivar=ivar, resids=True, synthfluxup=synthfluxup, synthfluxdown=synthfluxdown, synthflux_nomn=synthflux_nomn, synthflux_cluster=synthflux_cluster, title=None, savechisq=chisqfile)
 
