@@ -1,9 +1,14 @@
 Table 1
 Photometry and Model Atmosphere Parameters
 
+Notes.
+a These values are derived with the IRFM effective temperature formulations (Equations (8) and (9)) of Alonso et al. (1999).
+b The previous values for the spectroscopic parameters for the RGB stars are taken from Sneden et al. (2000a, 1997), respectively, and those for the RHB stars are obtained from Preston et al. (2006).
+c The RGB V magnitudes are taken from K. M. Cudworth (2011, private communication) and those for the RHB targets are obtained from Buonanno et al. (1983).
+d The K magnitudes for all members of the M15 data set are taken from the 2MASS database (Skrutskie et al. 2006).
+
 					Current-PHOTO^a		Current-SPEC				Previous-SPEC^b				
-Star	RA	Dec	V^c	V-K^d	T_eff	log (g)	T_eff	log (g)	[M/H]	v_turb	T_eff	log (g)	[M/H]	v_turb	[Mn/Fe]	sig[Mn/Fe]	num_lines
-			(K)		(K)			(km s^-1)	(K)			(km s^-1)	
+Star	RA	Dec	V^c	V-K^d	phot_T_eff	phot_log(g)	spec_T_eff	spec_log(g)	spec_[Fe/H]	spec_v_turb	oldspec_T_eff	oldspec_log(g)	oldspec_[Fe/H]	oldspec_v_turb	[Mn/Fe]	sig[Mn/Fe]	num_lines
 K341	21 29 54.9257047366	+12 13 22.480949170	12.81	3.115	4343	0.88	4375	0.30	-2.25	2.00	4200	0.15	-2.20	2.15	-0.34	0.02	2
 									4225	0.30	-2.20	1.85	
 K462	21 29 56.6629649306	+12 09 46.338335177	12.90	3.178	4298	0.89	4400	0.30	-2.25	2.00	4225	0.15	-2.20	2.10	-0.45	0.04	2
@@ -16,9 +21,3 @@ B224	21 29 49.4219280954	+12 11 21.893450153	15.69	1.775	5932	2.65	5600	2.10	-2.
 B262	21 30 07.3003608032	+12 10 50.635756939	15.28	2.330	5122	2.16	4950	1.30	-2.50	1.90	5000	1.50	-2.30	1.70	-0.78		0
 B412	21 30 01.466	+12 10 04.25	15.81	1.888	5748	2.63	6200	2.70	-2.50	3.30	6250	2.70	-2.50	3.30	
 B584	21 30 01.1127006021	+12 07 14.999413493	15.53	1.655	6142	2.66	6000	2.70	-2.50	2.90	6000	2.70	-2.30	2.70	
-
-Notes.
-a These values are derived with the IRFM effective temperature formulations (Equations (8) and (9)) of Alonso et al. (1999).
-b The previous values for the spectroscopic parameters for the RGB stars are taken from Sneden et al. (2000a, 1997), respectively, and those for the RHB stars are obtained from Preston et al. (2006).
-c The RGB V magnitudes are taken from K. M. Cudworth (2011, private communication) and those for the RHB targets are obtained from Buonanno et al. (1983).
-d The K magnitudes for all members of the M15 data set are taken from the 2MASS database (Skrutskie et al. 2006).

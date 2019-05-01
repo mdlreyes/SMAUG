@@ -218,11 +218,203 @@ def ivans_etal_01(datafile, paramfile, outfile):
 	for i in range(N):
 		starra  = params['RA'][i]
 		stardec = params['Dec'][i]
-		print(params['Star'][i])
 		coord = SkyCoord(starra+' '+stardec, frame='icrs', unit=(u.hourangle, u.deg))
 
 		ra[i] 	= coord.ra.degree
 		dec[i] 	= coord.dec.degree
+
+	# Write output
+	cols = ['Name','RA','Dec','Temp','log(g)','[Fe/H]','error([Fe/H])','[alpha/Fe]','[Mn/Fe]','error([Mn/Fe])','chisq(reduced)']
+	output = pd.DataFrame(np.array([name,ra,dec,temp,logg,feh,sigfeh,alphafe,mnfe,sigmnfe,rchisq]).T, columns=cols)
+	output.to_csv(outputname, sep='\t', index=False)
+
+	return
+
+def ramirez_cohen_03(datafile, paramfile, outfile):
+	"""Get data from Ramirez & Cohen 03 paper
+
+	Inputs:
+	paramfile 	-- paramfile
+	datafile 	-- datafile with metallicities
+	outfile 	-- name of output file
+	"""
+
+	# Open files
+	params = pd.read_csv(paramfile, delimiter='\t')
+	data = pd.read_csv(datafile, delimiter='\t')
+	N = len(data['Star'])
+
+	# Prep the output data file
+	outputname = 'data/hires_data_final/'+outfile
+
+	# Prep output array
+	name 	= params['ID']
+	ra 		= data['RA']
+	dec 	= data['Dec']
+	temp 	= params['Teff']
+	logg 	= params['logg']
+	feh 	= np.zeros(N)
+	sigfeh 	= np.zeros(N)
+	alphafe = np.zeros(N)
+	mnfe 	= data['[Mn/Fe]']
+	sigmnfe = data['err[Mn/Fe]']
+	rchisq 	= np.zeros(N)
+
+	# Get coordinates
+	for i in range(N):
+		starra  = ra[i]
+		stardec = dec[i]
+		print(stardec)
+		coord = SkyCoord(str(starra)+' '+str(stardec), frame='icrs', unit=(u.hourangle, u.deg))
+
+		ra[i] 	= coord.ra.degree
+		dec[i] 	= coord.dec.degree
+
+	# Write output
+	cols = ['Name','RA','Dec','Temp','log(g)','[Fe/H]','error([Fe/H])','[alpha/Fe]','[Mn/Fe]','error([Mn/Fe])','chisq(reduced)']
+	output = pd.DataFrame(np.array([name,ra,dec,temp,logg,feh,sigfeh,alphafe,mnfe,sigmnfe,rchisq]).T, columns=cols)
+	output.to_csv(outputname, sep='\t', index=False)
+
+	return
+
+def lai_etal_11(datafile, outfile):
+	"""Get data from Lai+11 paper
+
+	Inputs:
+	paramfile 	-- paramfile
+	datafile 	-- datafile with metallicities
+	outfile 	-- name of output file
+	"""
+
+	# Open files
+	data = pd.read_csv(datafile, delimiter='\t')
+	N = len(data['Name'])
+
+	# Prep the output data file
+	outputname = 'data/hires_data_final/'+outfile
+
+	# Prep output array
+	name 	= data['Name']
+	ra 		= data['_RA']
+	dec 	= data['_DE']
+	temp 	= data['Teff']
+	logg 	= data['logg']
+	feh 	= data['[Fe/H]']
+	sigfeh 	= data['e_[Fe/H]']
+	alphafe = np.zeros(N)
+	mnfe 	= data['[Mn/Fe]']
+	sigmnfe = data['e_[Mn/Fe]']
+	rchisq 	= np.zeros(N)
+
+	# Write output
+	cols = ['Name','RA','Dec','Temp','log(g)','[Fe/H]','error([Fe/H])','[alpha/Fe]','[Mn/Fe]','error([Mn/Fe])','chisq(reduced)']
+	output = pd.DataFrame(np.array([name,ra,dec,temp,logg,feh,sigfeh,alphafe,mnfe,sigmnfe,rchisq]).T, columns=cols)
+	output.to_csv(outputname, sep='\t', index=False)
+
+	return
+
+def sobeck_etal_11(datafile, outfile):
+	"""Get data from Sobeck+11 paper
+
+	Inputs:
+	datafile 	-- datafile with metallicities
+	outfile 	-- name of output file
+	"""
+
+	# Open files
+	data = pd.read_csv(datafile, delimiter='\t', skiprows=10)
+	N = len(data['Star'])
+
+	# Prep the output data file
+	outputname = 'data/hires_data_final/'+outfile
+
+	# Prep output array
+	name 	= data['Star']
+	ra 		= data['RA']
+	dec 	= data['Dec']
+	temp 	= data['spec_T_eff']
+	logg 	= data['spec_log(g)']
+	feh 	= data['spec_[Fe/H]']
+	sigfeh 	= np.zeros(N)
+	alphafe = np.zeros(N)
+	mnfe 	= data['[Mn/Fe]']
+	sigmnfe = data['sig[Mn/Fe]']
+	rchisq 	= np.zeros(N)
+
+	# Write output
+	cols = ['Name','RA','Dec','Temp','log(g)','[Fe/H]','error([Fe/H])','[alpha/Fe]','[Mn/Fe]','error([Mn/Fe])','chisq(reduced)']
+	output = pd.DataFrame(np.array([name,ra,dec,temp,logg,feh,sigfeh,alphafe,mnfe,sigmnfe,rchisq]).T, columns=cols)
+	output.to_csv(outputname, sep='\t', index=False)
+
+	return
+
+def lamb_etal_14(datafile, outfile):
+	"""Get data from Lamb+14 paper
+
+	Inputs:
+	datafile 	-- datafile with metallicities
+	outfile 	-- name of output file
+	"""
+
+	# Open files
+	data = pd.read_csv(datafile, delimiter='\t')
+	N = len(data['Star'])
+
+	# Prep the output data file
+	outputname = 'data/hires_data_final/'+outfile
+
+	# Prep output array
+	name 	= data['Star']
+	ra 		= data['RA']
+	dec 	= data['Dec']
+	temp 	= data['Teff']
+	logg 	= data['logg']
+	feh 	= data['[Fe/H]']
+	sigfeh 	= data['sig[Fe/H]']
+	alphafe = np.zeros(N)
+	mnfe 	= data['[Mn/Fe]']
+	sigmnfe = data['sig[Mn/Fe]']
+	rchisq 	= np.zeros(N)
+
+	# Write output
+	cols = ['Name','RA','Dec','Temp','log(g)','[Fe/H]','error([Fe/H])','[alpha/Fe]','[Mn/Fe]','error([Mn/Fe])','chisq(reduced)']
+	output = pd.DataFrame(np.array([name,ra,dec,temp,logg,feh,sigfeh,alphafe,mnfe,sigmnfe,rchisq]).T, columns=cols)
+	output.to_csv(outputname, sep='\t', index=False)
+
+	return
+
+def sobeck_etal_06(datafile, cluster, outfile):
+	"""Get data from Sobeck+06 paper
+
+	Inputs:
+	datafile 	-- datafile with metallicities
+	cluster 	-- name of GC to get data for
+	outfile 	-- name of output file
+	"""
+
+	# Open files
+	data = pd.read_csv(datafile, delimiter='\t')
+
+	# Prep the output data file
+	outputname = 'data/hires_data_final/'+outfile
+
+	# Get data for a given cluster
+	gc = data['OName']
+	mask = np.where(np.asarray(gc)==cluster)[0]
+	N = len(mask)
+
+	# Prep output array
+	name 	= data['ID'][mask]
+	ra 		= data['_RA'][mask]
+	dec 	= data['_DE'][mask]
+	temp 	= data['Teff'][mask]
+	logg 	= data['log(g)'][mask]
+	feh 	= data['[Fe/H]'][mask]
+	sigfeh 	= np.zeros(N)
+	alphafe = np.zeros(N)
+	mnfe 	= data['[Mn/Fe]'][mask]
+	sigmnfe = np.zeros(N)
+	rchisq 	= np.zeros(N)
 
 	# Write output
 	cols = ['Name','RA','Dec','Temp','log(g)','[Fe/H]','error([Fe/H])','[alpha/Fe]','[Mn/Fe]','error([Mn/Fe])','chisq(reduced)']
@@ -240,7 +432,21 @@ def main():
 	#apogee('data/hires_data/M2_apogee.csv','M2_apogee_final.csv')
 
 	# M5
-	ivans_etal_01('data/hires_data/M5_ivans_tab.txt', 'data/hires_data/M5_ivans_params.txt', 'M5_ivans_final.csv')
+	#ivans_etal_01('data/hires_data/M5_ivans_tab.txt', 'data/hires_data/M5_ivans_params.txt', 'M5_ivans_final.csv')
+	#ramirez_cohen_03('data/hires_data/M5_ramirez_tab.txt','data/hires_data/M5_ramirez_params.txt', 'M5_ramirez_final.csv')
+	#lai_etal_11('data/hires_data/M5_lai.tsv','M5_lai_final.csv')
+	#apogee('data/hires_data/M5_apogee.csv','M5_apogee_final.csv')
+	#sobeck_etal_06('data/hires_data/M5_M15_sobeck.tsv','M5','M5_sobeck06_final.csv')
+
+	# M15
+	#sobeck_etal_11('data/hires_data/M15_sobeck.txt','M15_sobeck11_final.csv')
+	#apogee('data/hires_data/M15_apogee.csv','M15_apogee_final.csv')
+	sobeck_etal_06('data/hires_data/M5_M15_sobeck.tsv','M15','M15_sobeck06_final.csv')
+
+	# M53
+	#lamb_etal_14('data/hires_data/M53_lamb.txt', 'M53_lamb_final.csv')
+	#apogee('data/hires_data/M53_apogee.csv','M53_apogee_final.csv')
+
 
 if __name__ == "__main__":
 	main()
