@@ -66,6 +66,11 @@ def open_obs_file(filename, retrievespec=None, specparams=False, objname=None, c
 			dlam = 0.7086*np.ones(len(dlam))
 			#dlam = 1.67*np.ones(len(dlam))
 
+			# Check that measured velocity is good
+			checkvel = data['GOOD'][retrievespec]
+			if checkvel == 0:
+				raise ValueError('Velocity is not trustworthy! Skip this star!')
+
 			# Correct for wavelength
 			zrest = data['ZREST'][retrievespec]
 			wvl = wvl / (1. + zrest)
@@ -78,6 +83,7 @@ def open_obs_file(filename, retrievespec=None, specparams=False, objname=None, c
 
 			# If necessary, match object name from other output file
 			if objname is not None:
+
 				# Get index of entry that matches object name of spectrum
 				namearray = data['OBJNAME']
 				index 	  = np.where(namearray==objname)

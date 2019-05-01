@@ -156,7 +156,6 @@ def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, resids=T
 					chisq_up[i] = current_chisq_up
 					chisq_down[i] = current_chisq_down
 
-				'''
 				if resids:
 					# Only plot residuals if synth spectrum has been smoothed to match obswvl
 					plt.figure(2)
@@ -172,7 +171,6 @@ def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, resids=T
 					plt.axvspan(linelist[i] - linewidth[i], linelist[i] + linewidth[i], color='green', alpha=0.25)
 					plt.errorbar(obswvl[mask], ivar[mask], color='k', linestyle='-')
 					#plt.axhline(0, color='r', linestyle='solid', label='Zero')
-				'''
 
 		except:
 			#ax.set_visible(False)
@@ -188,7 +186,6 @@ def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, resids=T
 	plt.savefig(outputname+'/'+specname+'finalfits.png',bbox_inches='tight') #,transparent=True)
 	plt.close(1)
 
-	'''
 	if resids:
 		fig2 = plt.figure(2)
 		fig2.text(0.5, 0.04, 'Wavelength (A)', fontsize=18, ha='center', va='center')
@@ -204,7 +201,6 @@ def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, resids=T
 		#plt.legend(loc='best')
 		plt.savefig(outputname+'/'+specname+'ivar.png',bbox_inches='tight')
 		plt.close(3)
-	'''
 
 	# Save the reduced chi-sq values!
 	if savechisq is not None:
