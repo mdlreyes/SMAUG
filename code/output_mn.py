@@ -26,7 +26,7 @@ import scipy.optimize
 import chi_sq
 from make_plots import make_plots
 
-def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, globular=False, lines='new', plots=False, wvlcorr=True, membercheck=None, memberlist=None):
+def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, globular=False, lines='new', plots=False, wvlcorr=True, membercheck=None, memberlist=None, velmemberlist=None):
 	""" Measure Mn abundances from a FITS file.
 
 	Inputs:
@@ -47,7 +47,8 @@ def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, gl
 	wvlcorr 		-- if 'True' (default), do linear wavelength corrections following G. Duggan's code for 900ZD data;
 						else (for 1200B data), don't do corrections
 	membercheck 	-- do membership check for this object
-	memberlist		-- member list
+	memberlist		-- member list (from Evan's Li-rich giants paper)
+	velmemberlist 	-- member list (from radial velocity check)
 
 	"""
 
@@ -64,9 +65,20 @@ def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, gl
 
 	# Prep for member check
 	if membercheck is not None:
+
+		# Check if stars are in member list from Evan's Li-rich giants paper
 		table = ascii.read(memberlist)
 		memberindex = np.where(table.columns[0] == membercheck)
-		membernames = table.columns[1][memberindex]
+		oldmembernames = table.columns[1][memberindex]
+
+		# Also check if stars are in member list from velocity cut
+		membernames = []
+		velmembernames = np.loadtxt(velmemberlist)
+		for i in range(len(oldmembernames)):
+			if oldmembernames[i] in velmembernames:
+				membernames.append(oldmembernames)
+
+		membernames = np.asarray(membernames)
 
 	# Get number of stars in file
 	Nstars = open_obs_file(filename)

@@ -113,11 +113,12 @@ def arcturus_test(resolution, temp, logg, fe, alpha, mn, fit=False):
 		# Run fitting algorithm on Arcturus spectrum
 		test = chi_sq.obsSpectrum('/raid/m31/solspec/ardata.fits', '/raid/m31/solspec/ardata.fits', 0, True, 'Arcturus', 'Arcturus-fit', False, 'new', obsspecial=obsspecial, plot=True).plot_chisq(mn)
 
-def plot_vel(filename):
+def plot_vel(filename, outputname):
 	"""Get velocities from moogify files, plot them in a histogram, and output them to a text file.
 
     Inputs:
     filename - name of file to open
+    outputname - name of output file listing IDs
 
     Keywords:
 
@@ -138,15 +139,36 @@ def plot_vel(filename):
 	velarray  = data['VR']
 	velerrs   = data['VRERR']
 
-	# Compute shit about velocities
 	avg = np.average(velarray)
 	stdev = np.std(velarray)
 
+	# Throw out outliers
+	def cut_outliers(velarray, velerrs, avg, stdev, namearray):
+		''' Cut out outliers in velocity'''
+
+		goodvel = np.where((velarray < (avg + 2.*stdev)) & (velarray > (avg - 2.*stdev)))[0]
+		velarray = velarray[goodvel]
+		velerrs = velerrs[goodvel]
+		namearray = namearray[goodvel]
+
+		avg = np.average(velarray)
+		stdev = np.std(velarray)
+
+		return velarray, velerrs, avg, stdev, namearray
+
+	velarray, velerrs, avg, stdev, namearray = cut_outliers(velarray,velerrs,avg,stdev,namearray)
+	velarray, velerrs, avg, stdev, namearray = cut_outliers(velarray,velerrs,avg,stdev,namearray)
+
 	# Plot velocities
-	plt.histogram(velarray, bins=10)
-	plt.vline(avg, color='r', linestyle='--')
+	plt.hist(velarray, bins=10)
+	plt.axvline(avg, color='r', linestyle='--')
 	plt.axvspan(avg-stdev, avg+stdev, color='r', alpha=0.5)
 	plt.show()
+
+	# Print names and velocities of stars for a later membership check
+	with open(outputname, 'w+') as f:
+		for i in range(len(namearray)):
+			f.write(namearray[i]+'\n')
 
 	return
 
@@ -161,8 +183,8 @@ def main():
 	#arcturus_test(resolution=resolution, temp=4286, logg=1.66, fe=-0.52, alpha=0.4, mn=[-0.52], fit=True)
 
 	# Plot velocity distributions for GCs
-	plot_vel('/raid/caltech/moogify/n5024b_1200B/moogify.fits.gz')
-	plot_vel('/raid/caltech/moogify/7078l1_1200B/moogify.fits.gz')
+	plot_vel('/raid/caltech/moogify/n5024b_1200B/moogify.fits.gz','/raid/madlr/glob/n5024/n5024b_1200B_velmembers.txt')
+	plot_vel('/raid/caltech/moogify/7078l1_1200B/moogify.fits.gz','/raid/madlr/glob/n7078/7078l1_1200B_velmembers.txt')
 
 	return
 
