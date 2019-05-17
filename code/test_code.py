@@ -2,7 +2,7 @@
 # Short programs to test code
 #
 # Created 20 Sept 18
-# Updated 20 Sept 18
+# Updated 17 May 19
 ###################################################################
 
 #Backend for python3 on mahler
@@ -113,15 +113,56 @@ def arcturus_test(resolution, temp, logg, fe, alpha, mn, fit=False):
 		# Run fitting algorithm on Arcturus spectrum
 		test = chi_sq.obsSpectrum('/raid/m31/solspec/ardata.fits', '/raid/m31/solspec/ardata.fits', 0, True, 'Arcturus', 'Arcturus-fit', False, 'new', obsspecial=obsspecial, plot=True).plot_chisq(mn)
 
+def plot_vel(filename):
+	"""Get velocities from moogify files, plot them in a histogram, and output them to a text file.
+
+    Inputs:
+    filename - name of file to open
+
+    Keywords:
+
+    Outputs:
+    """
+
+    # Get data
+	print('Opening ', filename)
+	hdu1 = fits.open(filename)
+	data = hdu1[1].data
+
+	namearray = data['OBJNAME']
+	wavearray = data['LAMBDA']
+	fluxarray = data['SPEC']
+	ivararray = data['IVAR']
+	dlamarray = data['DLAM']
+
+	velarray  = data['VR']
+	velerrs   = data['VRERR']
+
+	# Compute shit about velocities
+	avg = np.average(velarray)
+	stdev = np.std(velarray)
+
+	# Plot velocities
+	plt.histogram(velarray, bins=10)
+	plt.vline(avg, color='r', linestyle='--')
+	plt.axvspan(avg-stdev, avg+stdev, color='r', alpha=0.5)
+	plt.show()
+
+	return
+
 def main():
 	
 	# DEIMOS resolutions
-	resolution = 0.47787237 # 1200B
+	#resolution = 0.47787237 # 1200B
 	#resolution = 0.76595747 # 900ZD
 
 	# Arcturus parameters from Ramirez & Allende Prieto (2011)
-	# Arcturus [Mn/H] = -0.73
-	arcturus_test(resolution=resolution, temp=4286, logg=1.66, fe=-0.52, alpha=0.4, mn=[-0.52], fit=True)
+	# Note: Arcturus [Mn/H] = -0.73
+	#arcturus_test(resolution=resolution, temp=4286, logg=1.66, fe=-0.52, alpha=0.4, mn=[-0.52], fit=True)
+
+	# Plot velocity distributions for GCs
+	plot_vel('/raid/caltech/moogify/n5024b_1200B/moogify.fits.gz')
+	plot_vel('/raid/caltech/moogify/7078l1_1200B/moogify.fits.gz')
 
 	return
 
