@@ -291,6 +291,8 @@ class obsSpectrum:
 			mn_result = [params0[0]]
 			mn_error  = [params0[1]]
 
+		#return (remove comment if creating MOOG output files for testing purposes)
+
 		mn_list = np.array([-3,-2,-1.5,-1,-0.5,-0.1,0,0.1,0.5,1,1.5,2,3])*mn_error[0] + mn_result[0]
 		chisq_list = np.zeros(len(mn_list))
 
@@ -315,16 +317,19 @@ class obsSpectrum:
 		return mn_result, mn_error, chisq_list[6]
 
 def main():
-	filename = '/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz'
+	filename = '/raid/caltech/moogify/n5024b_1200B/moogify.fits.gz'
 	#paramfilename = '/raid/m31/dsph/scl/scl1/moogify7_flexteff.fits.gz'
-	paramfilename = '/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz'
-	galaxyname = 'scl'
-	slitmaskname = 'scl5_1200B'
+	paramfilename = '/raid/caltech/moogify/n5024b_1200B/moogify.fits.gz'
+	galaxyname = 'n5024'
+	slitmaskname = 'n5024b_1200B'
 
 	# Code for Evan for Keck 2019A proposal
 	#test1 = obsSpectrum(filename, paramfilename, 16, True, galaxyname, slitmaskname, False, 'new', plot=True).minimize_scipy(-2.68, output=True)
 	#test2 = obsSpectrum(filename, paramfilename, 30, True, galaxyname, slitmaskname, False, 'new', plot=True).minimize_scipy(-1.29, output=True)
-	test2 = obsSpectrum(filename, paramfilename, 26, True, galaxyname, slitmaskname, False, 'new', plot=True).plot_chisq(-1.50, output=True, plots=False)
+	#test2 = obsSpectrum(filename, paramfilename, 26, True, galaxyname, slitmaskname, False, 'new', plot=True).plot_chisq(-1.50, output=True, plots=False)
+
+	# Code to test linelist
+	test = obsSpectrum(filename, paramfilename, 5, True, galaxyname, slitmaskname, True, 'new', plot=True).plot_chisq(-2.5079647094572572, output=True, plots=False)
 
 	#print('we done')
 	#test = obsSpectrum(filename, 57).plot_chisq(-2.1661300692266998)
