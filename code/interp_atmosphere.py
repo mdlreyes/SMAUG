@@ -394,18 +394,18 @@ def writeAtm(temp, logg, fe, alpha, dir='/raid/madlr/atm/', elements=None, abund
 		# Footer text
 		#############
 		microturbvel 	= atmosphere[0,6]
-
-		# If not adding any elements, use default NATOMS footer
-		if elements is None:
-			natoms = 6
-			atomstxt = str( ('%.3E' % microturbvel) +
-					'\nNATOMS    ' + str(natoms) + '   ' + ('%5.2f' % float(fe)) +
-					'\n      12      ' + ('%5.2f' % float(7.60 + fe + alpha)) +
+		alphatxt 	= str('\n      12      ' + ('%5.2f' % float(7.60 + fe + alpha)) +
 					'\n      14      ' + ('%5.2f' % float(7.51 + fe + alpha)) +
 					'\n      16      ' + ('%5.2f' % float(7.12 + fe + alpha)) +
 					'\n      18      ' + ('%5.2f' % float(6.40 + fe + alpha)) +
 					'\n      20      ' + ('%5.2f' % float(6.34 + fe + alpha)) +
 					'\n      22      ' + ('%5.2f' % float(4.95 + fe + alpha)) )
+
+		# If not adding any elements, use default NATOMS footer
+		if elements is None:
+			natoms = 6
+			atomstxt = str( ('%.3E' % microturbvel) +
+					'\nNATOMS    ' + str(natoms) + '   ' + ('%5.2f' % float(fe)) + alphatxt)
 
 		# If adding elements, first make sure that number of elements matches number of abundances
 		elif len(elements) != len(abunds):
@@ -415,13 +415,7 @@ def writeAtm(temp, logg, fe, alpha, dir='/raid/madlr/atm/', elements=None, abund
 		else:
 			natoms = 6 + len(elements)
 			atomstxt = str( ('%.3E' % microturbvel) +
-					'\nNATOMS    ' + str(natoms) + '   ' + ('%5.2f' % float(fe)) +
-					'\n      12      ' + ('%5.2f' % float(7.60 + fe)) +
-					'\n      14      ' + ('%5.2f' % float(7.51 + fe)) +
-					'\n      16      ' + ('%5.2f' % float(7.12 + fe)) +
-					'\n      18      ' + ('%5.2f' % float(6.40 + fe)) +
-					'\n      20      ' + ('%5.2f' % float(6.34 + fe)) +
-					'\n      22      ' + ('%5.2f' % float(4.95 + fe)) )
+					'\nNATOMS    ' + str(natoms) + '   ' + ('%5.2f' % float(fe)) + alphatxt)
 
 			# Add the new elements
 			for i in range(len(elements)):
