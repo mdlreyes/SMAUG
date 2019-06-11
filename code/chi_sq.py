@@ -29,7 +29,7 @@ from make_plots import make_plots
 # Observed spectrum
 class obsSpectrum:
 
-	def __init__(self, obsfilename, paramfilename, starnum, wvlcorr, galaxyname, slitmaskname, globular, lines, obsspecial=None, plot=False):
+	def __init__(self, obsfilename, paramfilename, starnum, wvlcorr, galaxyname, slitmaskname, globular, lines, obsspecial=None, plot=False, hires=False):
 
 		# Observed star
 		self.obsfilename 	= obsfilename 	# File with observed spectra
@@ -117,7 +117,39 @@ class obsSpectrum:
 			# Crop observed spectrum into regions around Mn lines
 			self.obsflux_fit, self.obswvl_fit, self.ivar_fit, self.dlam_fit, self.skip = mask_obs_for_abundance(self.obswvl, self.obsflux_norm, self.ivar_norm, self.dlam, lines=self.lines)
 
-		# Else, take spectrum and observed parameters from obsspecial keyword
+		# Else, check if we need to open a hi-res file to get the spectrum
+		elif hires is not None:
+
+			# Output filename
+			if self.globular:
+				self.outputname = '/raid/madlr/glob/'+galaxyname+'/'+'hires'
+			else:
+				self.outputname = '/raid/madlr/dsph/'+galaxyname+'/'+'hires'
+
+			# Open observed spectrum
+			self.specname = hires
+			self.obswvl, self.obsflux, self.dlam = open_obs_file(self.obsfilename, hires=True)
+
+			# Get measured parameters from obsspecial keyword
+			self.temp		= obsspecial[0]
+			self.logg		= obsspecial[1]
+			self.fe 		= obsspecial[2]
+			self.alpha 		= obsspecial[3]
+			self.fe_err 	= obsspecial[4]
+			self.zrest 		= obsspecial[5]
+
+			self.ivar = np.ones(len(self.obsflux))
+
+			# Get synthetic spectrum, split both obs and synth spectra into red and blue parts
+			synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask = mask_obs_for_division(self.obswvl, self.obsflux, self.ivar, temp=self.temp, logg=self.logg, fe=self.fe, alpha=self.alpha, dlam=self.dlam, lines=self.lines)
+
+			# Compute continuum-normalized observed spectrum
+			self.obsflux_norm, self.ivar_norm = divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask, specname=self.specname, outputname=self.outputname)
+
+			# Crop observed spectrum into regions around Mn lines
+			self.obsflux_fit, self.obswvl_fit, self.ivar_fit, self.dlam_fit, self.skip = mask_obs_for_abundance(self.obswvl, self.obsflux_norm, self.ivar_norm, self.dlam, lines=self.lines)
+
+		# Else, take both spectrum and observed parameters from obsspecial keyword
 		else:
 
 			# Output filename
@@ -316,12 +348,21 @@ class obsSpectrum:
 
 		return mn_result, mn_error, chisq_list[6]
 
+def test_hires(starname, galaxyname, slitmaskname, temp, logg, feh, alpha, zrest):
+
+	filename = '/raid/keck/hires/'+galaxyname+'/'+starname+'/'+starname+'_017.fits'
+	test = obsSpectrum(filename, filename, 0, True, galaxyname, slitmaskname, True, 'new', obsspecial=[temp, logg, feh, alpha, 0.0, zrest], plot=False, hires=starname).minimize_scipy(feh, output=False, plots=True)
+
+	return
+
 def main():
+	'''
 	filename = '/raid/caltech/moogify/n5024b_1200B/moogify.fits.gz'
 	#paramfilename = '/raid/m31/dsph/scl/scl1/moogify7_flexteff.fits.gz'
 	paramfilename = '/raid/caltech/moogify/n5024b_1200B/moogify.fits.gz'
 	galaxyname = 'n5024'
 	slitmaskname = 'n5024b_1200B'
+	'''
 
 	# Code for Evan for Keck 2019A proposal
 	#test1 = obsSpectrum(filename, paramfilename, 16, True, galaxyname, slitmaskname, False, 'new', plot=True).minimize_scipy(-2.68, output=True)
@@ -329,7 +370,15 @@ def main():
 	#test2 = obsSpectrum(filename, paramfilename, 26, True, galaxyname, slitmaskname, False, 'new', plot=True).plot_chisq(-1.50, output=True, plots=False)
 
 	# Code to test linelist
-	test = obsSpectrum(filename, paramfilename, 5, True, galaxyname, slitmaskname, True, 'new', plot=True).plot_chisq(-2.5079647094572572, output=True, plots=False)
+	#test = obsSpectrum(filename, paramfilename, 5, True, galaxyname, slitmaskname, True, 'new', plot=True).plot_chisq(-2.5079647094572572, output=True, plots=False)
+
+	# Code to check hi-res spectra
+	test_hires('B9354','n5024','hires', 4733, 1.6694455544153846, -1.8671022414349092, 0.2060026649715580, -0.00022376)
+	test_hires('S16','n5024','hires', 4465, 1.1176236470540364, -2.0168930661196254, 0.2276681163556594, -0.0002259)
+	test_hires('S230','n5024','hires', 4849, 1.6879225969314575, -1.9910418985188603, 0.23366356933861662, -0.0002172)
+	test_hires('S29','n5024','hires', 4542, 1.1664302349090574, -2.0045057512527262, 0.18337140203171015, -0.00023115)
+	test_hires('S32','n5024','hires', 4694, 1.3708726167678833, -2.2178865839654534, 0.23014964700722065, -0.00022388)
+
 
 	#print('we done')
 	#test = obsSpectrum(filename, 57).plot_chisq(-2.1661300692266998)

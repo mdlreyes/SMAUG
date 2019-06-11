@@ -18,7 +18,7 @@ from astropy.io import fits
 from smooth_gauss import smooth_gauss
 import matplotlib.pyplot as plt
 
-def open_obs_file(filename, retrievespec=None, specparams=False, objname=None, coords=False):
+def open_obs_file(filename, retrievespec=None, specparams=False, objname=None, coords=False, hires=False):
 	"""Open .fits.gz files with observed spectra.
 
     Inputs:
@@ -36,6 +36,8 @@ def open_obs_file(filename, retrievespec=None, specparams=False, objname=None, c
 
     coords 		 - if True, output the coordinates of the stars in file
 
+    hires 		 - open hi-res spectra (different format than Moogify)
+
     Outputs:
     wvl  - rest wavelength array for nth star
     flux - flux array for nth star
@@ -44,6 +46,21 @@ def open_obs_file(filename, retrievespec=None, specparams=False, objname=None, c
 
 	print('Opening ', filename)
 	hdu1 = fits.open(filename)
+
+	if hires:
+
+		hdr = hdu1[0].header
+
+		flux = hdu1[0].data
+		dlam = 0.132*np.ones(len(flux))
+
+		# Get wavelength array
+		wvl = np.zeros(len(flux))
+		for i in range(len(wvl)):
+			wvl[i] = i*hdr['CDELT1'] + hdr['CRVAL1']
+
+		return wvl, flux, dlam
+
 	data = hdu1[1].data
 
 	if retrievespec is not None:
@@ -60,7 +77,7 @@ def open_obs_file(filename, retrievespec=None, specparams=False, objname=None, c
 			# Get spectrum of a single star
 			name = namearray[retrievespec]
 			wvl  = wavearray[retrievespec]
-			flux = fluxarray[retrievespec] 
+			flux = fluxarray[retrievespec]
 			ivar = ivararray[retrievespec]
 			dlam = dlamarray[retrievespec]
 			dlam = 0.7086*np.ones(len(dlam))
