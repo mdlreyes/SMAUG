@@ -16,7 +16,7 @@ import numpy as np
 import math
 
 # Code to make plots
-def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, resids=True, ivar=None, title=None, synthfluxup=None, synthfluxdown=None, synthflux_nomn=None, synthflux_cluster=None, savechisq=None):
+def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, resids=True, ivar=None, title=None, synthfluxup=None, synthfluxdown=None, synthflux_nomn=None, synthflux_cluster=None, savechisq=None, hires=False):
 	"""Make plots.
 
 	Inputs:
@@ -35,6 +35,7 @@ def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, resids=T
 	synthflux_nomn 		-- if not 'None' (default), then plot synthetic spectrum with [Mn/H] = -10.0
 	synthflux_cluster 	-- if not 'None' (default), then plot synthetic spectrum with mean [Mn/H] of cluster; in format synthflux_cluster = [mean [Mn/H], spectrum]
 	savechisq 	-- if not 'None' (default), compute & save reduced chi-sq for each line in output file with path savechisq
+	hires 	-- if 'False', plot as normal; else, zoom in a bit to show hi-res spectra
 
 	Outputs:
 	"""
@@ -93,8 +94,12 @@ def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, resids=T
 		#for i, ax in enumerate(f.axes):
 
 		# Range over which to plot
-		lolim = linelist[i] - 5 #10
-		uplim = linelist[i] + 5 #10
+		if hires == False:
+			lolim = linelist[i] - 10
+			uplim = linelist[i] + 10
+		else:
+			lolim = linelist[i] - 5
+			uplim = linelist[i] + 5
 
 		# Make mask for wavelength
 		try:
@@ -133,14 +138,17 @@ def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, resids=T
 						plt.plot(obswvl[mask], synthflux_cluster[1][mask], color='purple', linestyle='--', linewidth=2, label='<[Mn/H]>='+str(synthflux_cluster[0]), zorder=2)
 
 					# Plot observed spectrum
-					#plt.errorbar(obswvl[mask], obsflux[mask], yerr=yerr, color='k', fmt='o', markersize=6, label='Observed', zorder=3)
-					plt.plot(obswvl[mask], obsflux[mask], 'k-', label='Observed')
+					if hires == False:
+						plt.errorbar(obswvl[mask], obsflux[mask], yerr=yerr, color='k', fmt='o', markersize=6, label='Observed', zorder=3)
+					else:
+						plt.plot(obswvl[mask], obsflux[mask], 'k-', label='Observed')
 
 					#plt.xticks([linelist[i]], fontsize=18)
 					plt.yticks(fontsize=10)
 
 					plt.xlim((lolim, uplim))
-					#plt.ylim((0.75, 1.10))
+					if hires==False:
+						plt.ylim((0.75, 1.10))
 
 					if i==0:
 						leg = plt.legend(fancybox=True, framealpha=0.5, loc='best')

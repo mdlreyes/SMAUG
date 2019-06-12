@@ -229,7 +229,7 @@ class obsSpectrum:
 
 		return synthflux
 
-	def minimize_scipy(self, params0, output=False, plots=False):
+	def minimize_scipy(self, params0, output=False, plots=False, hires=False):
 		"""Minimize residual using scipy.optimize Levenberg-Marquardt.
 
 		Inputs:
@@ -240,6 +240,7 @@ class obsSpectrum:
 		Keywords:
 		plots  -- if 'True', also plot final fit & residual
 		output -- if 'True', also output a file (default='False')
+		hires  -- if 'True', zoom in a bit on plots to better display hi-res spectra
 
 		Outputs:
 		fitparams -- best fit parameters
@@ -296,10 +297,10 @@ class obsSpectrum:
 
 			# Make plots
 			if plots:
-				make_plots(self.lines, self.specname+'_', self.obswvl_final, self.obsflux_final, finalsynth, self.outputname, ivar=self.ivar_final, synthfluxup=finalsynthup, synthfluxdown=finalsynthdown)
+				make_plots(self.lines, self.specname+'_', self.obswvl_final, self.obsflux_final, finalsynth, self.outputname, ivar=self.ivar_final, synthfluxup=finalsynthup, synthfluxdown=finalsynthdown, hires=hires)
 
 		elif plots:
-			make_plots(self.lines, self.specname+'_', self.obswvl_final, self.obsflux_final, finalsynth, self.outputname, ivar=self.ivar_final)
+			make_plots(self.lines, self.specname+'_', self.obswvl_final, self.obsflux_final, finalsynth, self.outputname, ivar=self.ivar_final, hires=hires)
 
 		return best_mn, error
 
@@ -355,7 +356,7 @@ class obsSpectrum:
 def test_hires(starname, galaxyname, slitmaskname, temp, logg, feh, alpha, zrest):
 
 	filename = '/raid/keck/hires/'+galaxyname+'/'+starname+'/'+starname #+'_017.fits'
-	test = obsSpectrum(filename, filename, 0, True, galaxyname, slitmaskname, True, 'new', obsspecial=[temp, logg, feh, alpha, 0.0, zrest], plot=False, hires=starname).minimize_scipy(feh, output=False, plots=True)
+	test = obsSpectrum(filename, filename, 0, True, galaxyname, slitmaskname, True, 'new', obsspecial=[temp, logg, feh, alpha, 0.0, zrest], plot=False, hires=starname).minimize_scipy(feh, output=False, plots=True, hires=True)
 
 	return
 
@@ -375,12 +376,11 @@ def main():
 	#test_hires('B9354','n5024','hires', 4733, 1.6694455544153846, -1.8671022414349092, 0.2060026649715580, -0.00022376)
 	#test_hires('S16','n5024','hires', 4465, 1.1176236470540364, -2.0168930661196254, 0.2276681163556594, -0.0002259)
 	#test_hires('S230','n5024','hires', 4849, 1.6879225969314575, -1.9910418985188603, 0.23366356933861662, -0.0002172)
-	#test_hires('S29','n5024','hires', 4542, 1.1664302349090574, -2.0045057512527262, 0.18337140203171015, -0.00023115)
+	test_hires('S29','n5024','hires', 4542, 1.1664302349090574, -2.0045057512527262, 0.18337140203171015, -0.00023115)
 	#test_hires('S32','n5024','hires', 4694, 1.3708726167678833, -2.2178865839654534, 0.23014964700722065, -0.00022388)
 
 	# Code to test linelist
-	test = obsSpectrum(filename, paramfilename, 4, True, galaxyname, slitmaskname, True, 'new', plot=True).minimize_scipy(-2.0045057512527262, output=True)
-
+	test = obsSpectrum(filename, paramfilename, 4, True, galaxyname, slitmaskname, True, 'new', plot=True).minimize_scipy(-2.0045057512527262, output=True, plots=True)
 
 	#print('we done')
 	#test = obsSpectrum(filename, 57).plot_chisq(-2.1661300692266998)
