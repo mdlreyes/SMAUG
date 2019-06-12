@@ -75,7 +75,7 @@ def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, gl
 		if velmemberlist is not None:
 			oldmembernames = membernames
 			membernames = []
-			velmembernames = np.loadtxt(velmemberlist)
+			velmembernames = np.genfromtxt(velmemberlist,dtype='str')
 			for i in range(len(oldmembernames)):
 				if oldmembernames[i] in velmembernames:
 					membernames.append(oldmembernames)
@@ -386,11 +386,11 @@ def main():
 
 	# Measure Mn abundances for globular clusters
 	#run_chisq('/raid/caltech/moogify/n2419b_blue/moogify.fits.gz', '/raid/gduggan/moogify/n2419b_blue_moogify.fits.gz', 'n2419', 'n2419b_blue', startstar=0, globular=True, lines='new')
-	run_chisq('/raid/caltech/moogify/7089l1_1200B/moogify.fits.gz', '/raid/caltech/moogify/7089l1_1200B/moogify.fits.gz', 'n7089', '7089l1_1200B', startstar=0, globular=True, lines='new', plots=True, wvlcorr=False, membercheck='M2', memberlist='/raid/caltech/articles/kirby_gclithium/table_catalog.dat')
 	#run_chisq('/raid/caltech/moogify/7089l3_1200B/moogify.fits.gz', '/raid/caltech/moogify/7089l3/moogify7_flexteff.fits.gz', 'n7089', '7089l3_1200B', startstar=0, globular=True, lines='new', plots=True, wvlcorr=False, membercheck='M2', memberlist='/raid/caltech/articles/kirby_gclithium/table_catalog.dat')
 	#run_chisq('/raid/caltech/moogify/ng1904_1200B/moogify.fits.gz', '/raid/caltech/moogify/ng1904_1200B/moogify.fits.gz', 'n1904', 'ng1904_1200B', startstar=0, globular=True, lines='new', plots=True, wvlcorr=False)
-	run_chisq('/raid/caltech/moogify/n5024b_1200B/moogify.fits.gz', '/raid/caltech/moogify/n5024b_1200B/moogify.fits.gz', 'n5024', 'n5024b_1200B', startstar=0, globular=True, lines='new', plots=True, wvlcorr=False, membercheck='M53', memberlist='/raid/caltech/articles/kirby_gclithium/table_catalog.dat')
-	run_chisq('/raid/caltech/moogify/7078l1_1200B/moogify.fits.gz', '/raid/caltech/moogify/7078l1_1200B/moogify.fits.gz', 'n7078', '7078l1_1200B', startstar=0, globular=True, lines='new', plots=True, wvlcorr=False, membercheck='M15', memberlist='/raid/caltech/articles/kirby_gclithium/table_catalog.dat')
+	run_chisq('/raid/caltech/moogify/n5024b_1200B/moogify.fits.gz', '/raid/caltech/moogify/n5024b_1200B/moogify.fits.gz', 'n5024', 'n5024b_1200B', startstar=0, globular=True, lines='new', plots=True, wvlcorr=False, membercheck='M53', memberlist='/raid/caltech/articles/kirby_gclithium/table_catalog.dat', velmemberlist='/raid/madlr/glob/n5024/n5024b_1200B_velmembers.txt')
+	#run_chisq('/raid/caltech/moogify/7089l1_1200B/moogify.fits.gz', '/raid/caltech/moogify/7089l1_1200B/moogify.fits.gz', 'n7089', '7089l1_1200B', startstar=0, globular=True, lines='new', plots=True, wvlcorr=False, membercheck='M2', memberlist='/raid/caltech/articles/kirby_gclithium/table_catalog.dat')
+	#run_chisq('/raid/caltech/moogify/7078l1_1200B/moogify.fits.gz', '/raid/caltech/moogify/7078l1_1200B/moogify.fits.gz', 'n7078', '7078l1_1200B', startstar=0, globular=True, lines='new', plots=True, wvlcorr=False, membercheck='M15', memberlist='/raid/caltech/articles/kirby_gclithium/table_catalog.dat')
 
 	#plot_fits_postfacto('/raid/caltech/moogify/7089l1_1200B/moogify.fits.gz', '/raid/caltech/moogify/7089l1/moogify7_flexteff.fits.gz', 'n7089', '7089l1_1200B', startstar=0, globular=True, lines='new', mn_cluster=-1.66)
 	#plot_fits_postfacto('/raid/caltech/moogify/7089l3_1200B/moogify.fits.gz', '/raid/caltech/moogify/7089l3/moogify7_flexteff.fits.gz', 'n7089', '7089l3_1200B', startstar=0, globular=True, lines='new', mn_cluster=-1.66)
