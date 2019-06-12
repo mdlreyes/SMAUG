@@ -29,7 +29,7 @@ from make_plots import make_plots
 # Observed spectrum
 class obsSpectrum:
 
-	def __init__(self, obsfilename, paramfilename, starnum, wvlcorr, galaxyname, slitmaskname, globular, lines, obsspecial=None, plot=False, hires=False):
+	def __init__(self, obsfilename, paramfilename, starnum, wvlcorr, galaxyname, slitmaskname, globular, lines, obsspecial=None, plot=False, hires=None):
 
 		# Observed star
 		self.obsfilename 	= obsfilename 	# File with observed spectra
@@ -360,28 +360,26 @@ def test_hires(starname, galaxyname, slitmaskname, temp, logg, feh, alpha, zrest
 	return
 
 def main():
-	'''
 	filename = '/raid/caltech/moogify/n5024b_1200B/moogify.fits.gz'
 	#paramfilename = '/raid/m31/dsph/scl/scl1/moogify7_flexteff.fits.gz'
 	paramfilename = '/raid/caltech/moogify/n5024b_1200B/moogify.fits.gz'
 	galaxyname = 'n5024'
 	slitmaskname = 'n5024b_1200B'
-	'''
 
 	# Code for Evan for Keck 2019A proposal
 	#test1 = obsSpectrum(filename, paramfilename, 16, True, galaxyname, slitmaskname, False, 'new', plot=True).minimize_scipy(-2.68, output=True)
 	#test2 = obsSpectrum(filename, paramfilename, 30, True, galaxyname, slitmaskname, False, 'new', plot=True).minimize_scipy(-1.29, output=True)
 	#test2 = obsSpectrum(filename, paramfilename, 26, True, galaxyname, slitmaskname, False, 'new', plot=True).plot_chisq(-1.50, output=True, plots=False)
 
-	# Code to test linelist
-	#test = obsSpectrum(filename, paramfilename, 5, True, galaxyname, slitmaskname, True, 'new', plot=True).plot_chisq(-2.5079647094572572, output=True, plots=False)
-
 	# Code to check hi-res spectra
-	test_hires('B9354','n5024','hires', 4733, 1.6694455544153846, -1.8671022414349092, 0.2060026649715580, -0.00022376)
-	test_hires('S16','n5024','hires', 4465, 1.1176236470540364, -2.0168930661196254, 0.2276681163556594, -0.0002259)
-	test_hires('S230','n5024','hires', 4849, 1.6879225969314575, -1.9910418985188603, 0.23366356933861662, -0.0002172)
-	test_hires('S29','n5024','hires', 4542, 1.1664302349090574, -2.0045057512527262, 0.18337140203171015, -0.00023115)
-	test_hires('S32','n5024','hires', 4694, 1.3708726167678833, -2.2178865839654534, 0.23014964700722065, -0.00022388)
+	#test_hires('B9354','n5024','hires', 4733, 1.6694455544153846, -1.8671022414349092, 0.2060026649715580, -0.00022376)
+	#test_hires('S16','n5024','hires', 4465, 1.1176236470540364, -2.0168930661196254, 0.2276681163556594, -0.0002259)
+	#test_hires('S230','n5024','hires', 4849, 1.6879225969314575, -1.9910418985188603, 0.23366356933861662, -0.0002172)
+	#test_hires('S29','n5024','hires', 4542, 1.1664302349090574, -2.0045057512527262, 0.18337140203171015, -0.00023115)
+	#test_hires('S32','n5024','hires', 4694, 1.3708726167678833, -2.2178865839654534, 0.23014964700722065, -0.00022388)
+
+	# Code to test linelist
+	test = obsSpectrum(filename, paramfilename, 4, True, galaxyname, slitmaskname, True, 'new', plot=True).minimize_scipy(-2.0045057512527262, output=True)
 
 
 	#print('we done')

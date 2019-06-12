@@ -500,7 +500,7 @@ def mask_obs_for_abundance(obswvl, obsflux_norm, ivar_norm, dlam, lines = 'new',
 				skip = np.delete(skip, np.where(skip==line))
 
 		# Skip spectral regions that are outside the observed wavelength range (with bad pixels masked out)
-		elif (lines[line][0] < obswvl[~mask][0]) or (lines[line][1] > obswvl[~mask][-1]):
+		if (lines[line][0] < obswvl[~mask][0]) or (lines[line][1] > obswvl[~mask][-1]):
 			skip = np.delete(skip, np.where(skip==line))
 
 	return np.asarray(obsfluxmask), np.asarray(obswvlmask), np.asarray(ivarmask), np.asarray(dlammask), np.asarray(skip)
