@@ -93,8 +93,8 @@ def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, resids=T
 		#for i, ax in enumerate(f.axes):
 
 		# Range over which to plot
-		lolim = linelist[i] - 10
-		uplim = linelist[i] + 10
+		lolim = linelist[i] - 5 #10
+		uplim = linelist[i] + 5 #10
 
 		# Make mask for wavelength
 		try:
@@ -122,7 +122,7 @@ def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, resids=T
 					if (synthfluxup is not None) and (synthfluxdown is not None):
 						plt.fill_between(obswvl[mask], synthfluxup[mask], synthfluxdown[mask], facecolor='red', edgecolor='red', alpha=0.75, linewidth=0.5, label='Synthetic', zorder=2)
 					else:
-						plt.plot(obswvl[mask], synthflux[mask], 'r-', label='Synthetic')
+						plt.plot(obswvl[mask], synthflux[mask], color='r', alpha=0.5, linestyle='-', linewidth=2, label='Synthetic', zorder=100)
 
 					# Plot synthetic spectrum with basically no [Mn/Fe]
 					if synthflux_nomn is not None:
@@ -133,13 +133,14 @@ def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, resids=T
 						plt.plot(obswvl[mask], synthflux_cluster[1][mask], color='purple', linestyle='--', linewidth=2, label='<[Mn/H]>='+str(synthflux_cluster[0]), zorder=2)
 
 					# Plot observed spectrum
-					plt.errorbar(obswvl[mask], obsflux[mask], yerr=yerr, color='k', fmt='o', markersize=6, label='Observed', zorder=3)
+					#plt.errorbar(obswvl[mask], obsflux[mask], yerr=yerr, color='k', fmt='o', markersize=6, label='Observed', zorder=3)
+					plt.plot(obswvl[mask], obsflux[mask], 'k-', label='Observed')
 
 					#plt.xticks([linelist[i]], fontsize=18)
 					plt.yticks(fontsize=10)
 
 					plt.xlim((lolim, uplim))
-					plt.ylim((0.75, 1.10))
+					#plt.ylim((0.75, 1.10))
 
 					if i==0:
 						leg = plt.legend(fancybox=True, framealpha=0.5, loc='best')

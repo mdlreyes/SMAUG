@@ -140,14 +140,18 @@ class obsSpectrum:
 
 			self.ivar = np.ones(len(self.obsflux))
 
+			# Correct for wavelength
+			self.obswvl = self.obswvl / (1. + self.zrest)
+			print('Redshift: ', self.zrest)
+
 			# Get synthetic spectrum, split both obs and synth spectra into red and blue parts
-			synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask = mask_obs_for_division(self.obswvl, self.obsflux, self.ivar, temp=self.temp, logg=self.logg, fe=self.fe, alpha=self.alpha, dlam=self.dlam, lines=self.lines)
+			synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask = mask_obs_for_division(self.obswvl, self.obsflux, self.ivar, temp=self.temp, logg=self.logg, fe=self.fe, alpha=self.alpha, dlam=self.dlam, lines=self.lines, hires=True)
 
 			# Compute continuum-normalized observed spectrum
-			self.obsflux_norm, self.ivar_norm = divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask, specname=self.specname, outputname=self.outputname)
+			self.obsflux_norm, self.ivar_norm = divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask, specname=self.specname, outputname=self.outputname, hires=True)
 
 			# Crop observed spectrum into regions around Mn lines
-			self.obsflux_fit, self.obswvl_fit, self.ivar_fit, self.dlam_fit, self.skip = mask_obs_for_abundance(self.obswvl, self.obsflux_norm, self.ivar_norm, self.dlam, lines=self.lines)
+			self.obsflux_fit, self.obswvl_fit, self.ivar_fit, self.dlam_fit, self.skip = mask_obs_for_abundance(self.obswvl, self.obsflux_norm, self.ivar_norm, self.dlam, lines=self.lines, hires=True)
 
 		# Else, take both spectrum and observed parameters from obsspecial keyword
 		else:
@@ -350,7 +354,7 @@ class obsSpectrum:
 
 def test_hires(starname, galaxyname, slitmaskname, temp, logg, feh, alpha, zrest):
 
-	filename = '/raid/keck/hires/'+galaxyname+'/'+starname+'/'+starname+'_017.fits'
+	filename = '/raid/keck/hires/'+galaxyname+'/'+starname+'/'+starname #+'_017.fits'
 	test = obsSpectrum(filename, filename, 0, True, galaxyname, slitmaskname, True, 'new', obsspecial=[temp, logg, feh, alpha, 0.0, zrest], plot=False, hires=starname).minimize_scipy(feh, output=False, plots=True)
 
 	return

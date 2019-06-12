@@ -101,7 +101,7 @@ def get_synth(obswvl, obsflux, ivar, dlam, synth=None, temp=None, logg=None, fe=
 
 	return synthfluxnew
 
-def mask_obs_for_division(obswvl, obsflux, ivar, temp=None, logg=None, fe=None, alpha=None, dlam=None, lines='new'):
+def mask_obs_for_division(obswvl, obsflux, ivar, temp=None, logg=None, fe=None, alpha=None, dlam=None, lines='new', hires=False):
 	"""Make a mask for synthetic and observed spectra.
 	Mask out Mn lines for continuum division.
 	Split spectra into red and blue parts.
@@ -122,6 +122,7 @@ def mask_obs_for_division(obswvl, obsflux, ivar, temp=None, logg=None, fe=None, 
     dlam  -- FWHM of observed spectrum
 
     lines -- if 'new', use new revised linelist; else, use original linelist from Judy's code
+    hires -- if 'True', don't mask chipgap
 
     Outputs:
     synthfluxmask -- (masked!) synthetic flux array
@@ -150,12 +151,13 @@ def mask_obs_for_division(obswvl, obsflux, ivar, temp=None, logg=None, fe=None, 
 	mask[np.where((obswvl > 4862 - 5) & (obswvl < 4862 + 5))] = True #Hbeta
 	mask[np.where((obswvl > 6563 - 5) & (obswvl < 6563 + 5))] = True #Halpha
 
-	# Mask out pixels near chip gap
-	chipgap = int(len(mask)/2 - 1)
-	print('wavelength of chip gap: ', obswvl[chipgap])
-	#print('Chip gap: ', chipgap)
-	#mask[(chipgap - 10): (chipgap + 10)] = True
-	mask[np.where((obswvl > (obswvl[chipgap] - 20)) & (obswvl < (obswvl[chipgap] + 20)))] = True
+	if hires==False:
+		# Mask out pixels near chip gap
+		chipgap = int(len(mask)/2 - 1)
+		print('wavelength of chip gap: ', obswvl[chipgap])
+		#print('Chip gap: ', chipgap)
+		#mask[(chipgap - 10): (chipgap + 10)] = True
+		mask[np.where((obswvl > (obswvl[chipgap] - 20)) & (obswvl < (obswvl[chipgap] + 20)))] = True
 
 	# Mask out any bad pixels
 	mask[np.where(synthflux <= 0.)] = True
@@ -167,16 +169,17 @@ def mask_obs_for_division(obswvl, obsflux, ivar, temp=None, logg=None, fe=None, 
 	# Mask out pixels around Na D doublet (5890, 5896 A)
 	mask[np.where((obswvl > 5884.) & (obswvl < 5904.))] = True
 
-	# Mask out pixels in regions around Mn lines (+/- 10A) 
-	mnmask = np.zeros(len(synthflux), dtype=bool)
-	if lines == 'old':
-		lines  = np.array([[4744.,4772.],[4773.,4793.],[4813.,4833.],[5384,5404.],[5527.,5547.],[6003.,6031.]])
-	elif lines=='new':
-		lines = np.array([[4729.,4793.],[4813.,4833.],[5384.,5442.],[5506.,5547.],[6003.,6031.],[6374.,6394.],[6481.,6501.]])
+	if hires==False:
+		# Mask out pixels in regions around Mn lines (+/- 10A) 
+		mnmask = np.zeros(len(synthflux), dtype=bool)
+		if lines == 'old':
+			lines  = np.array([[4744.,4772.],[4773.,4793.],[4813.,4833.],[5384,5404.],[5527.,5547.],[6003.,6031.]])
+		elif lines=='new':
+			lines = np.array([[4729.,4793.],[4813.,4833.],[5384.,5442.],[5506.,5547.],[6003.,6031.],[6374.,6394.],[6481.,6501.]])
 
-	for line in range(len(lines)):
-		mnmask[np.where((obswvl > lines[line][0]) & (obswvl < lines[line][1]))] = True
-	mask[mnmask] = True
+		for line in range(len(lines)):
+			mnmask[np.where((obswvl > lines[line][0]) & (obswvl < lines[line][1]))] = True
+		mask[mnmask] = True
 
 	# Create masked arrays
 	synthfluxmask 	= ma.masked_array(synthflux, mask)
@@ -185,15 +188,16 @@ def mask_obs_for_division(obswvl, obsflux, ivar, temp=None, logg=None, fe=None, 
 	ivarmask	  	= ma.masked_array(ivar, mask)
 
 	# Split spectra into blue (index 0) and red (index 1) parts
-	synthfluxmask 	= [synthfluxmask[:chipgap], synthfluxmask[chipgap:]]
-	obsfluxmask		= [obsfluxmask[:chipgap], obsfluxmask[chipgap:]]
-	obswvlmask 		= [obswvlmask[:chipgap], obswvlmask[chipgap:]]
-	ivarmask 		= [ivarmask[:chipgap], ivarmask[chipgap:]]
-	mask 			= [mask[:chipgap], mask[chipgap:]]
+	if hires==False:
+		synthfluxmask 	= [synthfluxmask[:chipgap], synthfluxmask[chipgap:]]
+		obsfluxmask		= [obsfluxmask[:chipgap], obsfluxmask[chipgap:]]
+		obswvlmask 		= [obswvlmask[:chipgap], obswvlmask[chipgap:]]
+		ivarmask 		= [ivarmask[:chipgap], ivarmask[chipgap:]]
+		mask 			= [mask[:chipgap], mask[chipgap:]]
 
 	return synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask
 
-def divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask, sigmaclip=False, specname=None, outputname=None):
+def divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask, sigmaclip=False, specname=None, outputname=None, hires=False):
 	"""Do the actual continuum fitting:
 	- Divide obs/synth.
 	- Fit spline to quotient. 
@@ -215,6 +219,7 @@ def divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask, sigmacli
     sigmaclip 		-- if 'True', do sigma clipping while spline-fitting
     specname 		-- if not None, make plots of quotient and spline
     outputname 		-- if not None, gives path to save plots to
+    hires 			-- if 'True', don't mask chipgap
 
     Outputs:
     obsflux_norm_final -- continuum-normalized observed flux (blue and red parts spliced together)
@@ -232,7 +237,19 @@ def divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask, sigmacli
 	obsflux = []
 
 	# Do continuum division for blue and red parts separately
-	for ipart in [0,1]:
+	if hires == True:
+		synthfluxmask 	= [synthfluxmask]
+		obsfluxmask 	= [obsfluxmask]
+		obswvlmask 		= [obswvlmask]
+		ivarmask 		= [ivarmask]
+		mask 			= [mask]
+
+		numparts = [0]
+
+	else:
+		numparts = [0,1]
+
+	for ipart in numparts:
 
 		# Convert inverse variance to inverse standard deviation
 		newivarmask = ma.masked_array(np.sqrt(ivarmask[ipart].data), mask[ipart])
@@ -243,7 +260,7 @@ def divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask, sigmacli
 		# First check if there are enough points to compute continuum
 		if len(synthfluxmask[ipart].compressed()) < 300:
 			print('Insufficient number of pixels to determine the continuum!')
-			return
+			#return
 
 		# Compute breakpoints for B-spline (in wavelength space, not pixel space)
 		def calc_breakpoints_wvl(array, interval):
@@ -281,6 +298,7 @@ def divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask, sigmacli
 
 		# Determine initial spline fit, before sigma-clipping
 		breakpoints_old	= calc_breakpoints_wvl(obswvlmask[ipart].compressed(), 150.) # Use 150 A spacing
+
 		#print('breakpoints: ', breakpoints_old)
 		splinerep_old 	= splrep(obswvlmask[ipart].compressed(), quotient[ipart].compressed(), w=newivarmask.compressed(), t=breakpoints_old)
 		continuum_old	= splev(obswvlmask[ipart].compressed(), splinerep_old)
@@ -388,13 +406,17 @@ def divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask, sigmacli
 		plt.close()
 
 	# Now splice blue and red parts together
-	obswvl_final	 	= np.hstack((obswvl[0], obswvl[1]))
-	obsflux_norm_final 	= np.hstack((obsflux_norm[0], obsflux_norm[1]))
-	ivar_norm_final 	= np.hstack((ivar_norm[0], ivar_norm[1]))
+	obswvl_final	 	= np.hstack((obswvl[:]))
+	obsflux_norm_final 	= np.hstack((obsflux_norm[:]))
+	ivar_norm_final 	= np.hstack((ivar_norm[:]))
 
-	obsflux_final 		= np.hstack((obsflux[0].data, obsflux[1].data))
-	quotient 			= np.hstack((quotient[0], quotient[1]))
-	continuum 			= np.hstack((continuum[0], continuum[1]))
+	if hires == False:
+		obsflux_final 	= np.hstack((obsflux[0].data, obsflux[1].data))
+	else:
+		obsflux_final = obsflux
+
+	quotient 			= np.hstack((quotient[:]))
+	continuum 			= np.hstack((continuum[:]))
 
 	# Make plot to test
 	make_plots('new', specname+'_continuum', obswvl_final, quotient, continuum, outputname, ivar=None, title=None, synthfluxup=None, synthfluxdown=None, resids=False)
@@ -402,7 +424,7 @@ def divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask, sigmacli
 
 	return obsflux_norm_final, ivar_norm_final
 
-def mask_obs_for_abundance(obswvl, obsflux_norm, ivar_norm, dlam, lines = 'new'):
+def mask_obs_for_abundance(obswvl, obsflux_norm, ivar_norm, dlam, lines = 'new', hires = False):
 	"""Make a mask for synthetic and observed spectra.
 	Mask out bad stuff + EVERYTHING BUT Mn lines (for actual abundance measurements)
 
@@ -419,6 +441,7 @@ def mask_obs_for_abundance(obswvl, obsflux_norm, ivar_norm, dlam, lines = 'new')
 
     Keywords:
     lines -- if 'new', use new revised linelist; else, use original linelist from Judy's code
+    hires -- if 'True', don't mask chipgap
 
     Outputs:
     obsfluxmask   -- (masked!) observed flux array
@@ -436,8 +459,9 @@ def mask_obs_for_abundance(obswvl, obsflux_norm, ivar_norm, dlam, lines = 'new')
 	mask[-5:] = True
 
 	# Mask out pixels near chip gap
-	chipgap = int(len(mask)/2 - 1)
-	mask[(chipgap - 5): (chipgap + 5)] = True
+	if hires == False:
+		chipgap = int(len(mask)/2 - 1)
+		mask[(chipgap - 5): (chipgap + 5)] = True
 
 	# Mask out any bad pixels
 	mask[np.where(ivar_norm <= 0.)] = True
@@ -469,10 +493,11 @@ def mask_obs_for_abundance(obswvl, obsflux_norm, ivar_norm, dlam, lines = 'new')
 	for line in range(len(lines)):
 
 		# Skip spectral regions where the chip gap falls
-		if (obswvl[chipgap + 5] > lines[line][0]) and (obswvl[chipgap + 5] < lines[line][1]):
-			skip = np.delete(skip, np.where(skip==line))
-		elif (obswvl[chipgap - 5] > lines[line][0]) and (obswvl[chipgap - 5] < lines[line][1]):
-			skip = np.delete(skip, np.where(skip==line))
+		if hires == False:
+			if (obswvl[chipgap + 5] > lines[line][0]) and (obswvl[chipgap + 5] < lines[line][1]):
+				skip = np.delete(skip, np.where(skip==line))
+			elif (obswvl[chipgap - 5] > lines[line][0]) and (obswvl[chipgap - 5] < lines[line][1]):
+				skip = np.delete(skip, np.where(skip==line))
 
 		# Skip spectral regions that are outside the observed wavelength range (with bad pixels masked out)
 		elif (lines[line][0] < obswvl[~mask][0]) or (lines[line][1] > obswvl[~mask][-1]):

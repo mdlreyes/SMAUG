@@ -21,46 +21,54 @@ import matplotlib.pyplot as plt
 def open_obs_file(filename, retrievespec=None, specparams=False, objname=None, coords=False, hires=False):
 	"""Open .fits.gz files with observed spectra.
 
-    Inputs:
-    filename - name of file to open
+	Inputs:
+	filename - name of file to open
 
-    Keywords:
-    retrievespec - if None (default), output number of stars in file; 
-                    else, retrieve spectrum of nth star from the file (where n = retrievespec)
+	Keywords:
+	retrievespec - if None (default), output number of stars in file; 
+					else, retrieve spectrum of nth star from the file (where n = retrievespec)
 
-    specparams	 - if True, output temp, logg, fe, alpha of nth star in file 
-    				(only works when retrievespec is not None)
+	specparams	 - if True, output temp, logg, fe, alpha of nth star in file 
+					(only works when retrievespec is not None)
 
-    objname 	 - if not None, finds parameters for spectrum of objname
-    				(only works when specparams=True)
+	objname 	 - if not None, finds parameters for spectrum of objname
+					(only works when specparams=True)
 
-    coords 		 - if True, output the coordinates of the stars in file
+	coords 		 - if True, output the coordinates of the stars in file
 
-    hires 		 - open hi-res spectra (different format than Moogify)
+	hires 		 - open hi-res spectra (different format than Moogify)
 
-    Outputs:
-    wvl  - rest wavelength array for nth star
-    flux - flux array for nth star
-    ivar - inverse variance array for nth star
-    """
-
-	print('Opening ', filename)
-	hdu1 = fits.open(filename)
+	Outputs:
+	wvl  - rest wavelength array for nth star
+	flux - flux array for nth star
+	ivar - inverse variance array for nth star
+	"""
 
 	if hires:
 
-		hdr = hdu1[0].header
+		print('Opening ', filename)
 
-		flux = hdu1[0].data
-		dlam = 0.132*np.ones(len(flux))
+		fluxtot = []
+		wvl = []
+		dlam = []
 
-		# Get wavelength array
-		wvl = np.zeros(len(flux))
-		for i in range(len(wvl)):
-			wvl[i] = i*hdr['CDELT1'] + hdr['CRVAL1']
+		for i in [17]:
+			hdu = fits.open(filename+'_0'+str(i)+'.fits')
 
-		return wvl, flux, dlam
+			hdr = hdu[0].header
 
+			flux = hdu[0].data
+			fluxtot.append(flux)
+
+			# Get wavelength array
+			for j in range(len(flux)):
+				wvl.append(j*hdr['CDELT1'] + hdr['CRVAL1'])
+				dlam.append(0.128/2.355)
+
+		return np.asarray(wvl), np.hstack(fluxtot[:]), np.asarray(dlam)
+
+	print('Opening ', filename)
+	hdu1 = fits.open(filename)
 	data = hdu1[1].data
 
 	if retrievespec is not None:
@@ -166,8 +174,8 @@ def smooth_gauss_wrapper(lambda1, spec1, lambda2, dlam_in):
 	spec1: array-like: synthetic spectrum normalized flux values
 	lambda2: array-like: observed wavelength array
 	dlam_in: float, or array-like: full-width half max resolution in Angstroms
-	 		to smooth the synthetic spectrum to, or the FWHM as a function of wavelength
-	 	 	  
+			to smooth the synthetic spectrum to, or the FWHM as a function of wavelength
+			  
 	Returns
 	-------
 	spec2: array-like: smoothed and interpolated synthetic spectrum, matching observations
