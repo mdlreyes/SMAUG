@@ -64,6 +64,7 @@ def open_obs_file(filename, retrievespec=None, specparams=False, objname=None, c
 			for j in range(len(flux)):
 				wvl.append(j*hdr['CDELT1'] + hdr['CRVAL1'])
 				dlam.append(0.128/2.355)
+				#dlam.append(0.7086)
 
 		return np.asarray(wvl), np.hstack(fluxtot[:]), np.asarray(dlam)
 

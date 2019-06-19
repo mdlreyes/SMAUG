@@ -16,7 +16,8 @@ import sys
 import numpy as np
 import math
 from run_moog import runMoog
-from match_spectrum import open_obs_file
+from smooth_gauss import smooth_gauss
+from match_spectrum import open_obs_file, smooth_gauss_wrapper
 from continuum_div import get_synth, mask_obs_for_division, divide_spec, mask_obs_for_abundance
 import subprocess
 from astropy.io import fits
@@ -29,7 +30,7 @@ from make_plots import make_plots
 # Observed spectrum
 class obsSpectrum:
 
-	def __init__(self, obsfilename, paramfilename, starnum, wvlcorr, galaxyname, slitmaskname, globular, lines, obsspecial=None, plot=False, hires=None):
+	def __init__(self, obsfilename, paramfilename, starnum, wvlcorr, galaxyname, slitmaskname, globular, lines, obsspecial=None, plot=False, hires=None, smooth=None):
 
 		# Observed star
 		self.obsfilename 	= obsfilename 	# File with observed spectra
@@ -149,6 +150,17 @@ class obsSpectrum:
 
 			# Compute continuum-normalized observed spectrum
 			self.obsflux_norm, self.ivar_norm = divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask, specname=self.specname, outputname=self.outputname, hires=True)
+
+			if smooth is not None:
+
+				# Crop med-res wavelength range to match hi-res spectrum
+				smooth = smooth[np.where((smooth > self.obswvl[0]) & (smooth < self.obswvl[-1]))]
+
+				# Interpolate and smooth the synthetic spectrum onto the observed wavelength array
+				self.dlam = np.ones(len(smooth))*0.7086
+				self.obsflux_norm = smooth_gauss_wrapper(self.obswvl, self.obsflux_norm, smooth, self.dlam)
+				self.obswvl = smooth
+				self.ivar_norm = np.ones(len(self.obswvl))*1.e4
 
 			# Crop observed spectrum into regions around Mn lines
 			self.obsflux_fit, self.obswvl_fit, self.ivar_fit, self.dlam_fit, self.skip = mask_obs_for_abundance(self.obswvl, self.obsflux_norm, self.ivar_norm, self.dlam, lines=self.lines, hires=True)
@@ -353,10 +365,16 @@ class obsSpectrum:
 
 		return mn_result, mn_error, chisq_list[6]
 
-def test_hires(starname, galaxyname, slitmaskname, temp, logg, feh, alpha, zrest):
+def test_hires(starname, starnum, galaxyname, slitmaskname, temp, logg, feh, alpha, zrest):
 
 	filename = '/raid/keck/hires/'+galaxyname+'/'+starname+'/'+starname #+'_017.fits'
-	test = obsSpectrum(filename, filename, 0, True, galaxyname, slitmaskname, True, 'new', obsspecial=[temp, logg, feh, alpha, 0.0, zrest], plot=False, hires=starname).minimize_scipy(feh, output=False, plots=True, hires=True)
+
+	# Try fitting directly to hi-res spectrum
+	#test = obsSpectrum(filename, filename, 0, True, galaxyname, slitmaskname, True, 'new', obsspecial=[temp, logg, feh, alpha, 0.0, zrest], plot=False, hires=starname).minimize_scipy(feh, output=False, plots=True, hires=True)
+
+	# Smooth hi-res spectrum to med-res before fitting
+	obswvl = obsSpectrum('/raid/caltech/moogify/n5024b_1200B/moogify.fits.gz', '/raid/caltech/moogify/n5024b_1200B/moogify.fits.gz', starnum, True, galaxyname, slitmaskname, True, 'new', plot=False).obswvl
+	test = obsSpectrum(filename, filename, 0, True, galaxyname, slitmaskname, True, 'new', obsspecial=[temp, logg, feh, alpha, 0.0, zrest], plot=True, hires=starname, smooth=obswvl).minimize_scipy(feh, output=False, plots=True, hires=True)
 
 	return
 
@@ -373,14 +391,14 @@ def main():
 	#test2 = obsSpectrum(filename, paramfilename, 26, True, galaxyname, slitmaskname, False, 'new', plot=True).plot_chisq(-1.50, output=True, plots=False)
 
 	# Code to check hi-res spectra
-	#test_hires('B9354','n5024','hires', 4733, 1.6694455544153846, -1.8671022414349092, 0.2060026649715580, -0.00022376)
-	#test_hires('S16','n5024','hires', 4465, 1.1176236470540364, -2.0168930661196254, 0.2276681163556594, -0.0002259)
-	#test_hires('S230','n5024','hires', 4849, 1.6879225969314575, -1.9910418985188603, 0.23366356933861662, -0.0002172)
-	test_hires('S29','n5024','hires', 4542, 1.1664302349090574, -2.0045057512527262, 0.18337140203171015, -0.00023115)
-	#test_hires('S32','n5024','hires', 4694, 1.3708726167678833, -2.2178865839654534, 0.23014964700722065, -0.00022388)
+	test_hires('B9354', 9, 'n5024','hires', 4733, 1.6694455544153846, -1.8671022414349092, 0.2060026649715580, -0.00022376)
+	test_hires('S16', 3, 'n5024','hires', 4465, 1.1176236470540364, -2.0168930661196254, 0.2276681163556594, -0.0002259)
+	test_hires('S230', 8, 'n5024','hires', 4849, 1.6879225969314575, -1.9910418985188603, 0.23366356933861662, -0.0002172)
+	test_hires('S29', 4, 'n5024','hires', 4542, 1.1664302349090574, -2.0045057512527262, 0.18337140203171015, -0.00023115)
+	test_hires('S32', 5, 'n5024','hires', 4694, 1.3708726167678833, -2.2178865839654534, 0.23014964700722065, -0.00022388)
 
 	# Code to test linelist
-	test = obsSpectrum(filename, paramfilename, 4, True, galaxyname, slitmaskname, True, 'new', plot=True).minimize_scipy(-2.0045057512527262, output=True, plots=True)
+	#test = obsSpectrum(filename, paramfilename, 4, True, galaxyname, slitmaskname, True, 'new', plot=True).minimize_scipy(-2.0045057512527262, output=True, plots=True)
 
 	#print('we done')
 	#test = obsSpectrum(filename, 57).plot_chisq(-2.1661300692266998)

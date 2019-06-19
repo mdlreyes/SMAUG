@@ -44,16 +44,24 @@ def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, resids=T
 	if lines == 'new':
 		#linelist = np.array([4739.,4754.,4761.5,4765.5,4783.,4823.,5394.,5399.,
 		#					 5407.,5420.,5432.,5516.,5537.,6013.,6016.,6021.,6384.,6491.])
-		linelist = np.array([4739.1, 4754.0, 4761.9, 4765.8, 4783.4, 4823.5, 
-							 5394.6, 5399.5, 5407.3, 5420.3, 5432.3, 5516.8,
-							 5537.7, 6013.3, 6016.6, 6021.8, 6384.7, 6491.7])
-		linewidth = np.array([1.,1.,1.5,1.,1.,1.,
-							  1.,1.,1.,1.,1.,1.,
-							  1.,1.,1.,1.,1.,1.])
+		#linelist = np.array([4739.1, 4754.0, 4761.9, 4765.8, 4783.4, 4823.5, 
+		#					 5394.6, 5399.5, 5407.3, 5420.3, 5432.3, 5516.8,
+		#					 5537.7, 6013.3, 6016.6, 6021.8, 6384.7, 6491.7])
+		#linewidth = np.array([1.,1.,1.5,1.,1.,1.,
+		#					  1.,1.,1.,1.,1.,1.,
+		#					  1.,1.,1.,1.,1.,1.])
+
+		linelist = np.array([4739.1, 4754.0, 4761.9, 4765.8, 4783.4, 
+							 4823.5, 5407.3, 5420.3, 5516.8, 5537.7, 
+							 6013.3, 6016.6, 6021.8, 6384.7, 6491.7])
+		linewidth = np.array([1.,1.,1.5,1.,1.,
+							  1.,1.,1.,1.,1.,
+							  1.,1.,1.,1.,1.])
 
 		nrows = 3
-		ncols = 6
-		figsize = (40,15)
+		ncols = 5
+		figsize = (32,15)
+		#figsize = (40,15)
 		#figsize = (20,12)
 
 	elif lines == 'old':
@@ -94,12 +102,12 @@ def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, resids=T
 		#for i, ax in enumerate(f.axes):
 
 		# Range over which to plot
-		if hires == False:
-			lolim = linelist[i] - 10
-			uplim = linelist[i] + 10
-		else:
-			lolim = linelist[i] - 5
-			uplim = linelist[i] + 5
+		#if hires == False:
+		lolim = linelist[i] - 10
+		uplim = linelist[i] + 10
+		#else:
+		#	lolim = linelist[i] - 5
+		#	uplim = linelist[i] + 5
 
 		# Make mask for wavelength
 		try:
@@ -138,17 +146,16 @@ def make_plots(lines, specname, obswvl, obsflux, synthflux, outputname, resids=T
 						plt.plot(obswvl[mask], synthflux_cluster[1][mask], color='purple', linestyle='--', linewidth=2, label='<[Mn/H]>='+str(synthflux_cluster[0]), zorder=2)
 
 					# Plot observed spectrum
-					if hires == False:
-						plt.errorbar(obswvl[mask], obsflux[mask], yerr=yerr, color='k', fmt='o', markersize=6, label='Observed', zorder=3)
-					else:
-						plt.plot(obswvl[mask], obsflux[mask], 'k-', label='Observed')
+					#if hires == False:
+					plt.errorbar(obswvl[mask], obsflux[mask], yerr=yerr, color='k', fmt='o', markersize=6, label='Observed', zorder=3)
+					#else:
+					#plt.plot(obswvl[mask], obsflux[mask], 'k-', label='Observed')
 
 					#plt.xticks([linelist[i]], fontsize=18)
 					plt.yticks(fontsize=10)
 
 					plt.xlim((lolim, uplim))
-					if hires==False:
-						plt.ylim((0.75, 1.10))
+					plt.ylim((0.75, 1.10))
 
 					if i==0:
 						leg = plt.legend(fancybox=True, framealpha=0.5, loc='best')
