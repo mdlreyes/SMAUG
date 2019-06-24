@@ -169,18 +169,25 @@ def mask_obs_for_division(obswvl, obsflux, ivar, temp=None, logg=None, fe=None, 
 	# Mask out pixels around Na D doublet (5890, 5896 A)
 	mask[np.where((obswvl > 5884.) & (obswvl < 5904.))] = True
 
+	# Mask out pixels in regions around Mn lines
+	mnmask = np.zeros(len(synthflux), dtype=bool)
+
+	# For med-res spectra, mask out pixels in +/- 10A regions around Mn lines
 	if hires==False:
-		# Mask out pixels in regions around Mn lines (+/- 10A) 
-		mnmask = np.zeros(len(synthflux), dtype=bool)
 		if lines == 'old':
 			lines  = np.array([[4744.,4772.],[4773.,4793.],[4813.,4833.],[5384,5404.],[5527.,5547.],[6003.,6031.]])
 		elif lines=='new':
 			#lines = np.array([[4729.,4793.],[4813.,4833.],[5384.,5442.],[5506.,5547.],[6003.,6031.],[6374.,6394.],[6481.,6501.]])
 			lines = np.array([[4729.,4793.],[4813.,4833.],[5400.,5430.],[5506.,5547.],[6003.,6031.],[6374.,6394.],[6481.,6501.]])
 
-		for line in range(len(lines)):
-			mnmask[np.where((obswvl > lines[line][0]) & (obswvl < lines[line][1]))] = True
-		mask[mnmask] = True
+	# For hi-res spectra, mask out pixels in +/- 5A regions around Mn lines
+	else:
+		lines = np.array([[4734.,4744.],[4749.,4772.],[4778.,4788.],[4818.,4828.],[5402.,5412.],[5415.,5425.],
+						  [5511.,5521.],[5532.,5542.],[6008.,6026.],[6379.,6389.],[6486.,6596.]])
+
+	for line in range(len(lines)):
+		mnmask[np.where((obswvl > lines[line][0]) & (obswvl < lines[line][1]))] = True
+	mask[mnmask] = True
 
 	# Create masked arrays
 	synthfluxmask 	= ma.masked_array(synthflux, mask)
@@ -298,7 +305,10 @@ def divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask, sigmacli
 			return breakpoints
 
 		# Determine initial spline fit, before sigma-clipping
-		breakpoints_old	= calc_breakpoints_wvl(obswvlmask[ipart].compressed(), 150.) # Use 150 A spacing
+		if hires:
+			breakpoints_old = calc_breakpoints_wvl(obswvlmask[ipart].compressed(), 50.) # Use 50 A spacing
+		else:
+			breakpoints_old	= calc_breakpoints_wvl(obswvlmask[ipart].compressed(), 150.) # Use 150 A spacing
 
 		#print('breakpoints: ', breakpoints_old)
 		splinerep_old 	= splrep(obswvlmask[ipart].compressed(), quotient[ipart].compressed(), w=newivarmask.compressed(), t=breakpoints_old)
