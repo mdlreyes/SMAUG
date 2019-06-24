@@ -20,6 +20,7 @@ import scipy.optimize as op
 import pandas as pd
 from matplotlib.ticker import NullFormatter
 from statsmodels.stats.weightstats import DescrStatsW
+from cycler import cycler
 
 def plot_mn_fe(filenames, outfile, title, gratings=None, maxerror=None, snr=None, solar=False, typeii=True, typei=True):
 	"""Plot [Mn/Fe] vs [Fe/H] for all the stars in a set of files.
@@ -177,16 +178,18 @@ def plot_mn_fe(filenames, outfile, title, gratings=None, maxerror=None, snr=None
 	plt.savefig(outfile, bbox_inches='tight')
 	plt.show()
 
-def comparison_plot(filenames, labels, outfile, title, membercheck=None, memberlist=None, maxerror=None, weighted=True, checkcoords=False):
-	"""Compare [Mn/H] vs [Mn/H] for two different files.
+def comparison_plot(file1, file2, label1, label2, outfile, title, file1_mnh=False, file2_mnh=False, membercheck=None, memberlist=None, maxerror=None, weighted=True, checkcoords=False):
+	"""Compare [Mn/Fe] vs [Mn/Fe] for two different files.
 
 	Inputs:
-	filenames 	-- list of input filenames (must only have 2 files!)
-	labels		-- labels for input filenames
+	file1, label1 -- single file to compare against, label of filename
+	file2, label2 -- single file OR list of files to compare against, label(s) of file(s);
+					 if file2 is a list of files, last string in label2 is the main axis label
 	outfile 	-- name of output file
 	title 		-- title of graph
 
 	Keywords:
+	file1_mnh, file2_mnh -- bool or list of bools; if True, need to convert [Mn/H] to [Mn/Fe]
 	membercheck -- do membership check for this object
 	memberlist	-- member list
 	maxerror	-- if not 'None', throw out any objects with measurement error > maxerror
@@ -194,183 +197,215 @@ def comparison_plot(filenames, labels, outfile, title, membercheck=None, memberl
 	checkcoords -- if 'True', check both files to see if coordinates overlap
 	"""
 
-	# Check that the right number of files is specified
-	if len(filenames) != 2:
-		print('Must specify 2 input files!')
-		return
-	if len(labels)!= 2:
-		print('Must specify labels for both input files!')
+	# Get data from single file
+	y_name 	 = np.genfromtxt(file1, delimiter='\t', skip_header=1, usecols=0, dtype='str')
 
-	# Get data
-	x_name 	= np.genfromtxt(filenames[0], delimiter='\t', skip_header=1, usecols=0, dtype='str')
-	x_mnh 	= np.genfromtxt(filenames[0], delimiter='\t', skip_header=1, usecols=8)
-	x_mnherr 	= np.genfromtxt(filenames[0], delimiter='\t', skip_header=1, usecols=9)
+	if file1_mnh:
+		# Convert [Mn/H] to [Fe/H]
+		y_mnh 	 = np.genfromtxt(file1, delimiter='\t', skip_header=1, usecols=8)
+		y_mnherr = np.genfromtxt(file1, delimiter='\t', skip_header=1, usecols=9)
+		y_feh 	 = np.genfromtxt(file1, delimiter='\t', skip_header=1, usecols=5)
+		y_feherr = np.genfromtxt(file1, delimiter='\t', skip_header=1, usecols=6)
 
-	y_name 	= np.genfromtxt(filenames[1], delimiter='\t', skip_header=1, usecols=0, dtype='str')
-	y_mnh 	= np.genfromtxt(filenames[1], delimiter='\t', skip_header=1, usecols=8)
-	y_mnherr 	= np.genfromtxt(filenames[1], delimiter='\t', skip_header=1, usecols=9)
+		y_mnfe 	  = y_mnh - y_feh
+		y_mnfeerr = np.sqrt(np.power(y_mnherr,2.)+np.power(y_feherr,2.))
 
-	# Match catalogs
-	x = []
-	y = []
-	xerr = []
-	yerr = []
-	name_final = []
-
-	# If checkcoords==True, match catalogs based on separation
-	if checkcoords:
-		x_ra 	= np.genfromtxt(filenames[0], delimiter='\t', skip_header=1, usecols=1, dtype='str')
-		x_dec	= np.genfromtxt(filenames[0], delimiter='\t', skip_header=1, usecols=2, dtype='str')
-
-		y_ra 	= np.genfromtxt(filenames[1], delimiter='\t', skip_header=1, usecols=1, dtype='str')
-		y_dec	= np.genfromtxt(filenames[1], delimiter='\t', skip_header=1, usecols=2, dtype='str')
-
-		x_coord = SkyCoord(x_ra, x_dec, frame='icrs', unit='deg')
-		y_coord = SkyCoord(y_ra, y_dec, frame='icrs', unit='deg')
-
-		for i in range(len(x_name)):
-			idx, sep, _ = x_coord[i].match_to_catalog_sky(y_coord) 
-
-			if sep.arcsec < 10:
-				print('Got one! Separation: ', sep.arcsecond, 'Name: ', x_name[i], y_name[idx])
-				x.append(x_mnh[i])
-				xerr.append(x_mnherr[i])
-
-				print(x_mnh[i], y_mnh[idx])
-				y.append(y_mnh[idx])
-				yerr.append(y_mnherr[idx])
-
-	# Else, match catalogs to make sure correct values are being plotted against one another
-	for i in range(len(x_name)):
-		if x_name[i] in y_name:
-			x.append(x_mnh[i])
-			xerr.append(x_mnherr[i])
-
-			idx = np.where(y_name == x_name[i])
-			y.append(y_mnh[idx][0])
-			yerr.append(y_mnherr[idx][0])
-
-			name_final.append(x_name[i])
-
-	# Do membership check
-	if membercheck is not None:
-		x_new = []
-		y_new = []
-		xerr_new = []
-		yerr_new = []
-
-		table = ascii.read(memberlist)
-		memberindex = np.where(table.columns[0] == membercheck)
-		membernames = table.columns[1][memberindex]
-
-		for i in range(len(name_final)):
-			if name_final[i] in membernames:
-				x_new.append(x[i])
-				y_new.append(y[i])
-				xerr_new.append(xerr[i])
-				yerr_new.append(yerr[i])
-
-				#print(name_final[i], x[i], y[i], xerr[i], yerr[i])
-
-		x = x_new
-		y = y_new
-		xerr = xerr_new
-		yerr = yerr_new
-
-	# Do check for max errors
-	if maxerror is not None:
-		x_new = []
-		y_new = []
-		xerr_new = []
-		yerr_new = []
-
-		for i in range(len(x)):
-			if (xerr[i] < maxerror) and (yerr[i] < maxerror): # and (x[i] < -1.8) and (y[i] < -1.8):
-				x_new.append(x[i])
-				y_new.append(y[i])
-				xerr_new.append(xerr[i])
-				yerr_new.append(yerr[i])
-
-		x = x_new
-		y = y_new
-		xerr = xerr_new
-		yerr = yerr_new
-
-	# Definitions for the axes
-	left, width = 0.1, 0.65
-	bottom, height = 0.1, 0.65
-	bottom_h = left_h = left + width + 0.02
-
-	rect_scatter = [left, bottom, width, height]
-	rect_histx = [left, bottom_h, width, 0.2]
-	rect_histy = [left_h, bottom, 0.2, height]
+	else:
+		y_mnfe 	  = np.genfromtxt(file1, delimiter='\t', skip_header=1, usecols=8)
+		y_mnfeerr = np.genfromtxt(file1, delimiter='\t', skip_header=1, usecols=9)
 
 	# Start with a rectangular figure
 	plt.figure(1, figsize=(8, 8))
 
-	axScatter = plt.axes(rect_scatter)
-	axHistx = plt.axes(rect_histx)
-	axHisty = plt.axes(rect_histy)
+	# Make histograms if only comparing 2 files
+	if len(file2) == 1:
+		left, width = 0.1, 0.65
+		bottom, height = 0.1, 0.65
+		bottom_h = left_h = left + width + 0.02
 
-	# No labels
-	nullfmt = NullFormatter()
-	axHistx.xaxis.set_major_formatter(nullfmt)
-	axHisty.yaxis.set_major_formatter(nullfmt)
+		rect_scatter = [left, bottom, width, height]
+		rect_histx = [left, bottom_h, width, 0.2]
+		rect_histy = [left_h, bottom, 0.2, height]
 
-	# Formatting
-	axHistx.set_title(title, fontsize=18)
-	axScatter.set_xlabel(labels[0], fontsize=16)
-	axScatter.set_ylabel(labels[1], fontsize=16)
+		axScatter = plt.axes(rect_scatter)
+		axHistx = plt.axes(rect_histx)
+		axHisty = plt.axes(rect_histy)
 
-	textx_left = -1.95
-	textx_right = -1.55
-	texty_up = -1.6
-	texty_down = -3.0
-	texty_down_adjscatter = 0.1
+		# No labels on histograms
+		nullfmt = NullFormatter()
+		axHistx.xaxis.set_major_formatter(nullfmt)
+		axHisty.yaxis.set_major_formatter(nullfmt)
 
-	axScatter.text(textx_left, texty_down + texty_down_adjscatter, 'N = '+str(len(x)), fontsize=13)
+		# Formatting
+		axHistx.set_title(title, fontsize=18)
+		axScatter.set_xlabel(label2[-1], fontsize=16)
+		axScatter.set_ylabel(label1, fontsize=16)
 
-	# Compute values
-	if weighted:
-		weighted_stats_x = DescrStatsW(x, weights=np.reciprocal(np.asarray(xerr)**2.), ddof=0)
-		weighted_stats_y = DescrStatsW(y, weights=np.reciprocal(np.asarray(yerr)**2.), ddof=0)
-
-		axHistx.text(textx_left, texty_up, 'Mean: '+"{:.2f}".format(weighted_stats_x.mean)+'\n'+r'$\sigma$: '+"{:.2f}".format(weighted_stats_x.std), fontsize=13)
-		axHisty.text(textx_right, texty_down, 'Mean: '+"{:.2f}".format(weighted_stats_y.mean)+'\n'+r'$\sigma$: '+"{:.2f}".format(weighted_stats_y.std), fontsize=13)
-
-		meanx = weighted_stats_x.mean
-		meany = weighted_stats_y.mean
-		stdx  = weighted_stats_x.std
-		stdy  = weighted_stats_y.std
+		textx_left = -1.95
+		textx_right = -1.55
+		texty_up = -1.6
+		texty_down = -3.0
+		texty_down_adjscatter = 0.1
 
 	else:
-		axHistx.text(textx_left, texty_up, 'Mean: '+"{:.2f}".format(np.average(x))+'\n'+r'$\sigma$: '+"{:.2f}".format(np.std(x)), fontsize=13)
-		axHisty.text(textx_right, texty_down, 'Mean: '+"{:.2f}".format(np.average(y))+'\n'+r'$\sigma$: '+"{:.2f}".format(np.std(y)), fontsize=13)
+		axScatter = plt.gca()
+		axScatter.set_xlabel(label2[-1], fontsize=16)
+		axScatter.set_ylabel(label1, fontsize=16)
 
-		meanx = np.average(x)
-		meany = np.average(y)
-		stdx  = np.std(x)
-		stdy  = np.std(y)
+	#axScatter.text(textx_left, texty_down + texty_down_adjscatter, 'N = '+str(len(x)), fontsize=13)
 
-	# The scatter plot
-	axScatter.errorbar(x, y, xerr=xerr, yerr=yerr, marker='o', linestyle='none')
-	axScatter.plot(axScatter.get_xlim(), axScatter.get_xlim(), 'k-')
+	# Define new property cycles
+	new_prop_cycle = cycler('marker', ['o','^','s','D','*','x','+','v'])
+	axScatter.set_prop_cycle(new_prop_cycle)
 
-	# The histograms
-	axHistx.set_xlim(axScatter.get_xlim())
-	axHisty.set_ylim(axScatter.get_ylim())
+	# Loop over all x-axis files
+	for filenum in range(len(file2)):
+		x_name   = np.genfromtxt(file2[filenum], delimiter='\t', skip_header=1, usecols=0, dtype='str')
 
-	axHistx.axvline(meanx, color='r', linestyle='--')
-	axHisty.axhline(meany, color='r', linestyle='--')
+		# Get data
+		if file2_mnh[filenum]:
+			# Convert [Mn/H] to [Fe/H]
+			x_mnh 	 = np.genfromtxt(file2[filenum], delimiter='\t', skip_header=1, usecols=8)
+			x_mnherr = np.genfromtxt(file2[filenum], delimiter='\t', skip_header=1, usecols=9)
+			x_feh 	 = np.genfromtxt(file2[filenum], delimiter='\t', skip_header=1, usecols=5)
+			x_feherr = np.genfromtxt(file2[filenum], delimiter='\t', skip_header=1, usecols=6)
 
-	axHistx.axvspan(meanx - stdx, meanx + stdx, color='r', alpha=0.25)
-	axHisty.axhspan(meany - stdy, meany + stdy, color='r', alpha=0.25)
+			x_mnfe 	  = x_mnh - x_feh
+			x_mnfeerr = np.sqrt(np.power(x_mnherr,2.)+np.power(x_feherr,2.))
 
-	axHistx.hist(x, bins=10)
-	axHisty.hist(y, bins=10, orientation='horizontal')
+		else:
+			x_mnfe 	  = np.genfromtxt(file2[filenum], delimiter='\t', skip_header=1, usecols=8)
+			x_mnfeerr = np.genfromtxt(file2[filenum], delimiter='\t', skip_header=1, usecols=9)
 
-	print('Median x: '+str(np.median(x)))
-	print('Median y: '+str(np.median(y)))
+		# Match catalogs
+		x = []
+		y = []
+		xerr = []
+		yerr = []
+		name_final = []
+
+		# If checkcoords==True, match catalogs based on separation
+		if checkcoords:
+			x_ra 	= np.genfromtxt(file2[filenum], delimiter='\t', skip_header=1, usecols=1, dtype='str')
+			x_dec	= np.genfromtxt(file2[filenum], delimiter='\t', skip_header=1, usecols=2, dtype='str')
+
+			y_ra 	= np.genfromtxt(file1, delimiter='\t', skip_header=1, usecols=1, dtype='str')
+			y_dec	= np.genfromtxt(file1, delimiter='\t', skip_header=1, usecols=2, dtype='str')
+
+			x_coord = SkyCoord(x_ra, x_dec, frame='icrs', unit='deg')
+			y_coord = SkyCoord(y_ra, y_dec, frame='icrs', unit='deg')
+
+			for i in range(len(x_name)):
+				idx, sep, _ = x_coord[i].match_to_catalog_sky(y_coord) 
+
+				if sep.arcsec < 10:
+					print('Got one! Separation: ', sep.arcsecond, 'Name: ', x_name[i], y_name[idx])
+					x.append(x_mnfe[i])
+					xerr.append(x_mnfeerr[i])
+
+					#print(x_mnfe[i], y_mnfe[idx])
+					y.append(y_mnfe[idx])
+					yerr.append(y_mnfeerr[idx])
+
+		# Else, match catalogs to make sure correct values are being plotted against one another
+		for i in range(len(x_name)):
+			if x_name[i] in y_name:
+				x.append(x_mnfe[i])
+				xerr.append(x_mnfeerr[i])
+
+				idx = np.where(y_name == x_name[i])
+				y.append(y_mnfe[idx][0])
+				yerr.append(y_mnfeerr[idx][0])
+
+				name_final.append(x_name[i])
+
+		# Do membership check
+		if membercheck is not None:
+			x_new = []
+			y_new = []
+			xerr_new = []
+			yerr_new = []
+
+			table = ascii.read(memberlist)
+			memberindex = np.where(table.columns[0] == membercheck)
+			membernames = table.columns[1][memberindex]
+
+			for i in range(len(name_final)):
+				if name_final[i] in membernames:
+					x_new.append(x[i])
+					y_new.append(y[i])
+					xerr_new.append(xerr[i])
+					yerr_new.append(yerr[i])
+
+					#print(name_final[i], x[i], y[i], xerr[i], yerr[i])
+
+			x = x_new
+			y = y_new
+			xerr = xerr_new
+			yerr = yerr_new
+
+		# Do check for max errors
+		if maxerror is not None:
+			x_new = []
+			y_new = []
+			xerr_new = []
+			yerr_new = []
+
+			for i in range(len(x)):
+				if (xerr[i] < maxerror) and (yerr[i] < maxerror): # and (x[i] < -1.8) and (y[i] < -1.8):
+					x_new.append(x[i])
+					y_new.append(y[i])
+					xerr_new.append(xerr[i])
+					yerr_new.append(yerr[i])
+
+			x = x_new
+			y = y_new
+			xerr = xerr_new
+			yerr = yerr_new
+
+		# Plot points on scatter plot
+		axScatter.errorbar(x, y, xerr=xerr, yerr=yerr, marker='o', linestyle='none', label=label2[filenum])
+		axScatter.plot(axScatter.get_xlim(), axScatter.get_xlim(), 'k-')
+
+	# Make histograms if necessary
+	if len(file2) == 1:
+
+		# Compute values
+		if weighted:
+			weighted_stats_x = DescrStatsW(x, weights=np.reciprocal(np.asarray(xerr)**2.), ddof=0)
+			weighted_stats_y = DescrStatsW(y, weights=np.reciprocal(np.asarray(yerr)**2.), ddof=0)
+
+			axHistx.text(textx_left, texty_up, 'Mean: '+"{:.2f}".format(weighted_stats_x.mean)+'\n'+r'$\sigma$: '+"{:.2f}".format(weighted_stats_x.std), fontsize=13)
+			axHisty.text(textx_right, texty_down, 'Mean: '+"{:.2f}".format(weighted_stats_y.mean)+'\n'+r'$\sigma$: '+"{:.2f}".format(weighted_stats_y.std), fontsize=13)
+
+			meanx = weighted_stats_x.mean
+			meany = weighted_stats_y.mean
+			stdx  = weighted_stats_x.std
+			stdy  = weighted_stats_y.std
+
+		else:
+			axHistx.text(textx_left, texty_up, 'Mean: '+"{:.2f}".format(np.average(x))+'\n'+r'$\sigma$: '+"{:.2f}".format(np.std(x)), fontsize=13)
+			axHisty.text(textx_right, texty_down, 'Mean: '+"{:.2f}".format(np.average(y))+'\n'+r'$\sigma$: '+"{:.2f}".format(np.std(y)), fontsize=13)
+
+			meanx = np.average(x)
+			meany = np.average(y)
+			stdx  = np.std(x)
+			stdy  = np.std(y)
+
+		axHistx.set_xlim(axScatter.get_xlim())
+		axHisty.set_ylim(axScatter.get_ylim())
+
+		axHistx.axvline(meanx, color='r', linestyle='--')
+		axHisty.axhline(meany, color='r', linestyle='--')
+
+		axHistx.axvspan(meanx - stdx, meanx + stdx, color='r', alpha=0.25)
+		axHisty.axhspan(meany - stdy, meany + stdy, color='r', alpha=0.25)
+
+		axHistx.hist(x, bins=10)
+		axHisty.hist(y, bins=10, orientation='horizontal')
+
+		print('Median x: '+str(np.median(x)))
+		print('Median y: '+str(np.median(y)))
 
 	# Output file
 	plt.savefig(outfile, bbox_inches='tight')
