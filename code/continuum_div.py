@@ -180,10 +180,10 @@ def mask_obs_for_division(obswvl, obsflux, ivar, temp=None, logg=None, fe=None, 
 			#lines = np.array([[4729.,4793.],[4813.,4833.],[5384.,5442.],[5506.,5547.],[6003.,6031.],[6374.,6394.],[6481.,6501.]])
 			lines = np.array([[4729.,4793.],[4813.,4833.],[5400.,5430.],[5506.,5547.],[6003.,6031.],[6374.,6394.],[6481.,6501.]])
 
-	# For hi-res spectra, mask out pixels in +/- 5A regions around Mn lines
+	# For hi-res spectra, mask out pixels in +/- 1A regions around Mn lines
 	else:
-		lines = np.array([[4734.,4744.],[4749.,4772.],[4778.,4788.],[4818.,4828.],[5402.,5412.],[5415.,5425.],
-						  [5511.,5521.],[5532.,5542.],[6008.,6026.],[6379.,6389.],[6486.,6596.]])
+		lines = np.array([[4738.1,4740.1],[4753.,4755.],[4760.5,4763.3],[4764.8,4767.8],[4782.4,4784.4],[4822.5,4824.5]])
+						#,[5402.,5412.],[5415.,5425.],[5511.,5521.],[5532.,5542.],[6008.,6026.],[6379.,6389.],[6486.,6596.]])
 
 	for line in range(len(lines)):
 		mnmask[np.where((obswvl > lines[line][0]) & (obswvl < lines[line][1]))] = True
@@ -306,7 +306,7 @@ def divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask, sigmacli
 
 		# Determine initial spline fit, before sigma-clipping
 		if hires:
-			breakpoints_old = calc_breakpoints_wvl(obswvlmask[ipart].compressed(), 50.) # Use 50 A spacing
+			breakpoints_old = calc_breakpoints_wvl(obswvlmask[ipart].compressed(), 15.) # Use 50 A spacing
 		else:
 			breakpoints_old	= calc_breakpoints_wvl(obswvlmask[ipart].compressed(), 150.) # Use 150 A spacing
 

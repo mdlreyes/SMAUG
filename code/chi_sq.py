@@ -162,6 +162,13 @@ class obsSpectrum:
 				self.obswvl = smooth
 				self.ivar_norm = np.ones(len(self.obswvl))*1.e4
 
+			if plot:
+				# Plot continuum-normalized observed spectrum
+				plt.figure()
+				plt.plot(self.obswvl, self.obsflux_norm, 'k-')
+				plt.savefig(self.outputname+'/'+self.specname+'_obsnormalized.png')
+				plt.close()
+
 			# Crop observed spectrum into regions around Mn lines
 			self.obsflux_fit, self.obswvl_fit, self.ivar_fit, self.dlam_fit, self.skip = mask_obs_for_abundance(self.obswvl, self.obsflux_norm, self.ivar_norm, self.dlam, lines=self.lines, hires=True)
 

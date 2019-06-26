@@ -183,8 +183,9 @@ def main():
 	#arcturus_test(resolution=resolution, temp=4286, logg=1.66, fe=-0.52, alpha=0.4, mn=[-0.52], fit=True)
 
 	# Plot velocity distributions for GCs
-	plot_vel('/raid/caltech/moogify/n5024b_1200B/moogify.fits.gz','/raid/madlr/glob/n5024/n5024b_1200B_velmembers.txt')
+	#plot_vel('/raid/caltech/moogify/n5024b_1200B/moogify.fits.gz','/raid/madlr/glob/n5024/n5024b_1200B_velmembers.txt')
 	plot_vel('/raid/caltech/moogify/7078l1_1200B/moogify.fits.gz','/raid/madlr/glob/n7078/7078l1_1200B_velmembers.txt')
+	plot_vel('/raid/caltech/moogify/7089l1_1200B/moogify.fits.gz','/raid/madlr/glob/n7089/7089l1_1200B_velmembers.txt')
 
 	return
 
