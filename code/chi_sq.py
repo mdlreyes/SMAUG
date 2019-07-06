@@ -76,8 +76,16 @@ class obsSpectrum:
 			# Get synthetic spectrum, split both obs and synth spectra into red and blue parts
 			synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask = mask_obs_for_division(self.obswvl, self.obsflux, self.ivar, temp=self.temp, logg=self.logg, fe=self.fe, alpha=self.alpha, dlam=self.dlam, lines=self.lines)
 
+			if plot:
+				# Plot spliced synthetic spectrum
+				plt.figure()
+				plt.plot(obswvlmask[0], synthfluxmask[0], 'b-')
+				plt.plot(obswvlmask[1], synthfluxmask[1], 'r-')
+				plt.savefig(self.outputname+'/'+self.specname+'_synth.png')
+				plt.close()
+
 			# Compute continuum-normalized observed spectrum
-			self.obsflux_norm, self.ivar_norm = divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask, specname=self.specname, outputname=self.outputname)
+			self.obsflux_norm, self.ivar_norm = divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask, sigmaclip=True, specname=self.specname, outputname=self.outputname)
 
 			if plot:
 				# Plot continuum-normalized observed spectrum

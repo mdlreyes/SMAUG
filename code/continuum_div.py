@@ -172,13 +172,18 @@ def mask_obs_for_division(obswvl, obsflux, ivar, temp=None, logg=None, fe=None, 
 	# Mask out pixels in regions around Mn lines
 	mnmask = np.zeros(len(synthflux), dtype=bool)
 
-	# For med-res spectra, mask out pixels in +/- 10A regions around Mn lines
+	# For med-res spectra, mask out pixels in regions around Mn lines
 	if hires==False:
 		if lines == 'old':
 			lines  = np.array([[4744.,4772.],[4773.,4793.],[4813.,4833.],[5384,5404.],[5527.,5547.],[6003.,6031.]])
 		elif lines=='new':
-			#lines = np.array([[4729.,4793.],[4813.,4833.],[5384.,5442.],[5506.,5547.],[6003.,6031.],[6374.,6394.],[6481.,6501.]])
-			lines = np.array([[4729.,4793.],[4813.,4833.],[5400.,5430.],[5506.,5547.],[6003.,6031.],[6374.,6394.],[6481.,6501.]])
+			#with resonance lines: lines = np.array([[4729.,4793.],[4813.,4833.],[5384.,5442.],[5506.,5547.],[6003.,6031.],[6374.,6394.],[6481.,6501.]])
+			#+/- 10A regions around Mn lines: lines = np.array([[4729.,4793.],[4813.,4833.],[5400.,5430.],[5506.,5547.],[6003.,6031.],[6374.,6394.],[6481.,6501.]])
+			#+/- 5A regions around Mn lines: lines = np.array([[4734.1,4744.1],[4749.0,4770.8],[4778.4,4788.4],[4818.5,4828.5],[5402.3,5412.3],[5415.3,5425.3],[5511.8,5521.8],[5532.7,5542.7],[6008.3,6026.8],[6379.7,6389.7],[6486.7,6496.7]])
+			#+/- 1A regions around Mn lines:
+			lines = np.array([[4738.1,4740.1],[4753.0,4755.8],[4760.5,4763.3],[4764.8,4766.8],[4782.4,4784.4],
+							  [4822.5,4824.5],[5406.3,5408.3],[5419.3,5421.3],[5515.8,5517.8],[5536.7,5538.7],
+							  [6012.3,6014.3],[6015.6,6017.6],[6020.8,6022.8],[6383.7,6385.7],[6490.7,6492.7]])
 
 	# For hi-res spectra, mask out pixels in +/- 1A regions around Mn lines
 	else:
@@ -308,7 +313,7 @@ def divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask, sigmacli
 		if hires:
 			breakpoints_old = calc_breakpoints_wvl(obswvlmask[ipart].compressed(), 15.) # Use 50 A spacing
 		else:
-			breakpoints_old	= calc_breakpoints_wvl(obswvlmask[ipart].compressed(), 150.) # Use 150 A spacing
+			breakpoints_old	= calc_breakpoints_pixels(obswvlmask[ipart].compressed(), 300.) # Use 300 pixel spacing
 
 		#print('breakpoints: ', breakpoints_old)
 		splinerep_old 	= splrep(obswvlmask[ipart].compressed(), quotient[ipart].compressed(), w=newivarmask.compressed(), t=breakpoints_old)
@@ -317,7 +322,7 @@ def divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask, sigmacli
 		# Iterate the fit, sigma-clipping until it converges or max number of iterations is reached
 		if sigmaclip:
 			iternum  = 0
-			maxiter  = 10
+			maxiter  = 1
 			clipmask = np.ones(len(obswvlmask[ipart].compressed()), dtype=bool)
 
 			while iternum < maxiter:
@@ -330,8 +335,8 @@ def divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask, sigmacli
 				clipmask[np.where((resid < -5*sigma) | (resid > 5*sigma))] = False
 
 				# Recalculate the fit after sigma-clipping
-				breakpoints_new = calc_breakpoints_wvl((obswvlmask[ipart].compressed())[clipmask], 150.)
-				splinerep_new 	= splrep((obswvlmask[ipart].compressed())[clipmask], (quotient.compressed())[clipmask], w=(newivarmask.compressed())[clipmask], t=breakpoints_new)
+				breakpoints_new = calc_breakpoints_pixels((obswvlmask[ipart].compressed())[clipmask], 300.)
+				splinerep_new 	= splrep((obswvlmask[ipart].compressed())[clipmask], (quotient[ipart].compressed())[clipmask], w=(newivarmask.compressed())[clipmask], t=breakpoints_new)
 				continuum_new 	= splev(obswvlmask[ipart].compressed(), splinerep_new)
 
 				# For testing purposes
@@ -430,8 +435,8 @@ def divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask, sigmacli
 	continuum 			= np.hstack((continuum[:]))
 
 	# Make plot to test
-	make_plots('new', specname+'_continuum', obswvl_final, quotient, continuum, outputname, ivar=None, title=None, synthfluxup=None, synthfluxdown=None, resids=False)
-	make_plots('new', specname+'_unnormalized', obswvl_final, obsflux_final, continuum, outputname, ivar=None, title=None, synthfluxup=None, synthfluxdown=None, resids=False)
+	#make_plots('new', specname+'_continuum', obswvl_final, quotient, continuum, outputname, ivar=None, title=None, synthfluxup=None, synthfluxdown=None, resids=False)
+	#make_plots('new', specname+'_unnormalized', obswvl_final, obsflux_final, continuum, outputname, ivar=None, title=None, synthfluxup=None, synthfluxdown=None, resids=False)
 
 	return obsflux_norm_final, ivar_norm_final
 
