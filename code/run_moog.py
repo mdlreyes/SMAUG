@@ -17,6 +17,8 @@ import math
 from interp_atmosphere import checkFile, getAtm, writeAtm
 import subprocess
 import pandas
+import tempfile
+import shutil
 	
 def createPar(name, atmfile='', linelist='', directory=''):
 	"""Create *.par file using *.atm file and linelist.
@@ -34,8 +36,8 @@ def createPar(name, atmfile='', linelist='', directory=''):
 	if readytowrite:
 
 		# Outfile names:
-		out1 = '\''+'/raid/madlr/moogout/'+name+'.out1\''
-		out2 = '\''+'/raid/madlr/moogout/'+name+'.out2\''
+		out1 = '\''+directory+'/'+name+'.out1\''
+		out2 = '\''+directory+'/'+name+'.out2\''
 
 		# If file exists, open file
 		with open(filestr, 'w+') as file:
@@ -64,29 +66,24 @@ def createPar(name, atmfile='', linelist='', directory=''):
 def runMoog(temp, logg, fe, alpha, directory='/raid/madlr/moogspectra/', elements=None, abunds=None, solar=None, lines='new'):
 	"""Run MOOG for each Mn linelist and splice spectra.
 
-    Inputs:
-    temp 	 -- effective temperature (K)
-    logg 	 -- surface gravity
-    fe 		 -- [Fe/H]
-    alpha 	 -- [alpha/Fe]
+	Inputs:
+	temp 	 -- effective temperature (K)
+	logg 	 -- surface gravity
+	fe 		 -- [Fe/H]
+	alpha 	 -- [alpha/Fe]
 
-    Keywords:
-    dir 	 -- directory to write MOOG output to [default = '/raid/madlr/moogspectra/']
-    elements -- list of atomic numbers of elements to add to the *.atm file
-    abunds 	 -- list of elemental abundances corresponding to list of elements
-    lines    -- if 'new', use new revised linelist; else, use original linelist from Judy's code
+	Keywords:
+	dir 	 -- directory to write MOOG output to [default = '/raid/madlr/moogspectra/']
+	elements -- list of atomic numbers of elements to add to the *.atm file
+	abunds 	 -- list of elemental abundances corresponding to list of elements
+	lines    -- if 'new', use new revised linelist; else, use original linelist from Judy's code
 
-    Outputs:
-    spectrum -- spliced synthetic spectrum
-    """
+	Outputs:
+	spectrum -- spliced synthetic spectrum
+	"""
 
-	# Clean out the output directories
-	for fl in glob.glob('/raid/madlr/moogout/*'):
-		os.remove(fl)
-	for fl in glob.glob('/raid/madlr/par/*'):
-		os.remove(fl)
-	for fl in glob.glob('/raid/madlr/atm/*'):
-		os.remove(fl)
+	# Define temporary directory to store tempfiles
+	tempdir = tempfile.mkdtemp()
 
 	# Define list of Mn linelists
 	if lines == 'new':
@@ -119,22 +116,14 @@ def runMoog(temp, logg, fe, alpha, directory='/raid/madlr/moogspectra/', element
 			name = name + elementstr
 
 	# Create *.atm file (for use with each linelist)
-	#print('Running MOOG with parameters: ')
-	'''
-	print('temp = ', temp)
-	print('logg = ', logg)
-	print('fe = ', fe)
-	print('alpha = ', alpha)
-	'''
-	#print('extra elements: ', elements, ' with abundances ', abunds)
-	atmfile = writeAtm(temp, logg, fe, alpha, elements=elements, abunds=abunds, solar=solar)
+	atmfile = writeAtm(temp, logg, fe, alpha, elements=elements, abunds=abunds, solar=solar, dir=tempdir)
 
 	# Loop over all linelists
 	for i in range(len(linelists)):
 
 		# Create *.par file
 		parname = name + '_' + linelists[i][9:]
-		parfile, wavelengthrange = createPar(parname, atmfile, '/raid/madlr/linelists/'+linelists[i], directory='/raid/madlr/par/')
+		parfile, wavelengthrange = createPar(parname, atmfile, '/raid/madlr/linelists/'+linelists[i], directory=tempdir)
 
 		# Run MOOG
 		p = subprocess.Popen(['MOOG', parfile], cwd='/raid/madlr/moog17scat/', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -143,7 +132,7 @@ def runMoog(temp, logg, fe, alpha, directory='/raid/madlr/moogspectra/', element
 		p.communicate()
 
 		# Create arrays of wavelengths and fluxes
-		outfile = '/raid/madlr/moogout/'+parname+'.out2'
+		outfile = tempdir+'/'+parname+'.out2'
 
 		wavelength = np.linspace(wavelengthrange[0],wavelengthrange[1],math.ceil((wavelengthrange[1]-wavelengthrange[0])/0.02), endpoint=True)
 		data = pandas.read_csv(outfile, skiprows=[0,1,-1], delimiter=' ').as_matrix()
@@ -154,8 +143,9 @@ def runMoog(temp, logg, fe, alpha, directory='/raid/madlr/moogspectra/', element
 	#spectrum = np.vstack((wavelength, flux)).T
 	#np.savetxt(directory+parname, spectrum)
 
-	# Output synthetic spectrum in a format that continuum_div functions will understand (list of arrays) 
+	# Output synthetic spectrum in a format that continuum_div functions will understand (list of arrays)
+
+	# Clean out the temporary directory
+	shutil.rmtree(tempdir)
 
 	return spectrum
-
-#runMoog(temp=5900, logg=0.1, fe=-0.5, alpha=0.5, elements=[25], abunds=[0.5], solar=[5.43])

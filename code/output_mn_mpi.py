@@ -24,7 +24,10 @@ import pandas
 import scipy.optimize
 import chi_sq
 from make_plots import make_plots
+
+# Packages for parallelization
 from multiprocessing import Pool
+import functools
 
 def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, globular=False, lines='new', plots=False, wvlcorr=True, membercheck=None, memberlist=None, velmemberlist=None):
 	""" Measure Mn abundances from a FITS file.
@@ -88,15 +91,8 @@ def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, gl
 	# Get coordinates of stars in file
 	RA, Dec = open_obs_file(filename, coords=True)
 
-	# Run chi-sq fitting for all stars in file
-	starname = []
-	startemp = []
-	starlogg = []
-	starfe	 = []
-	staralpha = []
-	starmn 	 = []
-	starmnerr = []
-	for i in range(startstar, Nstars):
+	# Function to parallelize: run chi-sq fitting for all stars in file
+	def mp_worker(i, filename, Nstars, RA, Dec, membercheck, membernames):
 
 		try:
 			# Get metallicity of star to use for initial guess
@@ -114,7 +110,7 @@ def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, gl
 			# Do membership check
 			if membercheck is not None:
 				if specname not in membernames:
-					print('Not in member list! Skipped '+specname)  #'+str(i+1)+'/'+str(Nstars)+' stars')
+					print('Not in member list! Skipped '+specname)
 					continue
 
 			# Run optimization code
@@ -128,8 +124,14 @@ def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, gl
 
 		print('Finished star '+star.specname, '#'+str(i+1)+'/'+str(Nstars)+' stars')
 
-		with open(outputname, 'a') as f:
-			f.write(star.specname+'\t'+str(RA[i])+'\t'+str(Dec[i])+'\t'+str(star.temp)+'\t'+str(star.logg[0])+'\t'+str(star.fe[0])+'\t'+str(star.fe_err[0])+'\t'+str(star.alpha[0])+'\t'+str(best_mn[0])+'\t'+str(error[0])+'\t'+str(finalchisq)+'\n')
+		return star.specname, str(RA[i]), str(Dec[i]), str(star.temp), str(star.logg[0]), str(star.fe[0]), str(star.fe_err[0]), str(star.alpha[0]), str(best_mn[0]), str(error[0]), str(finalchisq)
+
+	# Begin the parallelization
+	p = multiprocessing.Pool()
+
+	with open(outputname, 'w') as f:
+		for result in p.imap(functools.partial(mp_worker, filename=filename, Nstars=Nstars, RA=RA, Dec=Dec, membercheck=membercheck, membernames=membernames), range(startstar, Nstars)):
+			f.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' % result)
 
 	return
 

@@ -89,13 +89,6 @@ def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, gl
 	RA, Dec = open_obs_file(filename, coords=True)
 
 	# Run chi-sq fitting for all stars in file
-	starname = []
-	startemp = []
-	starlogg = []
-	starfe	 = []
-	staralpha = []
-	starmn 	 = []
-	starmnerr = []
 	for i in range(startstar, Nstars):
 
 		try:

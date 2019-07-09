@@ -229,8 +229,6 @@ class obsSpectrum:
 		print('Computing synthetic spectrum with parameters: ', mn) #, dlam)
 		synth = runMoog(temp=self.temp, logg=self.logg, fe=self.fe, alpha=self.alpha, elements=[25], abunds=[mn], solar=[5.43], lines=self.lines)
 
-		#print('Ran synthetic spectrum.')
-
 		# Loop over each line
 		synthflux = []
 		for i in self.skip:
