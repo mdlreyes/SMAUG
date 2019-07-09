@@ -505,7 +505,7 @@ def plot_mn_vs_something(filename, quantity, outfile, title, membercheck=None, m
 		mnfeerr = mnfeerr_new
 		name = name_new
 
-	outliers = np.where((np.asarray(mnfe) > -0.1) | (np.asarray(mnfe) < -0.3))[0]
+	outliers = np.where((np.asarray(mnfe) > -0.1) ) #| (np.asarray(mnfe) > 0.1))[0]
 	print('Outliers:')
 	print(np.asarray(name)[outliers])
 	print(np.asarray(mnfe)[outliers])
@@ -779,12 +779,12 @@ def main():
 
 	plot_mn_vs_something('data/7078l1_1200B_final.csv', 'temp', 'figures/gc_checks/n7078l1_mnfe_temp_nooutliers.png', 'M15', membercheck='M15', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True, sigmasys=True)
 	#plot_mn_vs_something('data/7078l1_1200B_final.csv', 'logg', 'figures/gc_checks/n7078l1_mnfe_logg.png', 'M15', membercheck='M15', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True)
-	#plot_mn_vs_something('data/7078l1_1200B_final.csv', 'feh', 'figures/gc_checks/n7078l1_mnfe_feh_nooutliers.png', 'M15', membercheck='M15', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True, sigmasys=True)
+	plot_mn_vs_something('data/7078l1_1200B_final.csv', 'feh', 'figures/gc_checks/n7078l1_mnfe_feh_nooutliers.png', 'M15', membercheck='M15', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True, sigmasys=True)
 	#plot_mn_vs_something('data/7078l1_1200B_final.csv', 'temp', 'figures/gc_checks/n7078l1_feh_temp.png', 'M15', membercheck='M15', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True, plotfeh=True)
 
 	#plot_mn_vs_something('data/7089l1_1200B_final.csv', 'temp', 'figures/gc_checks/n7089_mnfe_temp.png', 'M2', membercheck='M2', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True, sigmasys=True)
 	#plot_mn_vs_something('data/7089_1200B_final.csv', 'logg', 'figures/gc_checks/n7089_mnfe_logg.png', 'M2', membercheck='M2', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True)
-	#plot_mn_vs_something('data/7089l1_1200B_final.csv', 'feh', 'figures/gc_checks/n7089_mnfe_feh.png', 'M2', membercheck='M2', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True)
+	#plot_mn_vs_something('data/7089l1_1200B_final.csv', 'feh', 'figures/gc_checks/n7089_mnfe_feh.png', 'M2', membercheck='M2', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True, sigmasys=True)
 	#plot_mn_vs_something('data/7089_1200B_final.csv', 'temp', 'figures/gc_checks/n7089_feh_temp.png', 'M2', membercheck='M2', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True, plotfeh=True)
 
 	#plot_mn_vs_something('data/ng1904_1200B_final.csv', 'temp', 'figures/gc_checks/n1904_mnfe_temp.png', 'M79', membercheck='M79', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True, sigmasys=True)
@@ -801,7 +801,7 @@ def main():
 	#plot_hist(['data/7089l1_1200B_final.csv'], ['M2'], 'error', 'figures/gc_checks/errorhist', membercheck=['M2'], memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, sigmasys=[0.21])
 	#plot_hist(['data/n5024b_1200B_final.csv'], ['M53'], 'error', 'figures/gc_checks/errorhist', membercheck=['M53'], memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, sigmasys=[0.03])
 
-	#plot_hist(['data/7089l1_1200B_final.csv','data/7078l1_1200B_final.csv','data/n5024b_1200B_final.csv'], ['M2','M15','M53'], 'error', 'figures/gc_checks/errorhist', membercheck=['M2','M15','M53'], memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, sigmasys=[0.21,0.11,0.03])
+	#plot_hist(['data/7089l1_1200B_final.csv','data/7078l1_1200B_final.csv','data/n5024b_1200B_final.csv'], ['M2','M15','M53'], 'error', 'figures/gc_checks/errorhist', membercheck=['M2','M15','M53'], memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, sigmasys=[0.20,0.06,0.05])
 
 	# Check if adding smoothing parameter does anything
 	#comparison_plot(['data/no_dlam/scl5_1200B_final.csv','data/scl5_1200B.csv'],['Don\'t fit smoothing [Mn/H]', 'Fit smoothing [Mn/H]'],'figures/scl5_1200B_smoothcheck.png','Sculptor', maxerror=1) #, weighted=False)
