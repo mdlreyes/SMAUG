@@ -77,20 +77,28 @@ def open_obs_file(filename, retrievespec=None, specparams=False, objname=None, c
 		# If don't need to return other parameters, just return spectrum
 		if not specparams:
 
-			namearray = data['OBJNAME']
-			wavearray = data['LAMBDA']
-			fluxarray = data['SPEC']
-			ivararray = data['IVAR']
-			dlamarray = data['DLAM']
+			# Open SPEC1D file to get optimal extraction
+			spec1d 	= data['SPEC1DFILE'][retrievespec]
+			hdu2 	= fits.open(spec1d)
+			wvl_blue 	= hdu2[3].data['LAMBDA'][0]
+			flux_blue 	= hdu2[3].data['SPEC'][0]
+			ivar_blue 	= hdu2[3].data['IVAR'][0]
+			wvl_red 	= hdu2[4].data['LAMBDA'][0]
+			flux_red 	= hdu2[4].data['SPEC'][0]
+			ivar_red 	= hdu2[4].data['IVAR'][0]
+
+			# Concatenate blue and red parts of optimal extraction spectrum
+			wvl  = np.hstack((wvl_blue, wvl_red))
+			flux = np.hstack((flux_blue, flux_red))
+			ivar = np.hstack((ivar_blue, ivar_red))
 
 			# Get spectrum of a single star
-			name = namearray[retrievespec]
-			wvl  = wavearray[retrievespec]
-			flux = fluxarray[retrievespec]
-			ivar = ivararray[retrievespec]
-			dlam = dlamarray[retrievespec]
+			name = data['OBJNAME'][retrievespec]
+			#wvl  = data['LAMBDA'][retrievespec]
+			#flux = data['SPEC'][retrievespec]
+			#ivar = data['IVAR'][retrievespec]
+			dlam = data['DLAM'][retrievespec]
 			dlam = 0.7086*np.ones(len(dlam))
-			#dlam = 1.67*np.ones(len(dlam))
 
 			# Check that measured velocity is good
 			checkvel = data['GOOD'][retrievespec]

@@ -505,12 +505,12 @@ def plot_mn_vs_something(filename, quantity, outfile, title, membercheck=None, m
 		mnfeerr = mnfeerr_new
 		name = name_new
 
-	'''
-	outliers = np.where((np.asarray(mnfe) > 0.4)) # | (np.asarray(mnfe) < -2.5))[0]
+	outliers = np.where((np.asarray(mnfe) > -0.1) | (np.asarray(mnfe) < -0.3))[0]
 	print('Outliers:')
 	print(np.asarray(name)[outliers])
 	print(np.asarray(mnfe)[outliers])
 	print(np.asarray(x)[outliers])
+	'''
 
 	check = np.where((np.asarray(mnfe) < -1.1) & (np.asarray(mnfe) > -2.5))[0]
 	x = np.asarray(x)[check]
@@ -656,13 +656,13 @@ def plot_hist(files, labels, quantity, outfile, membercheck=None, memberlist=Non
 
 	# Open histogram
 	fig, ax = plt.subplots()
-	bins = np.linspace(-3, 3, 12)
+	bins = np.linspace(-3, 3, 10)
 
 	# Open memberlist table
 	if membercheck is not None:
 		table = ascii.read(memberlist)
 
-	colors = ['C0','C1',None]
+	colors = ['C0','C1','None']
 	hatches = [None, '/', None]
 	edges = ['C0','C1','k']
 	styles = ['-','--',':']
@@ -673,6 +673,26 @@ def plot_hist(files, labels, quantity, outfile, membercheck=None, memberlist=Non
 
 		# Get data
 		data 	= pd.read_csv(files[i], delimiter='\t')
+
+		# Do check for max errors
+		if maxerror is not None:
+			data = data[data["error([Mn/H])"] < maxerror]
+
+		# Do membership check
+		if membercheck is not None:
+			N = len(data['Name'])
+			checkarray = np.zeros(N, dtype='bool')
+
+			memberindex = np.where(table.columns[0] == membercheck[i])
+			membernames = table.columns[1][memberindex]
+
+			for j in range(N):
+				if str(np.asarray(data['Name'])[j]) in np.asarray(membernames):
+					checkarray[j] = True
+
+			data = data[checkarray]
+
+		# Define data columns
 		name 	= data['Name']
 		mnh 	= data['[Mn/H]']
 		mnherr 	= data['error([Mn/H])']
@@ -685,6 +705,12 @@ def plot_hist(files, labels, quantity, outfile, membercheck=None, memberlist=Non
 			mnfeerr = mnherr
 
 			avg = np.mean(mnfe)
+			print('Average: ',avg)
+			'''
+			stats = DescrStatsW(mnfe, weights=np.reciprocal(np.asarray(mnfeerr)**2.), ddof=0)
+			avg = stats.mean
+			std  = stats.std
+			'''
 
 			x = (mnfe - avg)/np.sqrt(np.power(mnfeerr,2.) + np.power(sigmasys[i],2.))
 			xlabel = r'$(\mathrm{[Mn/Fe]}-\langle\mathrm{[Mn/Fe]}\rangle)/\sqrt{\sigma_{\mathrm{stat}}^{2}+\sigma_{\mathrm{sys}}^{2}}$'
@@ -705,28 +731,11 @@ def plot_hist(files, labels, quantity, outfile, membercheck=None, memberlist=Non
 			x = data['log(g)']
 			xlabel = 'Log(g) [cm/s'+r'$^{2}$]'
 
-		# Do membership check
-		if membercheck is not None:
-			x_new = []
-			mnherr_new = []
-
-			memberindex = np.where(table.columns[0] == membercheck[i])
-			membernames = table.columns[1][memberindex]
-
-			for j in range(len(name)):
-				if str(name[j]) in membernames:
-					x_new.append(x[j])
-					mnherr_new.append(mnherr[j])
-
-			x = x_new
-			mnherr = mnherr_new
-
-		# Do check for max errors
-		if maxerror is not None:
-			x = np.asarray(x)[np.where((np.asarray(mnherr) < maxerror))[0]]
-
 		# Plot histogram
 		n, bins, _ = ax.hist(x, bins, alpha=0.3, label=labels[i], facecolor=colors[i], hatch=hatches[i], edgecolor=edges[i], fill=True)
+
+		# Overplot edges of histogram
+		ax.hist(x, bins, facecolor='None', edgecolor=edges[i], fill=True)
 
 		#Get bin width from this
 		binwidth = bins[1] - bins[0]
@@ -734,8 +743,8 @@ def plot_hist(files, labels, quantity, outfile, membercheck=None, memberlist=Non
 		# Overplot best-fit Gaussian
 		xbins = np.linspace(-3,3,1000)
 		sigma = 1.
-		mu = 0.
-		y = ((1 / (np.sqrt(2 * np.pi) * sigma)) * np.exp(-0.5 * (1 / sigma * (xbins - mu))**2))*len(x)*binwidth
+		mu = np.mean(x)
+		y = ((1. / (np.sqrt(2 * np.pi) * sigma)) * np.exp(-0.5 * (1. / sigma * (xbins - mu))**2))*len(x)*binwidth
 
 		plt.plot(xbins, y, linestyle=styles[i], color=edges[i])
 
@@ -768,14 +777,14 @@ def main():
 	#plot_mn_vs_something('data/newlinelist_data/n2419b_blue_final.csv', 'feh', 'figures/gc_checks/n2419b_mnh_temp.png','NGC 2419', membercheck='NGC 2419', memberlist='data/gc_checks/table_catalog.dat', maxerror=1, weighted=True)
 	#plot_mn_vs_something('data/n2419b_blue_final.csv', 'temp', 'figures/gc_checks/n2419b_mnh_temp.png','NGC 2419', membercheck='NGC 2419', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True)
 
-	#plot_mn_vs_something('data/7078l1_1200B_final.csv', 'temp', 'figures/gc_checks/n7078l1_mnfe_temp_nooutliers.png', 'M15', membercheck='M15', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True, sigmasys=True)
+	plot_mn_vs_something('data/7078l1_1200B_final.csv', 'temp', 'figures/gc_checks/n7078l1_mnfe_temp_nooutliers.png', 'M15', membercheck='M15', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True, sigmasys=True)
 	#plot_mn_vs_something('data/7078l1_1200B_final.csv', 'logg', 'figures/gc_checks/n7078l1_mnfe_logg.png', 'M15', membercheck='M15', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True)
 	#plot_mn_vs_something('data/7078l1_1200B_final.csv', 'feh', 'figures/gc_checks/n7078l1_mnfe_feh_nooutliers.png', 'M15', membercheck='M15', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True, sigmasys=True)
 	#plot_mn_vs_something('data/7078l1_1200B_final.csv', 'temp', 'figures/gc_checks/n7078l1_feh_temp.png', 'M15', membercheck='M15', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True, plotfeh=True)
 
-	#plot_mn_vs_something('data/7089_1200B_final.csv', 'temp', 'figures/gc_checks/n7089_mnfe_temp.png', 'M2', membercheck='M2', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True, sigmasys=True)
+	#plot_mn_vs_something('data/7089l1_1200B_final.csv', 'temp', 'figures/gc_checks/n7089_mnfe_temp.png', 'M2', membercheck='M2', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True, sigmasys=True)
 	#plot_mn_vs_something('data/7089_1200B_final.csv', 'logg', 'figures/gc_checks/n7089_mnfe_logg.png', 'M2', membercheck='M2', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True)
-	#plot_mn_vs_something('data/7089_1200B_final.csv', 'feh', 'figures/gc_checks/n7089_mnfe_feh.png', 'M2', membercheck='M2', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True)
+	#plot_mn_vs_something('data/7089l1_1200B_final.csv', 'feh', 'figures/gc_checks/n7089_mnfe_feh.png', 'M2', membercheck='M2', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True)
 	#plot_mn_vs_something('data/7089_1200B_final.csv', 'temp', 'figures/gc_checks/n7089_feh_temp.png', 'M2', membercheck='M2', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True, plotfeh=True)
 
 	#plot_mn_vs_something('data/ng1904_1200B_final.csv', 'temp', 'figures/gc_checks/n1904_mnfe_temp.png', 'M79', membercheck='M79', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True, sigmasys=True)
@@ -783,14 +792,16 @@ def main():
 	#plot_mn_vs_something('data/ng1904_1200B_final.csv', 'feh', 'figures/gc_checks/n1904_mnfe_feh.png', 'M79', membercheck='M79', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True)
 	#plot_mn_vs_something('data/ng1904_1200B_final.csv', 'temp', 'figures/gc_checks/n1904_feh_temp.png', 'M79', membercheck='M79', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True, plotfeh=True)
 
-	#plot_mn_vs_something('data/n5024b_1200B_final.csv', 'temp', 'figures/gc_checks/n5024b_mnfe_temp_nooutliers.png', 'M53', membercheck='M53', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True, sigmasys=True)
+	#plot_mn_vs_something('data/n5024b_1200B_final.csv', 'temp', 'figures/gc_checks/n5024b_mnfe_temp_nooutliers.png', 'M53', membercheck='M53', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=False, sigmasys=True)
 	#plot_mn_vs_something('data/n5024b_1200B_final.csv', 'logg', 'figures/gc_checks/n5024b_mnfe_logg.png', 'M53', membercheck='M53', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True)
 	#plot_mn_vs_something('data/n5024b_1200B_final.csv', 'feh', 'figures/gc_checks/n5024b_mnfe_feh_nooutliers.png', 'M53', membercheck='M53', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True, sigmasys=True)
 	#plot_mn_vs_something('data/n5024b_1200B_final.csv', 'temp', 'figures/gc_checks/n5024b_feh_temp.png', 'M53', membercheck='M53', memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, weighted=True, plotfeh=True)
 
-	#plot_hist(['data/7078l1_1200B_final.csv'], ['M15'], 'error', 'figures/gc_checks/errorhist', membercheck=['M15'], memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, sigmasys=[0.21])
+	#plot_hist(['data/7078l1_1200B_final.csv'], ['M15'], 'error', 'figures/gc_checks/errorhist', membercheck=['M15'], memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, sigmasys=[0.13])
+	#plot_hist(['data/7089l1_1200B_final.csv'], ['M2'], 'error', 'figures/gc_checks/errorhist', membercheck=['M2'], memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, sigmasys=[0.21])
+	#plot_hist(['data/n5024b_1200B_final.csv'], ['M53'], 'error', 'figures/gc_checks/errorhist', membercheck=['M53'], memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, sigmasys=[0.03])
 
-	plot_hist(['data/7078l1_1200B_final.csv','data/n5024b_1200B_final.csv'], ['M15','M53'], 'error', 'figures/gc_checks/errorhist', membercheck=['M15','M53'], memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, sigmasys=[0.21,0.14])
+	#plot_hist(['data/7089l1_1200B_final.csv','data/7078l1_1200B_final.csv','data/n5024b_1200B_final.csv'], ['M2','M15','M53'], 'error', 'figures/gc_checks/errorhist', membercheck=['M2','M15','M53'], memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, sigmasys=[0.21,0.11,0.03])
 
 	# Check if adding smoothing parameter does anything
 	#comparison_plot(['data/no_dlam/scl5_1200B_final.csv','data/scl5_1200B.csv'],['Don\'t fit smoothing [Mn/H]', 'Fit smoothing [Mn/H]'],'figures/scl5_1200B_smoothcheck.png','Sculptor', maxerror=1) #, weighted=False)

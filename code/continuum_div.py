@@ -181,7 +181,7 @@ def mask_obs_for_division(obswvl, obsflux, ivar, temp=None, logg=None, fe=None, 
 			#+/- 10A regions around Mn lines: lines = np.array([[4729.,4793.],[4813.,4833.],[5400.,5430.],[5506.,5547.],[6003.,6031.],[6374.,6394.],[6481.,6501.]])
 			#+/- 5A regions around Mn lines: lines = np.array([[4734.1,4744.1],[4749.0,4770.8],[4778.4,4788.4],[4818.5,4828.5],[5402.3,5412.3],[5415.3,5425.3],[5511.8,5521.8],[5532.7,5542.7],[6008.3,6026.8],[6379.7,6389.7],[6486.7,6496.7]])
 			#+/- 1A regions around Mn lines:
-			lines = np.array([[4738.1,4740.1],[4753.0,4755.8],[4760.5,4763.3],[4764.8,4766.8],[4782.4,4784.4],
+			lines = np.array([[4738.1,4740.1],[4753.0,4755.0],[4760.5,4763.3],[4764.8,4766.8],[4782.4,4784.4],
 							  [4822.5,4824.5],[5406.3,5408.3],[5419.3,5421.3],[5515.8,5517.8],[5536.7,5538.7],
 							  [6012.3,6014.3],[6015.6,6017.6],[6020.8,6022.8],[6383.7,6385.7],[6490.7,6492.7]])
 
@@ -322,7 +322,7 @@ def divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask, sigmacli
 		# Iterate the fit, sigma-clipping until it converges or max number of iterations is reached
 		if sigmaclip:
 			iternum  = 0
-			maxiter  = 1
+			maxiter  = 3
 			clipmask = np.ones(len(obswvlmask[ipart].compressed()), dtype=bool)
 
 			while iternum < maxiter:
@@ -389,36 +389,20 @@ def divide_spec(synthfluxmask, obsfluxmask, obswvlmask, ivarmask, mask, sigmacli
 		plt.subplot(211)
 		plt.plot(obswvlmask[ipart].data, obsfluxmask[ipart].data, 'r-', label='Masked')
 		plt.plot(obswvlmask[ipart].compressed(), obsfluxmask[ipart].compressed(), 'k-', label='Observed')
-		plt.axvspan(4749, 4759, alpha=0.5, color='blue')
-		plt.axvspan(4778, 4788, alpha=0.5, color='blue')
-		plt.axvspan(4818, 4828, alpha=0.5, color='blue')
-		plt.axvspan(5389, 5399, alpha=0.5, color='blue')
-		plt.axvspan(5532, 5542, alpha=0.5, color='blue')
-		plt.axvspan(6008, 6018, alpha=0.5, color='blue')
-		plt.axvspan(6016, 6026, alpha=0.5, color='blue')
 		#plt.plot(obswvlmask[ipart][mask], obsfluxmask[ipart][mask], 'r-', label='Mask')
 		plt.legend(loc='best')
 		plt.subplot(212)
 		plt.plot(obswvlmask[ipart].data, synthfluxmask[ipart].data, 'r-', label='Masked')
 		plt.plot(obswvlmask[ipart].compressed(), synthfluxmask[ipart].compressed(), 'k-', label='Synthetic')
-		plt.axvspan(4749, 4759, alpha=0.5, color='blue')
-		plt.axvspan(4778, 4788, alpha=0.5, color='blue')
-		plt.axvspan(4818, 4828, alpha=0.5, color='blue')
-		plt.axvspan(5389, 5399, alpha=0.5, color='blue')
-		plt.axvspan(5532, 5542, alpha=0.5, color='blue')
-		plt.axvspan(6008, 6018, alpha=0.5, color='blue')
-		plt.axvspan(6016, 6026, alpha=0.5, color='blue')
 		plt.legend(loc='best')
-		plt.savefig('maskedMnlines'+str(ipart)+'.png')
-
-		print(len(obswvlmask[ipart].compressed()), len(continuum_final[~mask[ipart]]))
-
+		plt.savefig(outputname+'/'+specname+'_maskedMnlines'+str(ipart)+'.png')
 		'''
+
 		plt.figure()
 		plt.plot(obswvlmask[ipart].compressed(), quotient[ipart].compressed(), 'k-', label='Quotient (masked)')
 		plt.plot(obswvlmask[ipart].compressed(), continuum_final[~mask[ipart]], 'r-', label='Final spline (masked)')
 		plt.legend(loc='best')
-		plt.savefig(outputname+'/'+specname+'quotient'+str(ipart)+'.png')
+		plt.savefig(outputname+'/'+specname+'_quotient'+str(ipart)+'.png')
 		plt.close()
 
 	# Now splice blue and red parts together
