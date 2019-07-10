@@ -26,32 +26,31 @@ import chi_sq
 from make_plots import make_plots
 
 # Packages for parallelization
-from multiprocessing import Pool
+import multiprocessing
 import functools
 
-def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, globular=False, lines='new', plots=False, wvlcorr=True, membercheck=None, memberlist=None, velmemberlist=None):
-	""" Measure Mn abundances from a FITS file.
+def prep_run(filename, galaxyname, slitmaskname, membercheck=None, memberlist=None, velmemberlist=None, globular=False, startstar=0):
+	""" Get data in preparation for measuring chi-sq values.
 
 	Inputs:
 	filename 		-- file with observed spectra
-	paramfilename 	-- file with parameters of observed spectra
 	galaxyname		-- galaxy name, options: 'scl'
 	slitmaskname 	-- slitmask name, options: 'scl1'
 
 	Keywords:
-	startstar		-- if 0 (default), start at beginning of file and write new datafile;
-						else, start at #startstar and just append to datafile
-	globular 		-- if 'False' (default), put into output path of galaxy;
-						else, put into globular cluster path
-	lines 			-- if 'new' (default), use new revised linelist;
-						else, use original linelist from Judy's code
-	plots 			-- if 'False' (default), don't plot final fits/resids while doing the fits;
-						else, plot them
-	wvlcorr 		-- if 'True' (default), do linear wavelength corrections following G. Duggan's code for 900ZD data;
-						else (for 1200B data), don't do corrections
 	membercheck 	-- do membership check for this object
 	memberlist		-- member list (from Evan's Li-rich giants paper)
 	velmemberlist 	-- member list (from radial velocity check)
+	globular 		-- if 'False' (default), put into output path of galaxy; else, put into globular cluster path
+	startstar		-- if 0 (default), start at beginning of file and write new datafile;
+						else, start at #startstar and just append to datafile
+
+	Outputs:
+	outputname 		-- name to save output under
+	Nstars 			-- total number of stars in the data file
+	RA, Dec 		-- coordinate arrays for stars in file
+	membernames		-- list of all members (based on Evan's Li-rich giants paper and/or velocity check)
+	galaxyname, slitmaskname, filename, membercheck -- from input
 
 	"""
 
@@ -91,59 +90,78 @@ def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, gl
 	# Get coordinates of stars in file
 	RA, Dec = open_obs_file(filename, coords=True)
 
-	# Function to parallelize: run chi-sq fitting for all stars in file
-	def mp_worker(i, filename, Nstars, RA, Dec, membercheck, membernames):
+	return outputname, galaxyname, slitmaskname, filename, Nstars, RA, Dec, membercheck, membernames, globular, startstar
 
-		try:
-			# Get metallicity of star to use for initial guess
-			print('Getting initial metallicity')
-			temp, logg, fe, alpha, fe_err = open_obs_file(filename, retrievespec=i, specparams=True)
+def mp_worker(i, filename, paramfilename, wvlcorr, galaxyname, slitmaskname, globular, lines, plots, Nstars, RA, Dec, membercheck, membernames):
+	""" Function to parallelize: chi-sq fitting for a single star """
 
-			# Get dlam (FWHM) of star to use for initial guess
-			specname, obswvl, obsflux, ivar, dlam, zrest = open_obs_file(filename, retrievespec=i)
+	try:
+		# Get metallicity of star to use for initial guess
+		print('Getting initial metallicity')
+		temp, logg, fe, alpha, fe_err = open_obs_file(filename, retrievespec=i, specparams=True)
 
-			# Check for bad parameter measurement
-			if np.isclose(temp, 4750.) and np.isclose(fe,-1.5) and np.isclose(alpha,0.2):
-				print('Bad parameter measurement! Skipped #'+str(i+1)+'/'+str(Nstars)+' stars')
-				continue
+		# Get dlam (FWHM) of star to use for initial guess
+		specname, obswvl, obsflux, ivar, dlam, zrest = open_obs_file(filename, retrievespec=i)
 
-			# Do membership check
-			if membercheck is not None:
-				if specname not in membernames:
-					print('Not in member list! Skipped '+specname)
-					continue
+		# Check for bad parameter measurement
+		if np.isclose(temp, 4750.) and np.isclose(fe,-1.5) and np.isclose(alpha,0.2):
+			print('Bad parameter measurement! Skipped #'+str(i+1)+'/'+str(Nstars)+' stars')
+			return None
 
-			# Run optimization code
-			star = chi_sq.obsSpectrum(filename, paramfilename, i, wvlcorr, galaxyname, slitmaskname, globular, lines, plot=True)
-			best_mn, error, finalchisq = star.plot_chisq(fe, output=True, plots=plots)
+		# Do membership check
+		if membercheck is not None:
+			if specname not in membernames:
+				print('Not in member list! Skipped '+specname)
+				return None
 
-		except Exception as e:
-			print(repr(e))
-			print('Skipped star #'+str(i+1)+'/'+str(Nstars)+' stars')
-			continue
+		# Run optimization code
+		star = chi_sq.obsSpectrum(filename, paramfilename, i, wvlcorr, galaxyname, slitmaskname, globular, lines, plot=True)
+		best_mn, error, finalchisq = star.plot_chisq(fe, output=True, plots=plots)
 
 		print('Finished star '+star.specname, '#'+str(i+1)+'/'+str(Nstars)+' stars')
 
 		return star.specname, str(RA[i]), str(Dec[i]), str(star.temp), str(star.logg[0]), str(star.fe[0]), str(star.fe_err[0]), str(star.alpha[0]), str(best_mn[0]), str(error[0]), str(finalchisq)
 
+	except Exception as e:
+		print(repr(e))
+		print('Skipped star #'+str(i+1)+'/'+str(Nstars)+' stars')
+		return None
+
+def mp_handler(outputname, galaxyname, slitmaskname, filename, Nstars, RA, Dec, membercheck, membernames, globular, startstar, paramfilename=None, lines='new', plots=False, wvlcorr=False):
+	""" Measure Mn abundances using parallel processing and write to file.
+
+	Inputs: takes all inputs from prep_run
+
+	Keywords:
+	lines 			-- if 'new' (default), use new revised linelist; else, use original linelist from Judy's code
+	plots 			-- if 'False' (default), don't plot final fits/resids while doing the fits
+	wvlcorr 		-- if 'True' (default), do linear wavelength corrections following G. Duggan's code for 900ZD data;
+						else (for 1200B data), don't do corrections
+	"""
+
+	# Unless paramfilename is defined, assume it's the same as the main data file
+	if paramfilename is None:
+		paramfilename = filename
+
+	# Define function to parallelize
+	func = functools.partial(mp_worker, filename=filename, paramfilename=paramfilename, wvlcorr=wvlcorr, galaxyname=galaxyname, slitmaskname=slitmaskname, globular=globular, lines=lines, plots=plots, Nstars=Nstars, RA=RA, Dec=Dec, membercheck=membercheck, membernames=membernames)
+
 	# Begin the parallelization
 	p = multiprocessing.Pool()
 
 	with open(outputname, 'w') as f:
-		for result in p.imap(functools.partial(mp_worker, filename=filename, Nstars=Nstars, RA=RA, Dec=Dec, membercheck=membercheck, membernames=membernames), range(startstar, Nstars)):
-			f.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' % result)
+		for result in p.imap(func, range(startstar, Nstars)):
+			if result is not None:
+				f.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' % result)
 
 	return
 
 def main():
 
 	# Measure Mn abundances for globular clusters
-	#run_chisq('/raid/caltech/moogify/n2419b_blue/moogify.fits.gz', '/raid/gduggan/moogify/n2419b_blue_moogify.fits.gz', 'n2419', 'n2419b_blue', startstar=0, globular=True, lines='new')
-	#run_chisq('/raid/caltech/moogify/7089l3_1200B/moogify.fits.gz', '/raid/caltech/moogify/7089l3/moogify7_flexteff.fits.gz', 'n7089', '7089l3_1200B', startstar=0, globular=True, lines='new', plots=True, wvlcorr=False, membercheck='M2', memberlist='/raid/caltech/articles/kirby_gclithium/table_catalog.dat')
-	#run_chisq('/raid/caltech/moogify/ng1904_1200B/moogify.fits.gz', '/raid/caltech/moogify/ng1904_1200B/moogify.fits.gz', 'n1904', 'ng1904_1200B', startstar=0, globular=True, lines='new', plots=True, wvlcorr=False)
-	run_chisq('/raid/caltech/moogify/7089l1_1200B/moogify.fits.gz', '/raid/caltech/moogify/7089l1_1200B/moogify.fits.gz', 'n7089', '7089l1_1200B', startstar=0, globular=True, lines='new', plots=True, wvlcorr=False, membercheck='M2', memberlist='/raid/caltech/articles/kirby_gclithium/table_catalog.dat', velmemberlist='/raid/madlr/glob/n7089/7089l1_1200B_velmembers.txt')
-	run_chisq('/raid/caltech/moogify/7078l1_1200B/moogify.fits.gz', '/raid/caltech/moogify/7078l1_1200B/moogify.fits.gz', 'n7078', '7078l1_1200B', startstar=0, globular=True, lines='new', plots=True, wvlcorr=False, membercheck='M15', memberlist='/raid/caltech/articles/kirby_gclithium/table_catalog.dat', velmemberlist='/raid/madlr/glob/n7078/7078l1_1200B_velmembers.txt')
-	run_chisq('/raid/caltech/moogify/n5024b_1200B/moogify.fits.gz', '/raid/caltech/moogify/n5024b_1200B/moogify.fits.gz', 'n5024', 'n5024b_1200B', startstar=0, globular=True, lines='new', plots=True, wvlcorr=False, membercheck='M53', memberlist='/raid/caltech/articles/kirby_gclithium/table_catalog.dat', velmemberlist='/raid/madlr/glob/n5024/n5024b_1200B_velmembers.txt')
+	mp_handler(*prep_run('/raid/caltech/moogify/n5024b_1200B/moogify.fits.gz', 'n5024', 'n5024b_1200B', membercheck='M53', memberlist='/raid/caltech/articles/kirby_gclithium/table_catalog.dat', velmemberlist='/raid/madlr/glob/n5024/n5024b_1200B_velmembers.txt', globular=True))
+	#run_chisq('/raid/caltech/moogify/7078l1_1200B/moogify.fits.gz', '/raid/caltech/moogify/7078l1_1200B/moogify.fits.gz', 'n7078', '7078l1_1200B', startstar=0, globular=True, lines='new', plots=True, wvlcorr=False, membercheck='M15', memberlist='/raid/caltech/articles/kirby_gclithium/table_catalog.dat', velmemberlist='/raid/madlr/glob/n7078/7078l1_1200B_velmembers.txt')
+	#run_chisq('/raid/caltech/moogify/7089l1_1200B/moogify.fits.gz', '/raid/caltech/moogify/7089l1_1200B/moogify.fits.gz', 'n7089', '7089l1_1200B', startstar=0, globular=True, lines='new', plots=True, wvlcorr=False, membercheck='M2', memberlist='/raid/caltech/articles/kirby_gclithium/table_catalog.dat', velmemberlist='/raid/madlr/glob/n7089/7089l1_1200B_velmembers.txt')
 
 if __name__ == "__main__":
 	main()
