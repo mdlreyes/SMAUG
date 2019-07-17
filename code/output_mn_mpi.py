@@ -29,7 +29,7 @@ from make_plots import make_plots
 import multiprocessing
 import functools
 
-def prep_run(filename, galaxyname, slitmaskname, membercheck=None, memberlist=None, velmemberlist=None, globular=False, startstar=0):
+def prep_run(filename, galaxyname, slitmaskname, membercheck=None, memberlist='/raid/caltech/articles/kirby_gclithium/table_catalog.dat', velmemberlist=None, globular=False):
 	""" Get data in preparation for measuring chi-sq values.
 
 	Inputs:
@@ -42,28 +42,14 @@ def prep_run(filename, galaxyname, slitmaskname, membercheck=None, memberlist=No
 	memberlist		-- member list (from Evan's Li-rich giants paper)
 	velmemberlist 	-- member list (from radial velocity check)
 	globular 		-- if 'False' (default), put into output path of galaxy; else, put into globular cluster path
-	startstar		-- if 0 (default), start at beginning of file and write new datafile;
-						else, start at #startstar and just append to datafile
 
 	Outputs:
-	outputname 		-- name to save output under
 	Nstars 			-- total number of stars in the data file
 	RA, Dec 		-- coordinate arrays for stars in file
 	membernames		-- list of all members (based on Evan's Li-rich giants paper and/or velocity check)
 	galaxyname, slitmaskname, filename, membercheck -- from input
 
 	"""
-
-	# Output filename
-	if globular:
-		outputname = '/raid/madlr/glob/'+galaxyname+'/'+slitmaskname+'.csv'
-	else:
-		outputname = '/raid/madlr/dsph/'+galaxyname+'/'+slitmaskname+'.csv'
-
-	# Open new file
-	if startstar<1:
-		with open(outputname, 'w+') as f:
-			f.write('Name\tRA\tDec\tTemp\tlog(g)\t[Fe/H]\terror([Fe/H])\t[alpha/Fe]\t[Mn/H]\terror([Mn/H])\tchisq(reduced)\n')
 
 	# Prep for member check
 	if membercheck is not None:
@@ -84,13 +70,16 @@ def prep_run(filename, galaxyname, slitmaskname, membercheck=None, memberlist=No
 
 			membernames = np.asarray(membernames)
 
+	else:
+		membernames = None
+
 	# Get number of stars in file
 	Nstars = open_obs_file(filename)
 
 	# Get coordinates of stars in file
 	RA, Dec = open_obs_file(filename, coords=True)
 
-	return outputname, galaxyname, slitmaskname, filename, Nstars, RA, Dec, membercheck, membernames, globular, startstar
+	return galaxyname, slitmaskname, filename, Nstars, RA, Dec, membercheck, membernames, globular
 
 def mp_worker(i, filename, paramfilename, wvlcorr, galaxyname, slitmaskname, globular, lines, plots, Nstars, RA, Dec, membercheck, membernames):
 	""" Function to parallelize: chi-sq fitting for a single star """
@@ -127,17 +116,31 @@ def mp_worker(i, filename, paramfilename, wvlcorr, galaxyname, slitmaskname, glo
 		print('Skipped star #'+str(i+1)+'/'+str(Nstars)+' stars')
 		return None
 
-def mp_handler(outputname, galaxyname, slitmaskname, filename, Nstars, RA, Dec, membercheck, membernames, globular, startstar, paramfilename=None, lines='new', plots=False, wvlcorr=False):
+def mp_handler(galaxyname, slitmaskname, filename, Nstars, RA, Dec, membercheck, membernames, globular, startstar=0, paramfilename=None, lines='new', plots=True, wvlcorr=False):
 	""" Measure Mn abundances using parallel processing and write to file.
 
 	Inputs: takes all inputs from prep_run
 
 	Keywords:
+	startstar		-- if 0 (default), start at beginning of file and write new output file;
+						else, start at #startstar and just append to output file
+	paramfile 		-- name of parameter file; if 'None' (default), just use main datafile
 	lines 			-- if 'new' (default), use new revised linelist; else, use original linelist from Judy's code
-	plots 			-- if 'False' (default), don't plot final fits/resids while doing the fits
+	plots 			-- if 'True' (default), plot final fits/resids while doing the fits
 	wvlcorr 		-- if 'True' (default), do linear wavelength corrections following G. Duggan's code for 900ZD data;
 						else (for 1200B data), don't do corrections
 	"""
+
+	# Create output file
+	if globular:
+		outputname = '/raid/madlr/glob/'+galaxyname+'/'+slitmaskname+'.csv'
+	else:
+		outputname = '/raid/madlr/dsph/'+galaxyname+'/'+slitmaskname+'.csv'
+
+	# Open new output file if necessary
+	if startstar<1:
+		with open(outputname, 'w+') as f:
+			f.write('Name\tRA\tDec\tTemp\tlog(g)\t[Fe/H]\terror([Fe/H])\t[alpha/Fe]\t[Mn/H]\terror([Mn/H])\tchisq(reduced)\n')
 
 	# Unless paramfilename is defined, assume it's the same as the main data file
 	if paramfilename is None:
@@ -149,7 +152,7 @@ def mp_handler(outputname, galaxyname, slitmaskname, filename, Nstars, RA, Dec, 
 	# Begin the parallelization
 	p = multiprocessing.Pool()
 
-	with open(outputname, 'w') as f:
+	with open(outputname, 'a') as f:
 		for result in p.imap(func, range(startstar, Nstars)):
 			if result is not None:
 				f.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' % result)
@@ -159,9 +162,17 @@ def mp_handler(outputname, galaxyname, slitmaskname, filename, Nstars, RA, Dec, 
 def main():
 
 	# Measure Mn abundances for globular clusters
-	mp_handler(*prep_run('/raid/caltech/moogify/n5024b_1200B/moogify.fits.gz', 'n5024', 'n5024b_1200B', membercheck='M53', memberlist='/raid/caltech/articles/kirby_gclithium/table_catalog.dat', velmemberlist='/raid/madlr/glob/n5024/n5024b_1200B_velmembers.txt', globular=True))
-	#run_chisq('/raid/caltech/moogify/7078l1_1200B/moogify.fits.gz', '/raid/caltech/moogify/7078l1_1200B/moogify.fits.gz', 'n7078', '7078l1_1200B', startstar=0, globular=True, lines='new', plots=True, wvlcorr=False, membercheck='M15', memberlist='/raid/caltech/articles/kirby_gclithium/table_catalog.dat', velmemberlist='/raid/madlr/glob/n7078/7078l1_1200B_velmembers.txt')
-	#run_chisq('/raid/caltech/moogify/7089l1_1200B/moogify.fits.gz', '/raid/caltech/moogify/7089l1_1200B/moogify.fits.gz', 'n7089', '7089l1_1200B', startstar=0, globular=True, lines='new', plots=True, wvlcorr=False, membercheck='M2', memberlist='/raid/caltech/articles/kirby_gclithium/table_catalog.dat', velmemberlist='/raid/madlr/glob/n7089/7089l1_1200B_velmembers.txt')
+	#mp_handler(*prep_run('/raid/caltech/moogify/n5024b_1200B/moogify.fits.gz', 'n5024', 'n5024b_1200B', membercheck='M53', velmemberlist='/raid/madlr/glob/n5024/n5024b_1200B_velmembers.txt', globular=True))
+	#mp_handler(*prep_run('/raid/caltech/moogify/7078l1_1200B/moogify.fits.gz', 'n7078', '7078l1_1200B', membercheck='M15', velmemberlist='/raid/madlr/glob/n7078/7078l1_1200B_velmembers.txt', globular=True))
+	#mp_handler(*prep_run('/raid/caltech/moogify/7089l1_1200B/moogify.fits.gz', 'n7089', '7089l1_1200B', membercheck='M2', velmemberlist='/raid/madlr/glob/n7089/7089l1_1200B_velmembers.txt', globular=True))
+
+	# Measure Mn abundances for dSphs
+	#mp_handler(*prep_run('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'bscl5_1200B', globular=False))
+	#mp_handler(*prep_run('/raid/caltech/moogify/bfor7_1200B/moogify.fits.gz', 'for', 'bfor7_1200B', globular=False))
+	mp_handler(*prep_run('/raid/caltech/moogify/LeoIb_1200B/moogify.fits.gz', 'leoi', 'LeoIb_1200B', globular=False))
+	mp_handler(*prep_run('/raid/caltech/moogify/CVnIa_1200B/moogify.fits.gz', 'cvni', 'CVnIa_1200B', globular=False))
+	#mp_handler(*prep_run('/raid/caltech/moogify/umaIIb_1200B/moogify.fits.gz', 'umaii', 'umaIIb_1200B', globular=False))
+	#mp_handler(*prep_run('/raid/caltech/moogify/bumia_1200B/moogify.fits.gz', 'umi', 'bumia_1200B', globular=False))
 
 if __name__ == "__main__":
 	main()

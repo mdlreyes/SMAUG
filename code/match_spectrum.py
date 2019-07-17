@@ -79,6 +79,13 @@ def open_obs_file(filename, retrievespec=None, specparams=False, objname=None, c
 
 			# Open SPEC1D file to get optimal extraction
 			spec1d 	= data['SPEC1DFILE'][retrievespec]
+
+			# Fix typos in some of the filenames
+			if 'CVnIa' in spec1d:
+				spec1d = spec1d.replace('CVnIa_1200B_','CVnIa_1200B/')
+			elif 'LeoIb' in spec1d:
+				spec1d = spec1d.replace('LeoIb_1200B/', 'LeoIb_1200B/2018mar19/')
+
 			hdu2 	= fits.open(spec1d)
 			wvl_blue 	= hdu2[3].data['LAMBDA'][0]
 			flux_blue 	= hdu2[3].data['SPEC'][0]

@@ -189,19 +189,23 @@ def fit_mnfe_feh(filenames, outfile, title, fehia, maxerror=None, gratings=None)
 	# Scatter plot
 	#area = 2*np.reciprocal(np.power(mnfeerr,2.))
 	#ax.scatter(feh, mnfe, s=area, c=colors, alpha=0.5, zorder=100) #, label='N = '+str(len(name)))
+	ax.errorbar(feh, mnfe, yerr=mnfeerr, marker='o', linestyle='', capsize=3, zorder=100, label='')
+
+	'''
 	plotcolors = np.zeros(len(gratings), dtype='bool')
 	for i in range(len(feh)):
+
 		if plotcolors[0] == False and colors[i] == '#B0B0B0':
 			ax.errorbar(feh[i], mnfe[i], yerr=mnfeerr[i], color=colors[i], marker='o', linestyle='', capsize=3, zorder=100, label='North+12')
 			plotcolors[0] = True
-		
+
 		elif plotcolors[1] == False and colors[i] == '#594F4F':
 			ax.errorbar(feh[i], mnfe[i], yerr=mnfeerr[i], color=colors[i], marker='o', linestyle='', capsize=3, zorder=100, label='This work')
 			plotcolors[1] = True
 
 		else:
 			ax.errorbar(feh[i], mnfe[i], yerr=mnfeerr[i], color=colors[i], marker='o', linestyle='', capsize=3, zorder=100)
-
+	'''
 
 	#ax.errorbar(feh, mnfe, yerr=mnfeerr, color='k', marker='o', linestyle='', capsize=3, zorder=100)
 	ax.text(0.025, 0.9, 'N = '+str(len(name)), transform=ax.transAxes, fontsize=18)
@@ -210,17 +214,40 @@ def fit_mnfe_feh(filenames, outfile, title, fehia, maxerror=None, gratings=None)
 	#	idx = outlier[i]
 	#	plt.text(feh[idx], mnfe[idx], name[idx])
 
-	# Plot best fit
-	xfit = np.linspace(np.min(feh), ax.get_xlim()[1], 100)
-	mnfe_cc = (bperp + fehia*np.sin(theta))/np.cos(theta)
+	# Compute core-collapse yield
+	all_thetas = samples[:,0] # all values in the chain
+	all_bperps = samples[:,1]
+	all_mnfe_cc = (all_bperps + fehia*np.sin(all_thetas))/np.cos(all_thetas)
+
+	# Fiducial core-collapse yield
+	#mnfe_cc = (bperp + fehia*np.sin(theta))/np.cos(theta)
+	mnfe_cc = np.array([np.percentile(all_mnfe_cc,16), np.percentile(all_mnfe_cc,50), np.percentile(all_mnfe_cc,84)])
 	print(mnfe_cc)
 
+	# Plot best fit
+	xfit = np.linspace(np.min(feh), ax.get_xlim()[1], 100)
+
+	# Loop over every single xfit value and compute an array of every possible value of yfit
+	yfit = np.zeros((3, len(xfit)))
+	yvalues = []
+	for i in range(len(xfit)):
+
+		if xfit[i] <= fehia:
+			yvalues.append(0.)
+			yfit[:,i] = mnfe_cc
+		else:
+			y = xfit[i]*np.tan(all_thetas) + all_bperps/(np.cos(all_thetas))
+			yvalues.append(y)
+			yfit[:,i] = np.array([np.percentile(y,16), np.percentile(y,50), np.percentile(y,84)])
+
+	'''
 	yfit = np.zeros((3, len(xfit)))
 	for i in range(len(xfit)):
 		if xfit[i] <= fehia:
 			yfit[:,i] = mnfe_cc
 		else:
 			yfit[:,i] = xfit[i]*np.tan(theta) + bperp/(np.cos(theta))
+	'''
 
 	ax.fill_between(xfit, yfit[2], yfit[0], color='r', alpha=0.25, zorder=200)
 	ax.plot(xfit, yfit[1], 'r-', linewidth=3, zorder=200)
@@ -235,18 +262,27 @@ def fit_mnfe_feh(filenames, outfile, title, fehia, maxerror=None, gratings=None)
 	# Compute f_Ia
 	mgfe_cc = 0.55
 	mgfe_ia = -1.5
-	frac_ia = (mgfe_cc - mgfe) / (mgfe - mgfe_ia)
+	frac_ia = (np.power(10.,mgfe_cc) - np.power(10.,mgfe)) / (np.power(10.,mgfe) - np.power(10.,mgfe_ia))
+
+	#print('R: ', frac_ia)
 
 	# Compute Mn yield based on best-fit model!
 	mnfe_ia = np.zeros((3, len(xfit)))
+	for i in range(len(xfit)):
+		if xfit[i] > fehia:
+			all_mnfe_ia = np.log10( (frac_ia[i] + 1.)/(frac_ia[i]) * np.power(10.,yvalues[i]) - (1./frac_ia[i] * np.power(10.,all_mnfe_cc)) )
+			mnfe_ia[:,i] = np.array([np.percentile(all_mnfe_ia,16), np.percentile(all_mnfe_ia,50), np.percentile(all_mnfe_ia,84)])
+	'''
 	for i in range(3):
 		for j in range(len(xfit)):
-			mnfe_ia[i,j] = (frac_ia[j] + 1.)/(frac_ia[j]) * yfit[i,j] - (1./frac_ia[j] * mnfe_cc[i])
+			mnfe_ia[i,j] = np.log10( (frac_ia[j] + 1.)/(frac_ia[j]) * np.power(10.,yfit[i,j]) - (1./frac_ia[j] * np.power(10.,mnfe_cc[i])) )
+	'''
 
 	# Plot it!
 	mask = np.where(xfit > fehia)
 	ax.fill_between(xfit[mask], mnfe_ia[2][mask], mnfe_ia[0][mask], color='#547980', alpha=0.25)
 	ax.plot(xfit[mask], mnfe_ia[1][mask], color='#547980', linestyle=':', linewidth=3)
+	print('final Mn fit:')
 	print(mnfe_ia[1][-1])
 	print(mnfe_ia[2][-1]-mnfe_ia[1][-1])
 	print(mnfe_ia[1][-1]-mnfe_ia[0][-1])
@@ -351,7 +387,7 @@ def compare_mnfe(outfile):
 def main():
 
 	# Plot for Sculptor
-	fit_mnfe_feh(['data/Sculptor_hires_data/north12_final.csv','data/scl5_1200B_final.csv'],'figures/scl_fit', 'Sculptor dSph', fehia=-2.34, maxerror=0.3, gratings=['#B0B0B0','#594F4F'])
+	fit_mnfe_feh(['data/old_noEvanwvlcorr/scl5_1200B_final.csv'],'figures/scl_fit', 'Sculptor dSph', fehia=-2.34, maxerror=0.3, gratings=['#594F4F'])
 	#fit_mnfe_feh(['data/scl5_1200B_final.csv'],'figures/scl_fit', 'Sculptor dSph', fehia=-2.34, maxerror=0.3, gratings=['#594F4F','#594F4F'])
 	#fit_mnfe_feh(['data/Sculptor_hires_data/north12_final.csv'],'figures/scl_fit', 'Sculptor dSph', fehia=-2.34, maxerror=0.3, gratings=['#B0B0B0','#B0B0B0'])
 
