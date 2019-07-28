@@ -1,6 +1,7 @@
 # misc_functions.py
 # Miscellaneous functions:
 # 	- put_feherr: function to put [Fe/H] errors into data files that don't have them
+# 	- plot_gaia: plot Gaia data from a file
 #
 # Created 15 July 2019
 ###################################################################
@@ -44,8 +45,28 @@ def put_feherr(filelist, feh_filelist):
 
 	return
 
+def plot_gaia(filename, outputname):
+	""" Plot Gaia PMs from a tab-delimited file. """
+
+	# Open file
+	data = pd.read_csv(filename, delimiter='\t')
+
+	# Plot data
+	plt.errorbar(x=data['PMra(mas/y)'],y=data['PMdec(mas/y)'],xerr=data['err_PMra'],yerr=data['err_PMdec'], linestyle='None', marker='o', color='k')
+	plt.ylabel('PM_Dec (mas/y)')
+	plt.xlabel('PM_RA (mas/y)')
+	plt.savefig(outputname, bbox_inches='tight')
+	plt.show()
+
+	# Find outliers
+	outliers = np.where((data['PMra(mas/y)'] > 4.0) | (data['PMdec(mas/y)'] < -3.0) | (data['PMdec(mas/y)'] > -1.75))[0]
+	print(data['Name'][outliers])
+
+	return
+
 def main():
-	put_feherr(filelist = ['data/7078l1_1200B_final.csv', 'data/7089l1_1200B_final.csv', 'data/n5024b_1200B_final.csv'], feh_filelist = ['data/glob_data/feherr_data/7078l1_flexteff.fits.gz','data/glob_data/feherr_data/7089l1_flexteff.fits.gz','data/glob_data/feherr_data/n5024_flexteff.fits.gz'])
+	#put_feherr(filelist = ['data/7078l1_1200B_final.csv', 'data/7089l1_1200B_final.csv', 'data/n5024b_1200B_final.csv'], feh_filelist = ['data/glob_data/feherr_data/7078l1_flexteff.fits.gz','data/glob_data/feherr_data/7089l1_flexteff.fits.gz','data/glob_data/feherr_data/n5024_flexteff.fits.gz'])
+	plot_gaia('data/gc_checks/7089l1_parallaxes.csv', 'figures/gc_checks/7089l1_pmcheck.png')
 
 if __name__ == "__main__":
 	main()

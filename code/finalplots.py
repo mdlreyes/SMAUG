@@ -270,12 +270,74 @@ def plot_hist(files, labels, quantity, outfile, membercheck=None, memberlist=Non
 
 	return
 
+def plot_hires_comparison(filenames, objnames, glob):
+	"""Plot hi-res comparisons.
+
+	Inputs:
+	filenames -- list of matched files
+	objnames  -- list of object names for each file (for plot legend)
+	glob 	  -- list of booleans for each file; if 'True', object data are plotted as GC points
+	"""
+
+	# Set up figure
+	fig, (ax0, ax1) = plt.subplots(nrows=2, sharex=False, figsize=(8,12), gridspec_kw={'height_ratios':[4,2]})
+
+	# Format labels
+	ax0.set_ylabel(r'$\mathrm{[Mn/Fe]}_{\mathrm{MRS}}$', fontsize=18)
+	ax0.set_xlabel(r'$\mathrm{[Mn/Fe]}_{\mathrm{HRS}}$', fontsize=18)
+	ax1.set_xlabel(r'$(\mathrm{[Mn/Fe]}_{\mathrm{MRS}}+\mathrm{[Mn/Fe]}_{\mathrm{HRS}})/2$', fontsize=18)
+	ax1.set_ylabel(r'$\mathrm{[Mn/Fe]}_{\mathrm{MRS}}-\mathrm{[Mn/Fe]}_{\mathrm{HRS}}$', fontsize=18)
+
+	for filenum in range(len(filenames)):
+
+		file = filenames[filenum]
+
+		data = np.genfromtxt(file, skip_header=1, delimiter='\t', usecols=[0,1,2,3], dtype='float')
+		sources = np.genfromtxt(file, skip_header=1, delimiter='\t', usecols=4, dtype='str')
+
+		# Figure out which marker to use
+		if glob[filenum]:
+			marker = 'o'
+		else:
+			marker = 's'
+
+		# Plot direct comparison
+		ax0.errorbar(x=data[:,2], y=data[:,0], xerr=data[:,3], yerr=data[:,1], marker=marker, linestyle='None', label=sources)
+
+		# Plot residuals
+		avg = (data[:,0] + data[:,2])/2.
+		resids = data[:,0] - data[:,2]
+		residserr = np.sqrt(np.power(data[:,1],2.) + np.power(data[:,3],2.))
+		ax1.errorbar(x=avg, y=resids, yerr=residserr, marker=marker, linestyle='None')
+
+	# Set ranges
+	#Main plot
+	xmin = min(ax0.get_xlim()[0],ax0.get_ylim()[0])
+	xmax = max(ax0.get_xlim()[1],ax0.get_ylim()[1])
+	ax0.set_xlim([xmin,xmax])
+	ax0.set_ylim([xmin,xmax])
+	#Residual plot
+	residlim = max(abs(ax1.get_ylim()[0]),ax1.get_ylim()[1])
+	ax1.set_xlim([xmin,xmax])
+	ax1.set_ylim([-1.*residlim,residlim])
+
+	#Plot 1-1 lines
+	ax0.plot([xmin,xmax],[xmin,xmax],'k:')
+	ax1.plot([xmin,xmax],[0,0],'k:')
+
+	plt.savefig('figures/hires_comparison.pdf', bbox_inches='tight')
+	plt.show()
+
+	return
+
 def main():
 	#gc_mnfe_feh(['data/7089l1_1200B_final.csv','data/7078l1_1200B_final.csv','data/n5024b_1200B_final.csv'], 'figures/gc_checks/GCs_mnfe_feh.pdf', gratingnames=['M2', 'M15', 'M53'], maxerror=0.3, membercheck=True, solar=True)
 	#plot_hist(['data/7089l1_1200B_final.csv','data/7078l1_1200B_final.csv','data/n5024b_1200B_final.csv'], ['M2: '+r'$\,\,\,\sigma_{\mathrm{sys}}=0.19$','M15: '+r'$\sigma_{\mathrm{sys}}=0.06$','M53: '+r'$\sigma_{\mathrm{sys}}=0.05$'], 'error', 'figures/gc_checks/errorhist.pdf', membercheck=['M2','M15','M53'], memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, sigmasys=[0.20,0.06,0.05])
-	plot_hist(['data/7089l1_1200B_final.csv','data/7078l1_1200B_final.csv','data/n5024b_1200B_final.csv'], ['M2','M15','M53'], 'error', 'figures/gc_checks/errorhist.pdf', membercheck=['M2','M15','M53'], memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, sigmasys=[0.20,0.06,0.05])
+	#plot_hist(['data/7089l1_1200B_final.csv','data/7078l1_1200B_final.csv','data/n5024b_1200B_final.csv'], ['M2','M15','M53'], 'error', 'figures/gc_checks/errorhist.pdf', membercheck=['M2','M15','M53'], memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, sigmasys=[0.20,0.06,0.05])
 
 	#plot_hist(['data/7089l1_1200B_final.csv'], ['M2'], 'radius', 'figures/gc_checks/radiushist.pdf', membercheck=['M2'], memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3)
+
+	plot_hires_comparison(['data/hires_data_final/GCs/M2_matched.csv', 'data/hires_data_final/GCs/M15_matched.csv'], objnames=['M2', 'M15'], glob=[True, True])
 
 if __name__ == "__main__":
 	main()

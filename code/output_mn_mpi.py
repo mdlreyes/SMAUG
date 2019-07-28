@@ -169,10 +169,10 @@ def main():
 	# Measure Mn abundances for dSphs
 	#mp_handler(*prep_run('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'bscl5_1200B', globular=False))
 	#mp_handler(*prep_run('/raid/caltech/moogify/bfor7_1200B/moogify.fits.gz', 'for', 'bfor7_1200B', globular=False))
-	mp_handler(*prep_run('/raid/caltech/moogify/LeoIb_1200B/moogify.fits.gz', 'leoi', 'LeoIb_1200B', globular=False))
-	mp_handler(*prep_run('/raid/caltech/moogify/CVnIa_1200B/moogify.fits.gz', 'cvni', 'CVnIa_1200B', globular=False))
-	#mp_handler(*prep_run('/raid/caltech/moogify/umaIIb_1200B/moogify.fits.gz', 'umaii', 'umaIIb_1200B', globular=False))
-	#mp_handler(*prep_run('/raid/caltech/moogify/bumia_1200B/moogify.fits.gz', 'umi', 'bumia_1200B', globular=False))
+	#mp_handler(*prep_run('/raid/caltech/moogify/LeoIb_1200B/moogify.fits.gz', 'leoi', 'LeoIb_1200B', globular=False))
+	#mp_handler(*prep_run('/raid/caltech/moogify/CVnIa_1200B/moogify.fits.gz', 'cvni', 'CVnIa_1200B', globular=False))
+	mp_handler(*prep_run('/raid/caltech/moogify/umaIIb_1200B/moogify.fits.gz', 'umaii', 'umaIIb_1200B', globular=False))
+	mp_handler(*prep_run('/raid/caltech/moogify/bumia_1200B/moogify.fits.gz', 'umi', 'bumia_1200B', globular=False))
 
 if __name__ == "__main__":
 	main()

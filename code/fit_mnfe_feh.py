@@ -37,6 +37,10 @@ def fit_mnfe_feh(filenames, outfile, title, fehia, maxerror=None, gratings=None)
 					Plot points from different filenames in different colors.
 	"""
 
+	#############
+	# Prep data #
+	#############
+
 	# Get data from files
 	name 	= []
 	feh 	= []
@@ -83,21 +87,27 @@ def fit_mnfe_feh(filenames, outfile, title, fehia, maxerror=None, gratings=None)
 	mnfe = mnh - feh
 	mnfeerr = np.sqrt(np.power(feherr,2.)+np.power(mnherr,2.))
 
+	# Define outliers if necessary
+	'''
 	outlier = np.where((feh < -2.5))[0]
 	print(name[outlier])
 	notoutlier = np.ones(len(mnfe), dtype='bool')
 	notoutlier[outlier] = False
+	'''
+	notoutlier = np.ones(len(mnfe), dtype='bool')
 
 	# Remove points with error > maxerror
 	if maxerror is not None:
-		mask 	= np.where((mnfeerr < maxerror) & notoutlier) # & (redchisq < 3.0))
-		name 	= name[mask]
-		feh 	= feh[mask]
-		mnfe 	= mnfe[mask]
-		mnfeerr = mnfeerr[mask]
-		colors  = colors[mask]
+		goodmask 	= np.where((mnfeerr < maxerror) & notoutlier) # & (redchisq < 3.0))
+		name 	= name[goodmask]
+		feh 	= feh[goodmask]
+		mnfe 	= mnfe[goodmask]
+		mnfeerr = mnfeerr[goodmask]
+		colors  = colors[goodmask]
 
-	# Fit a simple model!
+	#######################
+	# Fit a simple model! #
+	#######################
 
 	# Start by defining log likelihood function
 	def lnlike(params, x, y, xerr, yerr):
@@ -141,8 +151,7 @@ def fit_mnfe_feh(filenames, outfile, title, fehia, maxerror=None, gratings=None)
 	result = op.minimize(nll, [0., 0.], args=(feh[maskinit], mnfe[maskinit], feherr[maskinit], mnfeerr[maskinit]))
 	theta_init, b_init = result["x"]
 
-	# Sample the log-probability function using emcee
-	# Initialize the walkers
+	# Sample the log-probability function using emcee - first, initialize the walkers
 	ndim = 2
 	nwalkers = 100
 	pos = [result["x"] + 1e-4*np.random.randn(ndim) for i in range(nwalkers)]
@@ -156,7 +165,6 @@ def fit_mnfe_feh(filenames, outfile, title, fehia, maxerror=None, gratings=None)
 	ax = ax.ravel()   
 
 	names = [r"$\theta$", r"$b_{\bot}$"]
-
 	for i in range(ndim):
 		for j in range(nwalkers):
 			chain = sampler.chain[j,:,i]
@@ -183,36 +191,12 @@ def fit_mnfe_feh(filenames, outfile, title, fehia, maxerror=None, gratings=None)
 	theta = np.array([np.percentile(samples[:,0],16), np.percentile(samples[:,0],50), np.percentile(samples[:,0],84)])
 	bperp = np.array([np.percentile(samples[:,1],16), np.percentile(samples[:,1],50), np.percentile(samples[:,1],84)])
 
-	# Create figure
+	##################
+	# Compute yields #
+	##################
+
+	# Define axis for plot
 	fig, ax = plt.subplots(figsize=(10,5))
-
-	# Scatter plot
-	#area = 2*np.reciprocal(np.power(mnfeerr,2.))
-	#ax.scatter(feh, mnfe, s=area, c=colors, alpha=0.5, zorder=100) #, label='N = '+str(len(name)))
-	ax.errorbar(feh, mnfe, yerr=mnfeerr, marker='o', linestyle='', capsize=3, zorder=100, label='')
-
-	'''
-	plotcolors = np.zeros(len(gratings), dtype='bool')
-	for i in range(len(feh)):
-
-		if plotcolors[0] == False and colors[i] == '#B0B0B0':
-			ax.errorbar(feh[i], mnfe[i], yerr=mnfeerr[i], color=colors[i], marker='o', linestyle='', capsize=3, zorder=100, label='North+12')
-			plotcolors[0] = True
-
-		elif plotcolors[1] == False and colors[i] == '#594F4F':
-			ax.errorbar(feh[i], mnfe[i], yerr=mnfeerr[i], color=colors[i], marker='o', linestyle='', capsize=3, zorder=100, label='This work')
-			plotcolors[1] = True
-
-		else:
-			ax.errorbar(feh[i], mnfe[i], yerr=mnfeerr[i], color=colors[i], marker='o', linestyle='', capsize=3, zorder=100)
-	'''
-
-	#ax.errorbar(feh, mnfe, yerr=mnfeerr, color='k', marker='o', linestyle='', capsize=3, zorder=100)
-	ax.text(0.025, 0.9, 'N = '+str(len(name)), transform=ax.transAxes, fontsize=18)
-
-	#for i in range(len(outlier)):
-	#	idx = outlier[i]
-	#	plt.text(feh[idx], mnfe[idx], name[idx])
 
 	# Compute core-collapse yield
 	all_thetas = samples[:,0] # all values in the chain
@@ -220,14 +204,13 @@ def fit_mnfe_feh(filenames, outfile, title, fehia, maxerror=None, gratings=None)
 	all_mnfe_cc = (all_bperps + fehia*np.sin(all_thetas))/np.cos(all_thetas)
 
 	# Fiducial core-collapse yield
-	#mnfe_cc = (bperp + fehia*np.sin(theta))/np.cos(theta)
 	mnfe_cc = np.array([np.percentile(all_mnfe_cc,16), np.percentile(all_mnfe_cc,50), np.percentile(all_mnfe_cc,84)])
 	print(mnfe_cc)
 
 	# Plot best fit
 	xfit = np.linspace(np.min(feh), ax.get_xlim()[1], 100)
 
-	# Loop over every single xfit value and compute an array of every possible value of yfit
+	# Loop over every single x value and compute an array of every possible value of best-fit y
 	yfit = np.zeros((3, len(xfit)))
 	yvalues = []
 	for i in range(len(xfit)):
@@ -240,20 +223,7 @@ def fit_mnfe_feh(filenames, outfile, title, fehia, maxerror=None, gratings=None)
 			yvalues.append(y)
 			yfit[:,i] = np.array([np.percentile(y,16), np.percentile(y,50), np.percentile(y,84)])
 
-	'''
-	yfit = np.zeros((3, len(xfit)))
-	for i in range(len(xfit)):
-		if xfit[i] <= fehia:
-			yfit[:,i] = mnfe_cc
-		else:
-			yfit[:,i] = xfit[i]*np.tan(theta) + bperp/(np.cos(theta))
-	'''
-
-	ax.fill_between(xfit, yfit[2], yfit[0], color='r', alpha=0.25, zorder=200)
-	ax.plot(xfit, yfit[1], 'r-', linewidth=3, zorder=200)
-
-	# Determine the Type Ia yield of Mn
-
+	# Now, determine the Type Ia yield of Mn
 	# Start by determining the amount of Mg/Fe predicted from model
 	theta_mg = -0.50 # XXX turn this into upper/median/lower sequence
 	bperp_mg = -0.64 # XXX turn this into upper/median/lower sequence
@@ -264,21 +234,48 @@ def fit_mnfe_feh(filenames, outfile, title, fehia, maxerror=None, gratings=None)
 	mgfe_ia = -1.5
 	frac_ia = (np.power(10.,mgfe_cc) - np.power(10.,mgfe)) / (np.power(10.,mgfe) - np.power(10.,mgfe_ia))
 
-	#print('R: ', frac_ia)
-
 	# Compute Mn yield based on best-fit model!
 	mnfe_ia = np.zeros((3, len(xfit)))
 	for i in range(len(xfit)):
 		if xfit[i] > fehia:
 			all_mnfe_ia = np.log10( (frac_ia[i] + 1.)/(frac_ia[i]) * np.power(10.,yvalues[i]) - (1./frac_ia[i] * np.power(10.,all_mnfe_cc)) )
 			mnfe_ia[:,i] = np.array([np.percentile(all_mnfe_ia,16), np.percentile(all_mnfe_ia,50), np.percentile(all_mnfe_ia,84)])
-	'''
-	for i in range(3):
-		for j in range(len(xfit)):
-			mnfe_ia[i,j] = np.log10( (frac_ia[j] + 1.)/(frac_ia[j]) * np.power(10.,yfit[i,j]) - (1./frac_ia[j] * np.power(10.,mnfe_cc[i])) )
-	'''
 
-	# Plot it!
+	#################
+	# Create figure #
+	#################
+
+	# Scatter plot
+	if len(gratings) > 1:
+		plotcolors = np.zeros(len(gratings), dtype='bool')
+		for i in range(len(feh)):
+
+			if plotcolors[0] == False and colors[i] == '#B0B0B0':
+				ax.errorbar(feh[i], mnfe[i], yerr=mnfeerr[i], color=colors[i], marker='o', linestyle='', capsize=3, zorder=100, label='North+12')
+				plotcolors[0] = True
+
+			elif plotcolors[1] == False and colors[i] == '#594F4F':
+				ax.errorbar(feh[i], mnfe[i], yerr=mnfeerr[i], color=colors[i], marker='o', linestyle='', capsize=3, zorder=100, label='This work')
+				plotcolors[1] = True
+
+			else:
+				ax.errorbar(feh[i], mnfe[i], yerr=mnfeerr[i], color=colors[i], marker='o', linestyle='', capsize=3, zorder=100)
+
+	else:
+		ax.errorbar(feh, mnfe, yerr=mnfeerr, color='k', marker='o', linestyle='', capsize=3, zorder=100)
+
+	# Put sample size on plot
+	ax.text(0.025, 0.9, 'N = '+str(len(name)), transform=ax.transAxes, fontsize=18)
+
+	#for i in range(len(outlier)):
+	#	idx = outlier[i]
+	#	plt.text(feh[idx], mnfe[idx], name[idx])
+
+	# Plot best-fit model
+	ax.fill_between(xfit, yfit[2], yfit[0], color='r', alpha=0.25, zorder=200)
+	ax.plot(xfit, yfit[1], 'r-', linewidth=3, zorder=200)
+
+	# Plot Type Ia [Mn/Fe] yield
 	mask = np.where(xfit > fehia)
 	ax.fill_between(xfit[mask], mnfe_ia[2][mask], mnfe_ia[0][mask], color='#547980', alpha=0.25)
 	ax.plot(xfit[mask], mnfe_ia[1][mask], color='#547980', linestyle=':', linewidth=3)
@@ -286,7 +283,6 @@ def fit_mnfe_feh(filenames, outfile, title, fehia, maxerror=None, gratings=None)
 	print(mnfe_ia[1][-1])
 	print(mnfe_ia[2][-1]-mnfe_ia[1][-1])
 	print(mnfe_ia[1][-1]-mnfe_ia[0][-1])
-
 
 	# Also plot core-collapse yield
 	ax.fill_between(ax.get_xlim(), mnfe_cc[2], mnfe_cc[0], color='#45ADA8', alpha=0.25, zorder=0)
@@ -298,9 +294,8 @@ def fit_mnfe_feh(filenames, outfile, title, fehia, maxerror=None, gratings=None)
 	ax.set_ylabel('[Mn/Fe]', fontsize=16)
 	for label in (ax.get_xticklabels() + ax.get_yticklabels()):
 		label.set_fontsize(14)
-
-	ax.set_xlim([-2.75,-0.75])
 	ax.tick_params(direction='in', bottom=True, top=True, left=True, right=True)
+	ax.set_xlim([-2.75,-0.75])
 	#ax.set_ylim([-2,2])
 	#ax.set_ylim([-1.5,1.1])
 	leg = plt.legend(fancybox=True, framealpha=0.5, loc='best')

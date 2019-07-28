@@ -71,15 +71,15 @@ def north_etal_12(coordfile, datafile1, datafile2, outfile):
 				mnh5420 = pd.to_numeric(data1['[Mn/H]5420'])[idx1].values[0]
 				mnh5516 = pd.to_numeric(data2['[Mn/H]5516'])[idx2].values[0]
 
-				mnherr5407 = pd.to_numeric(data1['[Mn/Fe]error5407'])[idx1].values[0]
-				mnherr5420 = pd.to_numeric(data1['[Mn/Fe]error5420'])[idx1].values[0]
-				mnherr5516 = pd.to_numeric(data2['[Mn/Fe]error5516'])[idx2].values[0]
+				mnfeerr5407 = pd.to_numeric(data1['[Mn/Fe]error5407'])[idx1].values[0]
+				mnfeerr5420 = pd.to_numeric(data1['[Mn/Fe]error5420'])[idx1].values[0]
+				mnfeerr5516 = pd.to_numeric(data2['[Mn/Fe]error5516'])[idx2].values[0]
 
 				feh = mnh5407 - mnfe5407
 
-				# Average all of the [Mn/H] to get a final abundance
-				mnh = np.average([mnh5407, mnh5420, mnh5516], weights=[1./(mnherr5407**2.),1./(mnherr5420**2.),1./(mnherr5516**2.)])
-				mnherr = np.sqrt(mnherr5407**2. + mnherr5420**2. + mnherr5516**2.)
+				# Average all of the [Mn/Fe] to get a final abundance
+				mnfe = np.average([mnfe5407, mnfe5420, mnfe5516], weights=[1./(mnfeerr5407**2.),1./(mnfeerr5420**2.),1./(mnfeerr5516**2.)])
+				mnfeerr = np.sqrt(mnfeerr5407**2. + mnfeerr5420**2. + mnfeerr5516**2.)
 
 				# Get coordinates
 				starra = coorddata['RA'][i]
@@ -97,7 +97,7 @@ def north_etal_12(coordfile, datafile1, datafile2, outfile):
 
 				# Write star data to file
 				with open(outputname, 'a') as f:
-					f.write(starname+'\t'+str(RA)+'\t'+str(Dec)+'\t'+str(temp)+'\t'+str(logg)+'\t'+str(feh)+'\t'+str(feherr)+'\t'+str(alphafe)+'\t'+str(mnh)+'\t'+str(mnherr)+'\t'+str(chisq)+'\n')
+					f.write(starname+'\t'+str(RA)+'\t'+str(Dec)+'\t'+str(temp)+'\t'+str(logg)+'\t'+str(feh)+'\t'+str(feherr)+'\t'+str(alphafe)+'\t'+str(mnfe)+'\t'+str(mnfeerr)+'\t'+str(chisq)+'\n')
 
 
 		else:
@@ -423,9 +423,82 @@ def sobeck_etal_06(datafile, cluster, outfile):
 
 	return
 
+def match_hires(hiresfilelist, sourcelist, obsfile, outputname):
+	"""Match hi-res and med-res Mn catalogs
+
+	Inputs:
+	hiresfilelist 	-- list of filenames of hi-resolution catalogs
+	sourcelist  -- list of names of hi-resolution catalogs (for plotting purposes)
+	obsfile 	-- name of not-hi-res catalog
+	"""
+
+	# Create lists for final outputs
+	matched_medres = []
+	matched_hires = []
+	matched_medres_err = []
+	matched_hires_err = []
+	separation = []
+	source = []
+
+	# Get names of stars for checking
+	names = np.genfromtxt(obsfile, skip_header=1, delimiter='\t', usecols=0, dtype='str')
+
+
+	# Get RA and Dec of stars from (our) med-res file
+	medresRA = np.genfromtxt(obsfile, skip_header=1, delimiter='\t', usecols=1, dtype='str')
+	medresDec = np.genfromtxt(obsfile, skip_header=1, delimiter='\t', usecols=2, dtype='str')
+	medrescatalog = SkyCoord(ra=medresRA, dec=medresDec, unit=(u.deg, u.deg)) 
+
+	# Compute [Mn/Fe] abundance of stars from med-res file
+	medresFeH = np.genfromtxt(obsfile, skip_header=1, delimiter='\t', usecols=5, dtype='float')
+	medresMnH = np.genfromtxt(obsfile, skip_header=1, delimiter='\t', usecols=8, dtype='float')
+
+	medresFeHerror = np.genfromtxt(obsfile, skip_header=1, delimiter='\t', usecols=6, dtype='float')
+	medresMnHerror = np.genfromtxt(obsfile, skip_header=1, delimiter='\t', usecols=9, dtype='float')
+
+	medresMnFe 	  = medresMnH - medresFeH
+	medresMnFeerror = np.sqrt(np.power(medresFeHerror,2.) + np.power(medresMnHerror,2.))
+
+	for filenum in range(len(hiresfilelist)):
+
+		hiresfile = hiresfilelist[filenum]
+
+		# Get RA and Dec of stars from (lit) hi-res datafile
+		hiresRA = np.genfromtxt(hiresfile, skip_header=1, delimiter='\t', usecols=1, dtype='str')
+		hiresDec = np.genfromtxt(hiresfile, skip_header=1, delimiter='\t', usecols=2, dtype='str')
+
+		# Get [Mn/Fe] abundance of stars from hi-res file
+		hiresMnFe = np.genfromtxt(hiresfile, skip_header=1, delimiter='\t', usecols=8, dtype='float')
+		hiresMnFeerror  = np.genfromtxt(hiresfile, skip_header=1, delimiter='\t', usecols=9, dtype='float')
+
+		# Loop over each star from hires list
+		for i in range(len(hiresRA)):
+
+			# Convert coordinates to decimal form
+			coord = SkyCoord(hiresRA[i], hiresDec[i], unit=(u.deg, u.deg))
+
+			# Search for matching star in our catalog 
+			idx, sep, _ = coord.match_to_catalog_sky(medrescatalog) 
+
+			if sep.arcsecond[0] < 10.:
+
+				#print('Separation: ', sep.arcsecond)
+				print(names[idx])
+
+				matched_medres.append(medresMnFe[idx])
+				matched_medres_err.append(medresMnFeerror[idx])
+				matched_hires.append(hiresMnFe[i])
+				matched_hires_err.append(hiresMnFeerror[i])
+				separation.append(sep.arcsecond[0])
+				print(sourcelist[filenum])
+
+	np.savetxt(outputname, np.asarray((matched_medres, matched_medres_err, matched_hires, matched_hires_err, separation)).T, delimiter='\t', header='our [Mn/H]\terror(our [Mn/H])\thires [Mn/H]\terror(hires [Mn/H])\tseparation (arcsec)')
+
+	return
+
 def main():
 	# Sculptor
-	#north_etal_12('data/Sculptor_hires_data/scl_sample.coord','data/Sculptor_hires_data/Sculptor_north_tab1.tsv','data/Sculptor_hires_data/Sculptor_north_tab2.tsv','north12_final.csv')
+	north_etal_12('data/hires_data/scl_north_sample.coord','data/hires_data/Sculptor_north_tab1.tsv','data/hires_data/Sculptor_north_tab2.tsv','north12_final.csv')
 
 	# M2
 	#yong_etal_14('data/hires_data/M2_yong.csv','M2_yong_final.csv')
@@ -441,12 +514,15 @@ def main():
 	# M15
 	#sobeck_etal_11('data/hires_data/M15_sobeck.txt','M15_sobeck11_final.csv')
 	#apogee('data/hires_data/M15_apogee.csv','M15_apogee_final.csv')
-	sobeck_etal_06('data/hires_data/M5_M15_sobeck.tsv','M15','M15_sobeck06_final.csv')
+	#sobeck_etal_06('data/hires_data/M5_M15_sobeck.tsv','M15','M15_sobeck06_final.csv')
 
 	# M53
 	#lamb_etal_14('data/hires_data/M53_lamb.txt', 'M53_lamb_final.csv')
 	#apogee('data/hires_data/M53_apogee.csv','M53_apogee_final.csv')
 
+	#match_hires(hiresfilelist=['data/hires_data_final/GCs/M2_apogee_final.csv','data/hires_data_final/GCs/M2_yong_final.csv'], sourcelist=['APOGEE','Yong et al. (2014)'], obsfile='data/7089l1_1200B_final.csv', outputname='data/hires_data_final/GCs/M2_matched.csv')
+	#match_hires(hiresfilelist=['data/hires_data_final/GCs/M15_apogee_final.csv','data/hires_data_final/GCs/M15_sobeck06_final.csv','data/hires_data_final/GCs/M15_sobeck11_final.csv'], sourcelist=['APOGEE', 'Sobeck et al. (2006)', 'Sobeck et al. (2011)'], obsfile='data/7078l1_1200B_final.csv', outputname='data/hires_data_final/GCs/M15_matched.csv')
+	#match_hires(hiresfilelist=['data/hires_data_final/GCs/M53_apogee_final.csv','data/hires_data_final/GCs/M53_lamb_final.csv'], sourcelist=['APOGEE', 'Lamb et al. (2014)'], obsfile='data/n5024b_1200B_final.csv', outputname='data/hires_data_final/GCs/M53_matched.csv')
 
 if __name__ == "__main__":
 	main()
