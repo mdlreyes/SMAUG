@@ -128,6 +128,7 @@ def open_obs_file(filename, retrievespec=None, specparams=False, objname=None, c
 				# Get index of entry that matches object name of spectrum
 				namearray = data['OBJNAME']
 				index 	  = np.where(namearray==objname)
+				print(objname, index)
 
 				# Check that such an entry exists
 				if len(index[0]) > 0:

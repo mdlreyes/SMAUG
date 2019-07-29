@@ -22,11 +22,12 @@ import pandas
 import matplotlib.ticker as ticker
 from statsmodels.stats.weightstats import DescrStatsW
 
-def fit_mnfe_feh(filenames, outfile, title, fehia, maxerror=None, gratings=None):
+def fit_mnfe_feh(filenames, mnfe_check, outfile, title, fehia, maxerror=None, gratings=None):
 	"""Use model described in Kirby (in prep.) to determine Type Ia supernova yields for [Mn/H]
 
 	Inputs:
 	filename 	-- list of input filenames
+	mnfe_check 	-- list of bools indicating whether input file includes [Mn/Fe] (True) or [Mn/H] (False)
 	outfile 	-- name of output file
 	title 		-- title of graph
 	fehia 		-- [Fe/H] when Type Ia SNe turn on
@@ -49,6 +50,7 @@ def fit_mnfe_feh(filenames, outfile, title, fehia, maxerror=None, gratings=None)
 	mnherr	= []
 	colors  = []
 	redchisq = []
+	mnfeflag = []
 
 	for i in range(len(filenames)):
 
@@ -61,6 +63,7 @@ def fit_mnfe_feh(filenames, outfile, title, fehia, maxerror=None, gratings=None)
 		current_mnh 	= data[:,2]
 		current_mnherr 	= data[:,3]
 		current_redchisq = data[:,4]
+		current_mnfeflag = len(current_feh) * [mnfe_check[i]]
 
 		# Append to total data arrays
 		name.append(current_name)
@@ -69,6 +72,7 @@ def fit_mnfe_feh(filenames, outfile, title, fehia, maxerror=None, gratings=None)
 		mnh.append(current_mnh)
 		mnherr.append(current_mnherr)
 		redchisq.append(current_redchisq)
+		mnfeflag.append(current_mnfeflag)
 
 		if gratings is not None:
 			current_grating = len(current_feh) * [gratings[i]]
@@ -82,28 +86,37 @@ def fit_mnfe_feh(filenames, outfile, title, fehia, maxerror=None, gratings=None)
 	mnherr  = np.hstack(mnherr)
 	colors  = np.hstack(colors)
 	redchisq = np.hstack(redchisq)
+	mnfeflag = np.hstack(mnfeflag)
 
 	# Compute [Mn/Fe]
-	mnfe = mnh - feh
-	mnfeerr = np.sqrt(np.power(feherr,2.)+np.power(mnherr,2.))
+	mnfe = np.zeros(len(mnh))
+	mnfeerr = np.zeros(len(mnherr))
 
-	# Define outliers if necessary
-	'''
-	outlier = np.where((feh < -2.5))[0]
-	print(name[outlier])
-	notoutlier = np.ones(len(mnfe), dtype='bool')
-	notoutlier[outlier] = False
-	'''
-	notoutlier = np.ones(len(mnfe), dtype='bool')
+	for i in range(len(feh)):
+		if mnfeflag[i]:
+			mnfe[i] = mnh[i]
+			mnfeerr[i] = mnherr[i]
+		else:
+			mnfe[i] = mnh[i] - feh[i]
+			mnfeerr[i] = np.sqrt(np.power(feherr[i],2.)+np.power(mnherr[i],2.))
 
 	# Remove points with error > maxerror
 	if maxerror is not None:
-		goodmask 	= np.where((mnfeerr < maxerror) & notoutlier) # & (redchisq < 3.0))
+		goodmask 	= np.where((mnfeerr < maxerror)) # & notoutlier) # & (redchisq < 3.0))
 		name 	= name[goodmask]
 		feh 	= feh[goodmask]
 		mnfe 	= mnfe[goodmask]
 		mnfeerr = mnfeerr[goodmask]
 		colors  = colors[goodmask]
+
+	# Define outliers if necessary
+	outlier = np.where((mnfe > 0.5))[0]
+	print(name[outlier])
+	'''
+	notoutlier = np.ones(len(mnfe), dtype='bool')
+	notoutlier[outlier] = False
+	notoutlier = np.ones(len(mnfe), dtype='bool')
+	'''
 
 	#######################
 	# Fit a simple model! #
@@ -279,10 +292,17 @@ def fit_mnfe_feh(filenames, outfile, title, fehia, maxerror=None, gratings=None)
 	mask = np.where(xfit > fehia)
 	ax.fill_between(xfit[mask], mnfe_ia[2][mask], mnfe_ia[0][mask], color='#547980', alpha=0.25)
 	ax.plot(xfit[mask], mnfe_ia[1][mask], color='#547980', linestyle=':', linewidth=3)
-	print('final Mn fit:')
+
+	fehmeasure = -1.5 # [Fe/H] at which to measure [Mn/Fe]_Ia
+	idx_feh = np.argmin(np.abs(xfit - fehmeasure))
+	print('[Mn/Fe] at most metal rich end:')
 	print(mnfe_ia[1][-1])
 	print(mnfe_ia[2][-1]-mnfe_ia[1][-1])
 	print(mnfe_ia[1][-1]-mnfe_ia[0][-1])
+	print('final Mn fit:')
+	print(mnfe_ia[1][idx_feh])
+	print(mnfe_ia[2][idx_feh]-mnfe_ia[1][idx_feh])
+	print(mnfe_ia[1][idx_feh]-mnfe_ia[0][idx_feh])
 
 	# Also plot core-collapse yield
 	ax.fill_between(ax.get_xlim(), mnfe_cc[2], mnfe_cc[0], color='#45ADA8', alpha=0.25, zorder=0)
@@ -382,9 +402,14 @@ def compare_mnfe(outfile):
 def main():
 
 	# Plot for Sculptor
-	fit_mnfe_feh(['data/old_noEvanwvlcorr/scl5_1200B_final.csv'],'figures/scl_fit', 'Sculptor dSph', fehia=-2.34, maxerror=0.3, gratings=['#594F4F'])
+	#fit_mnfe_feh(['data/bscl5_1200B_final.csv'],'figures/scl_fit', 'Sculptor dSph', fehia=-2.12, maxerror=0.3, gratings=['#594F4F'])
+	fit_mnfe_feh(['data/bscl5_1200B_final2.csv'],[False],'figures/scl_fit2', 'Sculptor dSph', fehia=-2.12, maxerror=0.3, gratings=['#594F4F'])
+
+	#fit_mnfe_feh(['data/bfor7_1200B_final.csv'],'figures/for_fit', 'Fornax dSph', fehia=-2.12, maxerror=0.3, gratings=['#594F4F'])
+	#fit_mnfe_feh(['data/LeoIb_1200B_final.csv'],'figures/leoi_fit', 'LeoI dSph', fehia=-2.12, maxerror=0.3, gratings=['#594F4F'])
+
 	#fit_mnfe_feh(['data/scl5_1200B_final.csv'],'figures/scl_fit', 'Sculptor dSph', fehia=-2.34, maxerror=0.3, gratings=['#594F4F','#594F4F'])
-	#fit_mnfe_feh(['data/Sculptor_hires_data/north12_final.csv'],'figures/scl_fit', 'Sculptor dSph', fehia=-2.34, maxerror=0.3, gratings=['#B0B0B0','#B0B0B0'])
+	fit_mnfe_feh(['data/bscl5_1200B_final2.csv','data/hires_data_final/scl/north12_final.csv'],[False,True],'figures/scl_fit_total', 'Sculptor dSph', fehia=-2.34, maxerror=0.3, gratings=['#594F4F','#B0B0B0'])
 
 	# Plot [Mn/Fe] values on number line
 	#compare_mnfe('figures/scl_mnfe_comparison.png')

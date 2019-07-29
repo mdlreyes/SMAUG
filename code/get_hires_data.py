@@ -44,7 +44,7 @@ def north_etal_12(coordfile, datafile1, datafile2, outfile):
 	# Prep the output data file
 	outputname = 'data/hires_data_final/'+outfile
 	with open(outputname, 'w+') as f:
-		f.write('Name\tRA\tDec\tTemp\tlog(g)\t[Fe/H]\terror([Fe/H])\t[alpha/Fe]\t[Mn/H]\terror([Mn/H])\tchisq(reduced)\n')
+		f.write('Name\tRA\tDec\tTemp\tlog(g)\t[Fe/H]\terror([Fe/H])\t[alpha/Fe]\t[Mn/Fe]\terror([Mn/Fe])\tchisq(reduced)\n')
 
 	# Loop over all stars listed in coordinate file
 	for i in range(N):
