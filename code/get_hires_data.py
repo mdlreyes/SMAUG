@@ -21,7 +21,7 @@ import pandas as pd
 from matplotlib.ticker import NullFormatter
 from statsmodels.stats.weightstats import DescrStatsW
 
-def north_etal_12(coordfile, datafile1, datafile2, outfile):
+def north_etal_12(coordfile, datafile1, datafile2, outfile, scl=True):
 	"""Get data from North+12 paper
 
 	Inputs:
@@ -31,14 +31,19 @@ def north_etal_12(coordfile, datafile1, datafile2, outfile):
 	outfile 	-- name of output file
 
 	Keywords:
+	scl 		-- if 'True' (default), use Sculptor coord file; else, use Letarte+10 (for Fornax)
 	"""
 
 	# Open files
-	coorddata = pd.read_fwf(coordfile, colspecs=[(0,6),(7,17),(18,30)])
-	N = len(coorddata['Name'])
+	if scl:
+		coorddata = pd.read_fwf(coordfile, colspecs=[(0,6),(7,17),(18,30)])
+		N = len(coorddata['Name'])
+
+	else:
+		coorddata = pd.read_csv(coordfile, delimiter='\t')
+		N = len(coorddata['ID'])
 
 	data1 	= pd.read_csv(datafile1, delimiter='\t', na_values = ' ')
-
 	data2 	= pd.read_csv(datafile2, delimiter='\t', na_values = ' ')
 
 	# Prep the output data file
@@ -49,7 +54,11 @@ def north_etal_12(coordfile, datafile1, datafile2, outfile):
 	# Loop over all stars listed in coordinate file
 	for i in range(N):
 
-		starname = coorddata['Name'][i][:2] + coorddata['Name'][i][3:]
+		if scl:
+			starname = coorddata['Name'][i][:2] + coorddata['Name'][i][3:]
+		else:
+			starname = coorddata['ID'][i]
+
 		name1 = data1['Star']
 		name2 = data2['Star']
 
@@ -443,7 +452,6 @@ def match_hires(hiresfilelist, sourcelist, obsfile, outputname):
 	# Get names of stars for checking
 	names = np.genfromtxt(obsfile, skip_header=1, delimiter='\t', usecols=0, dtype='str')
 
-
 	# Get RA and Dec of stars from (our) med-res file
 	medresRA = np.genfromtxt(obsfile, skip_header=1, delimiter='\t', usecols=1, dtype='str')
 	medresDec = np.genfromtxt(obsfile, skip_header=1, delimiter='\t', usecols=2, dtype='str')
@@ -471,8 +479,15 @@ def match_hires(hiresfilelist, sourcelist, obsfile, outputname):
 		hiresMnFe = np.genfromtxt(hiresfile, skip_header=1, delimiter='\t', usecols=8, dtype='float')
 		hiresMnFeerror  = np.genfromtxt(hiresfile, skip_header=1, delimiter='\t', usecols=9, dtype='float')
 
+		# Do some formatting in case there's only one hi-res star
+		if len(np.atleast_1d(hiresRA)) == 1:
+			hiresRA = np.array([hiresRA])
+			hiresDec = np.array([hiresDec])
+			hiresMnFe = np.array([hiresMnFe])
+			hiresMnFeerror = np.array([hiresMnFeerror])
+
 		# Loop over each star from hires list
-		for i in range(len(hiresRA)):
+		for i in range(len(np.atleast_1d(hiresRA))):
 
 			# Convert coordinates to decimal form
 			coord = SkyCoord(hiresRA[i], hiresDec[i], unit=(u.deg, u.deg))
@@ -490,15 +505,89 @@ def match_hires(hiresfilelist, sourcelist, obsfile, outputname):
 				matched_hires.append(hiresMnFe[i])
 				matched_hires_err.append(hiresMnFeerror[i])
 				separation.append(sep.arcsecond[0])
-				print(sourcelist[filenum])
+				source.append(sourcelist[filenum])
+
+				# Test code
+				#if medresMnFe[idx] > 0.2:
+				#	print(names[idx])
 
 	np.savetxt(outputname, np.asarray((matched_medres, matched_medres_err, matched_hires, matched_hires_err, separation)).T, delimiter='\t', header='our [Mn/H]\terror(our [Mn/H])\thires [Mn/H]\terror(hires [Mn/H])\tseparation (arcsec)')
+
+	# Add source name to list
+	with open(outputname, 'r') as f:
+		file_lines = [''.join([x.strip(), '\t'+sourcelist[filenum], '\n']) for x in f.readlines()]
+
+	with open(outputname, 'w') as f:
+		f.writelines(file_lines)
+
+	return
+
+def saga_hires(datafile, outfile):
+	"""Get data from a SAGA database output file
+
+	Inputs:
+	datafile 	-- datafile
+	outfile 	-- name of output file
+	"""
+
+	# Open files
+	data = pd.read_csv(datafile, delimiter='\t')
+	N = len(data['Object'])
+
+	# Prep the output data file
+	outputname = 'data/hires_data_final/'+outfile
+
+	# Prep output array
+	name 	= data['Object']
+	ra 		= data['RA']
+	dec 	= data['Decl']
+	temp 	= data['Teff']
+	logg 	= data['logg']
+	feh 	= data['[Fe/H]']
+	sigfeh 	= data['[Fe/H]error']
+	alphafe = np.zeros(N)
+	mnfe 	= data['[Mn/Fe]']
+	sigmnfe = data['[Mn/Fe]error']
+	rchisq 	= np.zeros(N)
+
+	# Get coordinates
+	for i in range(N):
+		starra  = data['RA'][i]
+		stardec = data['Decl'][i]
+		coord = SkyCoord(starra+' '+stardec, frame='icrs', unit=(u.hourangle, u.deg))
+
+		ra[i] 		= coord.ra.degree
+		dec[i] 	= coord.dec.degree
+
+	# Write output
+	cols = ['Name','RA','Dec','Temp','log(g)','[Fe/H]','error([Fe/H])','[alpha/Fe]','[Mn/Fe]','error([Mn/Fe])','chisq(reduced)']
+	output = pd.DataFrame(np.array([name,ra,dec,temp,logg,feh,sigfeh,alphafe,mnfe,sigmnfe,rchisq]).T, columns=cols)
+	output.to_csv(outputname, sep='\t', index=False)
 
 	return
 
 def main():
 	# Sculptor
-	north_etal_12('data/hires_data/scl_north_sample.coord','data/hires_data/Sculptor_north_tab1.tsv','data/hires_data/Sculptor_north_tab2.tsv','north12_final.csv')
+	#north_etal_12('data/hires_data/scl_north_sample.coord','data/hires_data/Sculptor_north_tab1.tsv','data/hires_data/Sculptor_north_tab2.tsv','north12_final.csv')
+	#for file in ['shetrone03','geisler05','jablonka15','simon15','tafelmeyer10','skuladottir15']:
+	#	saga_hires('data/hires_data/'+file+'.csv','scl/'+file+'_final.csv')
+
+	# Fornax
+	#north_etal_12('data/hires_data/for_north_sample.coord', 'data/hires_data/Fornax_north_tab1.tsv', 'data/hires_data/Fornax_north_tab2.tsv', 'for/north12_final.csv', scl=False)
+	#for file in ['shetrone03','tafelmeyer10']:
+	#	saga_hires('data/hires_data/for/'+file+'.tsv','for/'+file+'_final.csv')
+
+	# Leo I
+	#file = 'shetrone03'
+	#saga_hires('data/hires_data/leoi/'+file+'.csv','leoi/'+file+'_final.csv')
+
+	# Ursa Major II
+	#file = 'frebel10'
+	#saga_hires('data/hires_data/umaii/'+file+'.csv','umaii/'+file+'_final.csv')
+
+	# Ursa Minor
+	#for file in ['cohen10','sadakane04','shetrone01','ural15']:
+	#	saga_hires('data/hires_data/umi/'+file+'.csv','umi/'+file+'_final.csv')
 
 	# M2
 	#yong_etal_14('data/hires_data/M2_yong.csv','M2_yong_final.csv')
@@ -520,9 +609,25 @@ def main():
 	#lamb_etal_14('data/hires_data/M53_lamb.txt', 'M53_lamb_final.csv')
 	#apogee('data/hires_data/M53_apogee.csv','M53_apogee_final.csv')
 
+	# Match hi-res files for GCs
 	#match_hires(hiresfilelist=['data/hires_data_final/GCs/M2_apogee_final.csv','data/hires_data_final/GCs/M2_yong_final.csv'], sourcelist=['APOGEE','Yong et al. (2014)'], obsfile='data/7089l1_1200B_final.csv', outputname='data/hires_data_final/GCs/M2_matched.csv')
 	#match_hires(hiresfilelist=['data/hires_data_final/GCs/M15_apogee_final.csv','data/hires_data_final/GCs/M15_sobeck06_final.csv','data/hires_data_final/GCs/M15_sobeck11_final.csv'], sourcelist=['APOGEE', 'Sobeck et al. (2006)', 'Sobeck et al. (2011)'], obsfile='data/7078l1_1200B_final.csv', outputname='data/hires_data_final/GCs/M15_matched.csv')
 	#match_hires(hiresfilelist=['data/hires_data_final/GCs/M53_apogee_final.csv','data/hires_data_final/GCs/M53_lamb_final.csv'], sourcelist=['APOGEE', 'Lamb et al. (2014)'], obsfile='data/n5024b_1200B_final.csv', outputname='data/hires_data_final/GCs/M53_matched.csv')
+
+	# Match hi-res files for Sculptor
+	#files = ['north12','geisler05','jablonka15','shetrone03','simon15','skuladottir15','tafelmeyer10']
+	#names = ['North+12','Geiser+05','Jablonka+15','Shetrone+03','Simon+15','Skuladottir+15','Tafelmeyer+10']
+	#for i in range(len(files)):
+	#	match_hires(hiresfilelist=['data/hires_data_final/scl/'+files[i]+'_final.csv'], sourcelist=[names[i]], obsfile='data/bscl5_1200B_final2.csv', outputname='data/hires_data_final/scl/'+files[i]+'_matched.csv')
+
+	# Match hi-res files for Fornax
+	files = ['north12','shetrone03','tafelmeyer10']
+	names = ['North+12','Shetrone+03','Tafelmeyer+10']
+	for i in range(len(files)):
+		match_hires(hiresfilelist=['data/hires_data_final/for/'+files[i]+'_final.csv'], sourcelist=[names[i]], obsfile='data/bfor7_1200B_final.csv', outputname='data/hires_data_final/for/'+files[i]+'_matched.csv')
+
+	# Match hi-res files for Leo I
+	#match_hires(hiresfilelist=['data/hires_data_final/leoi/shetrone03_final.csv'], sourcelist=['Shetrone+03'], obsfile='data/LeoIb_1200B_final.csv', outputname='data/hires_data_final/leoi/shetrone03_matched.csv')
 
 if __name__ == "__main__":
 	main()

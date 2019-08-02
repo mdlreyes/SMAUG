@@ -1,0 +1,4 @@
+Object	Reference	RA	Decl	Teff	logg	Metallicity	[Fe/H]	[Fe/H]error	[Mn/Fe]	[Mn/Fe]error
+SAGA_UMi_000001	K.Sadakane+,PASJ, 56, 1041, 2004	15 08 27.23	+67 10 07.7	4050	0.3	-1.63	-1.67	0.14	0.01	0.29
+SAGA_UMi_000006	K.Sadakane+,PASJ, 56, 1041, 2004	15 09 58.62	+67 16 19.8	4300	0.3	-1.53	-1.51	0.22	-0.19	0.13
+SAGA_UMi_000007	K.Sadakane+,PASJ, 56, 1041, 2004	15 09 29.44	+67 09 29.0	4300	0.3	-2.66	-2.65	0.15	-0.74	note:upperlimit

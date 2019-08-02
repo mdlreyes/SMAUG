@@ -25,6 +25,7 @@ import scipy.optimize as op
 import pandas as pd
 from matplotlib.ticker import NullFormatter
 from statsmodels.stats.weightstats import DescrStatsW
+from matplotlib.lines import Line2D
 
 def gc_mnfe_feh(filenames, outfile, title=None, gratings=None, gratingnames=None, maxerror=None, membercheck=False, solar=False):
 	"""Plot [Mn/Fe] vs [Fe/H] for all the stars in a set of files (designed for globular clusters).
@@ -237,16 +238,16 @@ def plot_hist(files, labels, quantity, outfile, membercheck=None, memberlist=Non
 					print(data['Name'][i])
 
 		# Plot histogram
-		if i != 2:
-			n, bins, _ = ax.hist(x, bins, alpha=0.5, label=labels[i], facecolor=colors[i], hatch=hatches[i], edgecolor=edges[i], fill=True)
-		else: # no label
-			n, bins, _ = ax.hist(x, bins, alpha=0.5, facecolor=colors[i], hatch=hatches[i], edgecolor=edges[i], fill=True)
+		#if i != 2:
+		n, bins, _ = ax.hist(x, bins, alpha=0.5, label=labels[i], facecolor=colors[i], hatch=hatches[i], edgecolor=edges[i], fill=True, linewidth=1.5)
+		#else: # no label
+		#	n, bins, _ = ax.hist(x, bins, alpha=0.5, facecolor=colors[i], hatch=hatches[i], edgecolor=edges[i], fill=True)
 
 
 		if quantity == 'error':
 			# Overplot edges of histogram
-			if i == 2:
-				ax.hist(x, bins, label=labels[i], facecolor='None', edgecolor=edges[i], linewidth=1.5, fill=True)
+			#if i == 2:
+			#	ax.hist(x, bins, label=labels[i], facecolor='None', edgecolor=edges[i], linewidth=1.5, fill=True)
 
 			#Get bin width from this
 			binwidth = bins[1] - bins[0]
@@ -257,7 +258,7 @@ def plot_hist(files, labels, quantity, outfile, membercheck=None, memberlist=Non
 			mu = np.mean(x)
 			y = ((1. / (np.sqrt(2 * np.pi) * sigma)) * np.exp(-0.5 * (1. / sigma * (xbins - mu))**2))*len(x)*binwidth
 
-			plt.plot(xbins, y, linestyle=styles[i], color=edges[i], linewidth=2)
+			plt.plot(xbins, y, linestyle=styles[i], color=edges[i], linewidth=3)
 
 	# Format plot
 	for label in (ax.get_xticklabels() + ax.get_yticklabels()):
@@ -270,13 +271,17 @@ def plot_hist(files, labels, quantity, outfile, membercheck=None, memberlist=Non
 
 	return
 
-def plot_hires_comparison(filenames, objnames, glob):
+def plot_hires_comparison(filenames, objnames, glob, offset, sigmasys=True):
 	"""Plot hi-res comparisons.
 
 	Inputs:
 	filenames -- list of matched files
 	objnames  -- list of object names for each file (for plot legend)
 	glob 	  -- list of booleans for each file; if 'True', object data are plotted as GC points
+	offset 	  -- list of offsets to solar Mn abundance
+
+	Keywords:
+	sigmasys  -- if 'True' (default), compute sigma_sys
 	"""
 
 	# Set up figure
@@ -288,12 +293,22 @@ def plot_hires_comparison(filenames, objnames, glob):
 	ax1.set_xlabel(r'$(\mathrm{[Mn/Fe]}_{\mathrm{MRS}}+\mathrm{[Mn/Fe]}_{\mathrm{HRS}})/2$', fontsize=18)
 	ax1.set_ylabel(r'$\mathrm{[Mn/Fe]}_{\mathrm{MRS}}-\mathrm{[Mn/Fe]}_{\mathrm{HRS}}$', fontsize=18)
 
+	# Containers for labels (to make different legends)
+	globplots = []
+	dsphplots = []
+
+	# Containers for all MRS and HRS measurements
+	totalHRS = []
+	totalHRSerr = []
+	totalMRS = []
+	totalMRSerr = []
+
 	for filenum in range(len(filenames)):
 
 		file = filenames[filenum]
 
 		data = np.genfromtxt(file, skip_header=1, delimiter='\t', usecols=[0,1,2,3], dtype='float')
-		sources = np.genfromtxt(file, skip_header=1, delimiter='\t', usecols=4, dtype='str')
+		sources = np.genfromtxt(file, skip_header=1, delimiter='\t', usecols=5, dtype='str')[0]
 
 		# Figure out which marker to use
 		if glob[filenum]:
@@ -302,13 +317,25 @@ def plot_hires_comparison(filenames, objnames, glob):
 			marker = 's'
 
 		# Plot direct comparison
-		ax0.errorbar(x=data[:,2], y=data[:,0], xerr=data[:,3], yerr=data[:,1], marker=marker, linestyle='None', label=sources)
+		container = ax0.errorbar(x=data[:,2]+offset[filenum], y=data[:,0], xerr=data[:,3], yerr=data[:,1], marker=marker, linestyle='None', markersize=8)
+		plot = Line2D([0],[0], marker=marker, label=sources, color=(container[0].get_color()), linestyle='None', markersize=8)
+
+		if glob[filenum]:
+			globplots.append(plot)
+		else:
+			dsphplots.append(plot)
 
 		# Plot residuals
 		avg = (data[:,0] + data[:,2])/2.
 		resids = data[:,0] - data[:,2]
 		residserr = np.sqrt(np.power(data[:,1],2.) + np.power(data[:,3],2.))
-		ax1.errorbar(x=avg, y=resids, yerr=residserr, marker=marker, linestyle='None')
+		ax1.errorbar(x=avg, y=resids, yerr=residserr, marker=marker, linestyle='None', markersize=8)
+
+		# Add data to containers
+		totalMRS.append(data[:,2]+offset[filenum])
+		totalHRS.append(data[:,0])
+		totalMRSerr.append(data[:,3])
+		totalHRSerr.append(data[:,1])
 
 	# Set ranges
 	#Main plot
@@ -325,6 +352,43 @@ def plot_hires_comparison(filenames, objnames, glob):
 	ax0.plot([xmin,xmax],[xmin,xmax],'k:')
 	ax1.plot([xmin,xmax],[0,0],'k:')
 
+	# Compute systematic error
+	if sigmasys:
+
+		totalHRS = np.hstack(totalHRS)
+		totalMRS = np.hstack(totalMRS)
+		totalHRSerr = np.hstack(totalHRSerr)
+		totalMRSerr = np.hstack(totalMRSerr)
+
+		test = np.linspace(0,1,1000)
+
+		check = []
+		for i in range(len(test)):
+			disp = np.std( (totalMRS-totalHRS)/np.sqrt(np.power(totalMRSerr,2.) + np.power(totalHRSerr,2.) + np.power(test[i],2.)) ) - 1.
+			check.append(disp)
+			#print(test[i], disp)
+
+		#print(np.min(np.abs(np.asarray(check))))
+		sigma_sys = test[np.argmin(np.abs(np.asarray(check)))]
+		print('Average: ', np.average(totalMRS-totalHRS))
+		print('Sigma_sys: ', sigma_sys)
+		ax1.fill_between([xmin, xmax], [sigma_sys, sigma_sys], [-sigma_sys, -sigma_sys], alpha=0.25, zorder=0, color='k')
+
+	# Make legends
+	l1 = ax0.legend(handles=dsphplots, bbox_to_anchor=(1.04,0.8), borderaxespad=0, fontsize=14, frameon=False, title='dSphs')
+	plt.setp(l1.get_title(), fontsize=16)
+	l1._legend_box.align="left"
+
+	l2 = ax0.legend(handles=globplots, bbox_to_anchor=(1.04,1), borderaxespad=0, fontsize=14, frameon=False, title='Globular Clusters')
+	plt.setp(l2.get_title(), fontsize=16)
+	l2._legend_box.align="left"
+
+	ax0.add_artist(l1)
+
+	# Other formatting
+	for label in (ax0.get_xticklabels() + ax0.get_yticklabels() + ax1.get_xticklabels() + ax1.get_yticklabels()):
+		label.set_fontsize(14)
+
 	plt.savefig('figures/hires_comparison.pdf', bbox_inches='tight')
 	plt.show()
 
@@ -333,11 +397,11 @@ def plot_hires_comparison(filenames, objnames, glob):
 def main():
 	#gc_mnfe_feh(['data/7089l1_1200B_final.csv','data/7078l1_1200B_final.csv','data/n5024b_1200B_final.csv'], 'figures/gc_checks/GCs_mnfe_feh.pdf', gratingnames=['M2', 'M15', 'M53'], maxerror=0.3, membercheck=True, solar=True)
 	#plot_hist(['data/7089l1_1200B_final.csv','data/7078l1_1200B_final.csv','data/n5024b_1200B_final.csv'], ['M2: '+r'$\,\,\,\sigma_{\mathrm{sys}}=0.19$','M15: '+r'$\sigma_{\mathrm{sys}}=0.06$','M53: '+r'$\sigma_{\mathrm{sys}}=0.05$'], 'error', 'figures/gc_checks/errorhist.pdf', membercheck=['M2','M15','M53'], memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, sigmasys=[0.20,0.06,0.05])
-	#plot_hist(['data/7089l1_1200B_final.csv','data/7078l1_1200B_final.csv','data/n5024b_1200B_final.csv'], ['M2','M15','M53'], 'error', 'figures/gc_checks/errorhist.pdf', membercheck=['M2','M15','M53'], memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, sigmasys=[0.20,0.06,0.05])
+	#plot_hist(['data/7089l1_1200B_final.csv','data/7078l1_1200B_final.csv','data/n5024b_1200B_final.csv'], ['M2','M15','M53'], 'error', 'figures/errorhist.png', membercheck=['M2','M15','M53'], memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, sigmasys=[0.20,0.06,0.05])
 
 	#plot_hist(['data/7089l1_1200B_final.csv'], ['M2'], 'radius', 'figures/gc_checks/radiushist.pdf', membercheck=['M2'], memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3)
 
-	plot_hires_comparison(['data/hires_data_final/GCs/M2_matched.csv', 'data/hires_data_final/GCs/M15_matched.csv'], objnames=['M2', 'M15'], glob=[True, True])
+	plot_hires_comparison(['data/hires_data_final/GCs/M2_matched.csv', 'data/hires_data_final/GCs/M15_matched.csv', 'data/hires_data_final/north12_matched_total.csv', 'data/hires_data_final/shetrone03_matched_total.csv'], objnames=['M2', 'M15', 'Scl/For', 'For/LeoI'], glob=[True, True, False, False], offset=[0.,0.,5.43-5.39,0.])
 
 if __name__ == "__main__":
 	main()

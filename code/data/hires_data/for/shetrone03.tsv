@@ -1,0 +1,4 @@
+Object	Reference	RA	Decl	Teff	logg	Metallicity	[Fe/H]	[Fe/H]error	[Mn/Fe]	[Mn/Fe]error
+SAGA_For_000001	M.Shetrone+,AJ, 125, 684, 2003	02 39 47.12	-34 31 49.9	4025	0	-1.21	-1.21	0.02	-0.44	0.08
+SAGA_For_000002	M.Shetrone+,AJ, 125, 684, 2003	02 40 10.0	-34 30 01	4150	0	-1.6	-1.6	0.02	-0.39	0.1
+SAGA_For_000003	M.Shetrone+,AJ, 125, 684, 2003	02 40 04.41	-34 27 11.6	4000	0.5	-0.67	-0.67	0.03	-0.38	0.15

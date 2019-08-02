@@ -403,13 +403,13 @@ def main():
 
 	# Plot for Sculptor
 	#fit_mnfe_feh(['data/bscl5_1200B_final.csv'],'figures/scl_fit', 'Sculptor dSph', fehia=-2.12, maxerror=0.3, gratings=['#594F4F'])
-	fit_mnfe_feh(['data/bscl5_1200B_final2.csv'],[False],'figures/scl_fit2', 'Sculptor dSph', fehia=-2.12, maxerror=0.3, gratings=['#594F4F'])
+	fit_mnfe_feh(['data/bscl5_1200B_final3.csv'],[False],'figures/scl_fit2', 'Sculptor dSph', fehia=-2.12, maxerror=0.3, gratings=['#594F4F'])
 
 	#fit_mnfe_feh(['data/bfor7_1200B_final.csv'],'figures/for_fit', 'Fornax dSph', fehia=-2.12, maxerror=0.3, gratings=['#594F4F'])
 	#fit_mnfe_feh(['data/LeoIb_1200B_final.csv'],'figures/leoi_fit', 'LeoI dSph', fehia=-2.12, maxerror=0.3, gratings=['#594F4F'])
 
 	#fit_mnfe_feh(['data/scl5_1200B_final.csv'],'figures/scl_fit', 'Sculptor dSph', fehia=-2.34, maxerror=0.3, gratings=['#594F4F','#594F4F'])
-	fit_mnfe_feh(['data/bscl5_1200B_final2.csv','data/hires_data_final/scl/north12_final.csv'],[False,True],'figures/scl_fit_total', 'Sculptor dSph', fehia=-2.34, maxerror=0.3, gratings=['#594F4F','#B0B0B0'])
+	fit_mnfe_feh(['data/bscl5_1200B_final3.csv','data/hires_data_final/scl/north12_final.csv'],[False,True],'figures/scl_fit_total', 'Sculptor dSph', fehia=-2.34, maxerror=0.3, gratings=['#594F4F','#B0B0B0'])
 
 	# Plot [Mn/Fe] values on number line
 	#compare_mnfe('figures/scl_mnfe_comparison.png')
