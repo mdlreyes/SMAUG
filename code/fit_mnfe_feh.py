@@ -105,6 +105,7 @@ def fit_mnfe_feh(filenames, mnfe_check, outfile, title, fehia, maxerror=None, gr
 		goodmask 	= np.where((mnfeerr < maxerror)) # & notoutlier) # & (redchisq < 3.0))
 		name 	= name[goodmask]
 		feh 	= feh[goodmask]
+		feherr  = feherr[goodmask]
 		mnfe 	= mnfe[goodmask]
 		mnfeerr = mnfeerr[goodmask]
 		colors  = colors[goodmask]
@@ -112,22 +113,35 @@ def fit_mnfe_feh(filenames, mnfe_check, outfile, title, fehia, maxerror=None, gr
 	# Define outliers if necessary
 	outlier = np.where((mnfe > 0.5))[0]
 	print(name[outlier])
-	'''
-	notoutlier = np.ones(len(mnfe), dtype='bool')
-	notoutlier[outlier] = False
-	notoutlier = np.ones(len(mnfe), dtype='bool')
-	'''
+
+	# Get R from Evan's catalog
+	rfile = fits.open('/Users/miadelosreyes/Documents/Research/MnDwarfs/code/data/dsph_data/Evandata/chemev_scl.fits')
+	R = rfile[1].data['R'].T
+	xfit = np.linspace(-2.97,0, num=100)
 
 	#######################
 	# Fit a simple model! #
 	#######################
 
+	# Function to compute Type Ia (Mn/Fe) (NOT [Mn/Fe]!!!) yield
+	def compute_mnfe_ia(theta, bperp, R, xfit):
+		fitidx = np.where((xfit > fehia))
+		y = xfit[fitidx] * np.tan(theta) + bperp/np.cos(theta)
+
+		mnfe_cc = (bperp + fehia*np.sin(theta))/np.cos(theta)
+		mnfe_ia = (R[fitidx] + 1.)/(R[fitidx]) * np.power(10.,y) - (1./R[fitidx] * np.power(10.,mnfe_cc))
+
+		return mnfe_ia
+
 	# Start by defining log likelihood function
 	def lnlike(params, x, y, xerr, yerr):
 		theta, bperp = params
 
-		L = 0
+		if np.isnan(compute_mnfe_ia(theta, bperp, R, xfit)).any():
+			return -np.inf
 
+		'''
+		L = 0.
 		for i in range(len(x)):
 
 			if x[i] <= fehia:
@@ -140,27 +154,46 @@ def fit_mnfe_feh(filenames, mnfe_check, outfile, title, fehia, maxerror=None, gr
 				sigma = np.sqrt(yerr[i]**2. * np.cos(theta)**2. + xerr[i]**2. * np.sin(theta)**2.)
 				test = 2
 
-			L = L + np.log(1/(2.*sigma)) - (delta**2.)/(2*sigma**2.)
+			if i==0:
+				print(x[i], y[i], delta, sigma)
+
+			L = L - np.log(np.sqrt(2.*np.pi)*sigma) - (delta**2.)/(2*sigma**2.)
+
+		'''
+		delta = y*np.cos(theta) - x*np.sin(theta) - bperp
+		sigma = np.sqrt(yerr**2. * np.cos(theta)**2. + xerr**2. * np.sin(theta)**2.)
+
+		lessthan = np.where((x <= fehia))[0]
+		#print(lessthan.shape, x.shape)
+
+		delta[lessthan] = y[lessthan] - (bperp + fehia*np.sin(theta))/(np.cos(theta))
+		sigma[lessthan] = yerr[lessthan]
+
+		#print(x[0], y[0], x[morethan[0]], y[morethan[0]], delta[0], sigma[0])
+
+		L = np.sum( (-1.*np.log(np.sqrt(2.*np.pi)*sigma) - (np.power(delta,2.))/(2*np.power(sigma,2.))) )
 
 		return L
 
 	# Define the priors
 	def lnprior(params):
 		theta, bperp = params
-		if -np.pi/2. < theta < np.pi/2.:
+		if -np.pi/2. < theta < np.pi/2. and -10.0 < bperp < 10.0:
 			return 0.0
 		return -np.inf
 
 	# Define the full log-probability function
 	def lnprob(params, x, y, xerr, yerr):
 		lp = lnprior(params)
-		if not np.isfinite(lp):
-			return -np.inf
-		return lp + lnlike(params, x, y, xerr, yerr)
+		ll = lnlike(params, x, y, xerr, yerr)
+		if np.isfinite(lp) and np.isfinite(ll):
+			return lp + ll
+		else:
+			return lp + ll
 
 	# Start by doing basic max-likelihood fit to get initial values
 	nll = lambda *args: -lnlike(*args)
-	maskinit = np.where((feh > -2.5))
+	maskinit = np.where((feh > -2.1))[0]
 	result = op.minimize(nll, [0., 0.], args=(feh[maskinit], mnfe[maskinit], feherr[maskinit], mnfeerr[maskinit]))
 	theta_init, b_init = result["x"]
 
@@ -175,7 +208,7 @@ def fit_mnfe_feh(filenames, mnfe_check, outfile, title, fehia, maxerror=None, gr
 
 	# Plot walkers
 	fig, ax = plt.subplots(2,1,figsize=(8,8), sharex=True)
-	ax = ax.ravel()   
+	ax = ax.ravel()
 
 	names = [r"$\theta$", r"$b_{\bot}$"]
 	for i in range(ndim):
@@ -204,6 +237,8 @@ def fit_mnfe_feh(filenames, mnfe_check, outfile, title, fehia, maxerror=None, gr
 	theta = np.array([np.percentile(samples[:,0],16), np.percentile(samples[:,0],50), np.percentile(samples[:,0],84)])
 	bperp = np.array([np.percentile(samples[:,1],16), np.percentile(samples[:,1],50), np.percentile(samples[:,1],84)])
 
+	print(theta, bperp)
+
 	##################
 	# Compute yields #
 	##################
@@ -218,10 +253,9 @@ def fit_mnfe_feh(filenames, mnfe_check, outfile, title, fehia, maxerror=None, gr
 
 	# Fiducial core-collapse yield
 	mnfe_cc = np.array([np.percentile(all_mnfe_cc,16), np.percentile(all_mnfe_cc,50), np.percentile(all_mnfe_cc,84)])
-	print(mnfe_cc)
+	print('[Mn/Fe]_CC: ',mnfe_cc)
 
-	# Plot best fit
-	xfit = np.linspace(np.min(feh), ax.get_xlim()[1], 100)
+	frac_ia = R/(R+1.)
 
 	# Loop over every single x value and compute an array of every possible value of best-fit y
 	yfit = np.zeros((3, len(xfit)))
@@ -236,22 +270,14 @@ def fit_mnfe_feh(filenames, mnfe_check, outfile, title, fehia, maxerror=None, gr
 			yvalues.append(y)
 			yfit[:,i] = np.array([np.percentile(y,16), np.percentile(y,50), np.percentile(y,84)])
 
-	# Now, determine the Type Ia yield of Mn
-	# Start by determining the amount of Mg/Fe predicted from model
-	theta_mg = -0.50 # XXX turn this into upper/median/lower sequence
-	bperp_mg = -0.64 # XXX turn this into upper/median/lower sequence
-	mgfe = xfit*np.tan(theta_mg) + bperp_mg/(np.cos(theta_mg))
+	# Now, determine the Type Ia yield of Mn based on best-fit model!
+	mnfe_ia = np.zeros((3, len(R)))
+	for i in range(len(R)):
+		if R[i] > 0:
+			test = np.log10( (R[i] + 1.)/(R[i]) * np.power(10.,yvalues[i]) - (1./R[i] * np.power(10.,all_mnfe_cc)) )
+			mask = np.isnan(test)
 
-	# Compute f_Ia
-	mgfe_cc = 0.55
-	mgfe_ia = -1.5
-	frac_ia = (np.power(10.,mgfe_cc) - np.power(10.,mgfe)) / (np.power(10.,mgfe) - np.power(10.,mgfe_ia))
-
-	# Compute Mn yield based on best-fit model!
-	mnfe_ia = np.zeros((3, len(xfit)))
-	for i in range(len(xfit)):
-		if xfit[i] > fehia:
-			all_mnfe_ia = np.log10( (frac_ia[i] + 1.)/(frac_ia[i]) * np.power(10.,yvalues[i]) - (1./frac_ia[i] * np.power(10.,all_mnfe_cc)) )
+			all_mnfe_ia = test[~mask]
 			mnfe_ia[:,i] = np.array([np.percentile(all_mnfe_ia,16), np.percentile(all_mnfe_ia,50), np.percentile(all_mnfe_ia,84)])
 
 	#################
@@ -264,18 +290,18 @@ def fit_mnfe_feh(filenames, mnfe_check, outfile, title, fehia, maxerror=None, gr
 		for i in range(len(feh)):
 
 			if plotcolors[0] == False and colors[i] == '#B0B0B0':
-				ax.errorbar(feh[i], mnfe[i], yerr=mnfeerr[i], color=colors[i], marker='o', linestyle='', capsize=3, zorder=100, label='North+12')
+				ax.errorbar(feh[i], mnfe[i], color=colors[i], marker='o', linestyle='', capsize=3, zorder=100, label='North+12') #, xerr=feherr[i], yerr=mnfeerr[i])
 				plotcolors[0] = True
 
 			elif plotcolors[1] == False and colors[i] == '#594F4F':
-				ax.errorbar(feh[i], mnfe[i], yerr=mnfeerr[i], color=colors[i], marker='o', linestyle='', capsize=3, zorder=100, label='This work')
+				ax.errorbar(feh[i], mnfe[i], color=colors[i], marker='o', linestyle='', capsize=3, zorder=100, label='This work') #, xerr=feherr[i], yerr=mnfeerr[i])
 				plotcolors[1] = True
 
 			else:
-				ax.errorbar(feh[i], mnfe[i], yerr=mnfeerr[i], color=colors[i], marker='o', linestyle='', capsize=3, zorder=100)
+				ax.errorbar(feh[i], mnfe[i], color=colors[i], marker='o', linestyle='', capsize=3, zorder=100) #, xerr=feherr[i], yerr=mnfeerr[i])
 
 	else:
-		ax.errorbar(feh, mnfe, yerr=mnfeerr, color='k', marker='o', linestyle='', capsize=3, zorder=100)
+		ax.errorbar(feh, mnfe, color='k', marker='o', linestyle='', capsize=3, zorder=100) #, xerr=feherr, yerr=mnfeerr)
 
 	# Put sample size on plot
 	ax.text(0.025, 0.9, 'N = '+str(len(name)), transform=ax.transAxes, fontsize=18)
@@ -289,7 +315,8 @@ def fit_mnfe_feh(filenames, mnfe_check, outfile, title, fehia, maxerror=None, gr
 	ax.plot(xfit, yfit[1], 'r-', linewidth=3, zorder=200)
 
 	# Plot Type Ia [Mn/Fe] yield
-	mask = np.where(xfit > fehia)
+	mask = np.nonzero(mnfe_ia[1])
+	print('test: ',mask)
 	ax.fill_between(xfit[mask], mnfe_ia[2][mask], mnfe_ia[0][mask], color='#547980', alpha=0.25)
 	ax.plot(xfit[mask], mnfe_ia[1][mask], color='#547980', linestyle=':', linewidth=3)
 
@@ -403,10 +430,10 @@ def main():
 
 	# Plot for Sculptor
 	fit_mnfe_feh(['data/bscl5_1200B_final3.csv'],[False],'figures/scl_fit3', 'Sculptor dSph', fehia=-2.12, maxerror=0.3, gratings=['#594F4F'])
-	fit_mnfe_feh(['data/bscl5_1200B_final3.csv','data/hires_data_final/scl/north12_final.csv'],[False,True],'figures/scl_fit_total', 'Sculptor dSph', fehia=-2.34, maxerror=0.3, gratings=['#594F4F','#B0B0B0'])
+	#fit_mnfe_feh(['data/bscl5_1200B_final3.csv','data/hires_data_final/scl/north12_final.csv'],[False,True],'figures/scl_fit_total', 'Sculptor dSph', fehia=-2.34, maxerror=0.3, gratings=['#594F4F','#B0B0B0'])
 
 	# Plot for Ursa Minor
-	fit_mnfe_feh(['data/bumia_1200B_final3.csv'],[False],'figures/umi_fit3', 'Ursa Minor dSph', fehia=-2.42, maxerror=0.3, gratings=['#594F4F'])
+	#fit_mnfe_feh(['data/bumia_1200B_final3.csv'],[False],'figures/umi_fit3', 'Ursa Minor dSph', fehia=-2.42, maxerror=0.3, gratings=['#594F4F'])
 
 	# Plot [Mn/Fe] values on number line
 	#compare_mnfe('figures/scl_mnfe_comparison.png')

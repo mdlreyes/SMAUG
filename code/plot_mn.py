@@ -107,7 +107,7 @@ def plot_mn_fe(filenames, outfile, title, gratings=None, maxerror=None, snr=None
 		#print(name[outlier])
 		notoutlier = np.where(mnfe > 0.5)[0]
 
-		ax.errorbar(feh, mnfe, yerr=mnfeerr, xerr=feherr, marker='o', linestyle='', capsize=3, zorder=99, label=gratings[i]+': N='+str(len(feh)))
+		ax.errorbar(feh, mnfe, yerr=mnfeerr, xerr=feherr, marker='o', linestyle='', capsize=0, zorder=99, label=gratings[i]+': N='+str(len(feh)))
 
 	# Format plot
 	ax.set_title(title, fontsize=18)
