@@ -125,11 +125,14 @@ def fit_mnfe_feh(filenames, mnfe_check, outfile, title, fehia, maxerror=None, gr
 
 	# Function to compute Type Ia (Mn/Fe) (NOT [Mn/Fe]!!!) yield
 	def compute_mnfe_ia(theta, bperp, R, xfit):
-		fitidx = np.where((xfit > fehia))
+		fitidx = np.where((R > 0.))[0]
+		#print(fitidx)
 		y = xfit[fitidx] * np.tan(theta) + bperp/np.cos(theta)
 
 		mnfe_cc = (bperp + fehia*np.sin(theta))/np.cos(theta)
 		mnfe_ia = (R[fitidx] + 1.)/(R[fitidx]) * np.power(10.,y) - (1./R[fitidx] * np.power(10.,mnfe_cc))
+
+		#print(mnfe_ia)
 
 		return mnfe_ia
 
