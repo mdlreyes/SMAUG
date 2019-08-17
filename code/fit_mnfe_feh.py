@@ -6,9 +6,14 @@
 # Updated 29 Nov 18
 ###################################################################
 
-import matplotlib
+import matplotlib as mpl
 #matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
+
+from matplotlib import rc
+#rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
+rc('font',**{'family':'serif','serif':['Palatino']})
+rc('text', usetex=True)
 
 import os
 import sys
@@ -20,7 +25,9 @@ import math
 from astropy.io import fits, ascii
 import pandas
 import matplotlib.ticker as ticker
+import matplotlib.patches as mpatches
 from statsmodels.stats.weightstats import DescrStatsW
+import cycler
 
 def fit_mnfe_feh(filenames, mnfe_check, outfile, title, fehia, maxerror=None, gratings=None):
 	"""Use model described in Kirby (in prep.) to determine Type Ia supernova yields for [Mn/H]
@@ -126,21 +133,20 @@ def fit_mnfe_feh(filenames, mnfe_check, outfile, title, fehia, maxerror=None, gr
 	# Function to compute Type Ia (Mn/Fe) (NOT [Mn/Fe]!!!) yield
 	def compute_mnfe_ia(theta, bperp, R, xfit):
 		fitidx = np.where((R > 0.))[0]
-		#print(fitidx)
 		y = xfit[fitidx] * np.tan(theta) + bperp/np.cos(theta)
 
 		mnfe_cc = (bperp + fehia*np.sin(theta))/np.cos(theta)
 		mnfe_ia = (R[fitidx] + 1.)/(R[fitidx]) * np.power(10.,y) - (1./R[fitidx] * np.power(10.,mnfe_cc))
 
-		#print(mnfe_ia)
-
-		return mnfe_ia
+		return mnfe_cc, mnfe_ia
 
 	# Start by defining log likelihood function
 	def lnlike(params, x, y, xerr, yerr):
 		theta, bperp = params
 
-		if np.isnan(compute_mnfe_ia(theta, bperp, R, xfit)).any():
+		# Make sure (Mn/Fe)_Ia is positive
+		mnfe_cc, test = compute_mnfe_ia(theta, bperp, R, xfit)
+		if (test < 0).any():
 			return -np.inf
 
 		'''
@@ -167,14 +173,15 @@ def fit_mnfe_feh(filenames, mnfe_check, outfile, title, fehia, maxerror=None, gr
 		sigma = np.sqrt(yerr**2. * np.cos(theta)**2. + xerr**2. * np.sin(theta)**2.)
 
 		lessthan = np.where((x <= fehia))[0]
-		#print(lessthan.shape, x.shape)
-
 		delta[lessthan] = y[lessthan] - (bperp + fehia*np.sin(theta))/(np.cos(theta))
 		sigma[lessthan] = yerr[lessthan]
 
-		#print(x[0], y[0], x[morethan[0]], y[morethan[0]], delta[0], sigma[0])
-
 		L = np.sum( (-1.*np.log(np.sqrt(2.*np.pi)*sigma) - (np.power(delta,2.))/(2*np.power(sigma,2.))) )
+
+		# Add in prior for [Mn/Fe]_CC ~ -0.3 from metal-poor MW halo
+		delta_cc = -0.3 - mnfe_cc
+		sigma_cc = 0.1
+		L = L + (-1.*np.log(np.sqrt(2.*np.pi)*sigma_cc) - (np.power(delta_cc,2.))/(2*np.power(sigma_cc,2.)))
 
 		return L
 
@@ -207,7 +214,7 @@ def fit_mnfe_feh(filenames, mnfe_check, outfile, title, fehia, maxerror=None, gr
 
 	# Run MCMC for 11000 steps
 	sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(feh,mnfe,feherr,mnfeerr))
-	sampler.run_mcmc(pos,1100)
+	sampler.run_mcmc(pos,1e5)
 
 	# Plot walkers
 	fig, ax = plt.subplots(2,1,figsize=(8,8), sharex=True)
@@ -229,7 +236,7 @@ def fit_mnfe_feh(filenames, mnfe_check, outfile, title, fehia, maxerror=None, gr
 	plt.close()
 
 	# Make corner plots
-	samples = sampler.chain[:,100:, :].reshape((-1, ndim))
+	samples = sampler.chain[:,10000:, :].reshape((-1, ndim))
 	cornerfig = corner.corner(samples, labels=[r"$\theta$", r"$b_{\bot}$"],
 								quantiles=[0.16, 0.5, 0.84],
 								show_titles=True, title_kwargs={"fontsize": 12})
@@ -259,6 +266,11 @@ def fit_mnfe_feh(filenames, mnfe_check, outfile, title, fehia, maxerror=None, gr
 	print('[Mn/Fe]_CC: ',mnfe_cc)
 
 	frac_ia = R/(R+1.)
+	'''
+	plt.plot(xfit, frac_ia)
+	plt.show()
+	return
+	'''
 
 	# Loop over every single x value and compute an array of every possible value of best-fit y
 	yfit = np.zeros((3, len(xfit)))
@@ -275,10 +287,13 @@ def fit_mnfe_feh(filenames, mnfe_check, outfile, title, fehia, maxerror=None, gr
 
 	# Now, determine the Type Ia yield of Mn based on best-fit model!
 	mnfe_ia = np.zeros((3, len(R)))
+	plotmask = np.zeros(len(xfit), dtype='bool')
 	for i in range(len(R)):
 		if R[i] > 0:
 			test = np.log10( (R[i] + 1.)/(R[i]) * np.power(10.,yvalues[i]) - (1./R[i] * np.power(10.,all_mnfe_cc)) )
 			mask = np.isnan(test)
+			if mask.any() == False:
+				plotmask[i] = True
 
 			all_mnfe_ia = test[~mask]
 			mnfe_ia[:,i] = np.array([np.percentile(all_mnfe_ia,16), np.percentile(all_mnfe_ia,50), np.percentile(all_mnfe_ia,84)])
@@ -304,10 +319,10 @@ def fit_mnfe_feh(filenames, mnfe_check, outfile, title, fehia, maxerror=None, gr
 				ax.errorbar(feh[i], mnfe[i], color=colors[i], marker='o', linestyle='', capsize=3, zorder=100) #, xerr=feherr[i], yerr=mnfeerr[i])
 
 	else:
-		ax.errorbar(feh, mnfe, color='k', marker='o', linestyle='', capsize=3, zorder=100) #, xerr=feherr, yerr=mnfeerr)
+		ax.errorbar(feh, mnfe, markersize=8, color='k', marker='o', linestyle='', capsize=0, zorder=100, xerr=feherr, yerr=mnfeerr)
 
 	# Put sample size on plot
-	ax.text(0.025, 0.9, 'N = '+str(len(name)), transform=ax.transAxes, fontsize=18)
+	#ax.text(0.025, 0.9, 'N = '+str(len(name)), transform=ax.transAxes, fontsize=18)
 
 	#for i in range(len(outlier)):
 	#	idx = outlier[i]
@@ -315,13 +330,14 @@ def fit_mnfe_feh(filenames, mnfe_check, outfile, title, fehia, maxerror=None, gr
 
 	# Plot best-fit model
 	ax.fill_between(xfit, yfit[2], yfit[0], color='r', alpha=0.25, zorder=200)
-	ax.plot(xfit, yfit[1], 'r-', linewidth=3, zorder=200)
+	bestfit1 = mpatches.Patch(color='r', alpha=0.25)
+	bestfit2, = ax.plot(xfit, yfit[1], 'r-', linewidth=3, zorder=200)
 
 	# Plot Type Ia [Mn/Fe] yield
 	mask = np.nonzero(mnfe_ia[1])
-	print('test: ',mask)
-	ax.fill_between(xfit[mask], mnfe_ia[2][mask], mnfe_ia[0][mask], color='#547980', alpha=0.25)
-	ax.plot(xfit[mask], mnfe_ia[1][mask], color='#547980', linestyle=':', linewidth=3)
+	ax.fill_between(xfit[plotmask], mnfe_ia[2][plotmask], mnfe_ia[0][plotmask], color='C0', alpha=0.25)
+	typeia1 = mpatches.Patch(color='C0', alpha=0.25)
+	typeia2, = ax.plot(xfit[mask], mnfe_ia[1][mask], color='C0', linestyle=':', linewidth=3)
 
 	fehmeasure = -1.5 # [Fe/H] at which to measure [Mn/Fe]_Ia
 	idx_feh = np.argmin(np.abs(xfit - fehmeasure))
@@ -335,8 +351,9 @@ def fit_mnfe_feh(filenames, mnfe_check, outfile, title, fehia, maxerror=None, gr
 	print(mnfe_ia[1][idx_feh]-mnfe_ia[0][idx_feh])
 
 	# Also plot core-collapse yield
-	ax.fill_between(ax.get_xlim(), mnfe_cc[2], mnfe_cc[0], color='#45ADA8', alpha=0.25, zorder=0)
-	ax.plot(ax.get_xlim(), mnfe_cc[1]*np.ones(2), color='#45ADA8', linestyle='--', linewidth=3, zorder=0)
+	ax.fill_between(ax.get_xlim(), mnfe_cc[2], mnfe_cc[0], color='C9', alpha=0.25, zorder=0)
+	typeii1 = mpatches.Patch(color='C9', alpha=0.25)
+	typeii2, = ax.plot(ax.get_xlim(), mnfe_cc[1]*np.ones(2), color='C9', linestyle='--', linewidth=3, zorder=0)
 
 	# Format plot
 	ax.set_title(title, fontsize=18)
@@ -346,14 +363,17 @@ def fit_mnfe_feh(filenames, mnfe_check, outfile, title, fehia, maxerror=None, gr
 		label.set_fontsize(14)
 	ax.tick_params(direction='in', bottom=True, top=True, left=True, right=True)
 	ax.set_xlim([-2.75,-0.75])
-	#ax.set_ylim([-2,2])
-	#ax.set_ylim([-1.5,1.1])
-	leg = plt.legend(fancybox=True, framealpha=0.5, loc='best')
+
+	# Make legend
+	leg = plt.legend([(bestfit1, bestfit2), (typeia1, typeia2), (typeii1, typeii2)], ["Best fit model", "Type Ia yield", "Core-collapse yield"], 
+						fancybox=True, framealpha=0.5, loc='best', title='N = '+str(len(name)))
 	for text in leg.get_texts():
-		plt.setp(text, color='#594F4F', fontsize=18)
+		plt.setp(text, color='k', fontsize=12)
+	plt.setp(leg.get_title(), fontsize=14)
+	leg._legend_box.align="left"
 
 	# Output file
-	plt.savefig(outfile+'_mnfe.png', bbox_inches='tight', transparent=True)
+	plt.savefig(outfile+'_mnfe.pdf', bbox_inches='tight') #, transparent=True)
 	plt.show()
 
 def compare_mnfe(outfile):
@@ -385,25 +405,15 @@ def compare_mnfe(outfile):
 
 	# Setup a plot so that only the bottom spine is shown
 	def setup(ax):
-		ax.spines['right'].set_color('none')
-		ax.spines['left'].set_color('none')
-		ax.yaxis.set_major_locator(ticker.NullLocator())
-		ax.spines['top'].set_color('none')
-		ax.spines['bottom'].set_position('center')
-		ax.spines['bottom'].set_linewidth(2)
-		ax.xaxis.set_ticks_position('bottom')
-		ax.tick_params(which='major', width=2)
-		ax.tick_params(which='major', length=12)
-		ax.tick_params(which='minor', width=2)
-		ax.tick_params(which='minor', length=8)
-		ax.set_xlim(-2, 1)
-		ax.set_ylim(-0.5, 0.5)
-		ax.patch.set_alpha(0.0)
+		ax.set_xlim(-1.75, 0.75)
+		ax.set_ylim(0.5, 7.5)
 
-		ax.xaxis.set_ticklabels([])
-		ax.yaxis.set_ticklabels([])
+		plt.tick_params(axis='y', which='both', left=False, right=False)
 
-	plt.figure(figsize=(20,1))
+		#ax.xaxis.set_ticklabels([])
+		ax.yaxis.set_ticklabels(['DDT(S13)','def(F14)','DDT(L18)','def(L18)','sub(L19)','sub(S18)','sub(B19)',''][::-1])
+
+	plt.figure(figsize=(8,8))
 
 	# Make plot
 	ax = plt.subplot(1,1,1)
@@ -411,17 +421,81 @@ def compare_mnfe(outfile):
 	ax.xaxis.set_major_locator(ticker.AutoLocator())
 	ax.xaxis.set_minor_locator(ticker.AutoMinorLocator())
 	#ax.text(0.0, 0.1, "AutoLocator()", fontsize=14, transform=ax.transAxes)
-	#ax.set_xlabel('[Mn/Fe]', fontsize=16)
+	ax.set_xlabel(r'$\mathrm{[Mn/Fe]}_{\mathrm{Ia}}$', fontsize=18)
+
+	dy = 0.02 # distance between lines
 
 	# Plot observed [Mn/Fe]
-	ax.errorbar(-0.87, 0, xerr=0.085, color='r', marker='o', linestyle='', capsize=10, elinewidth=6, capthick=6, markersize=20, zorder=100)
+	#ax.errorbar(-0.28, 8, xerr=0.03, color='k', marker='o', linestyle='', markersize=8, zorder=100)
+	ax.axvspan(xmin = -0.28 - 0.03, xmax = -0.28 + 0.03, color='gray', alpha=0.5)
+	ax.text(-0.28 - 0.11, 6.5, 'This work', rotation = 90, fontsize=18)
 
 	# Plot models
+	
+	reds = plt.cm.Reds_r(np.linspace(0.,0.8,8))
+	mpl.rcParams['axes.prop_cycle'] = cycler.cycler('color', reds)
+	redcwheel = [np.array(mpl.rcParams['axes.prop_cycle'])[x]['color'] for x in range(8)]
+
+	blues = plt.cm.Blues_r(np.linspace(0.,0.8,8))
+	mpl.rcParams['axes.prop_cycle'] = cycler.cycler('color', blues)
+	bluecwheel = [np.array(mpl.rcParams['axes.prop_cycle'])[x]['color'] for x in range(8)]
+
+	# DDT (S13)
+	ddts13 = [0.01, -0.06, 0.01, 0.23, 0.50, 0.53][::-1]
+	for i in range(len(ddts13)):
+		ax.axvline(ddts13[i], ymin = 6./7. + dy, ymax = 7./7. - dy, color=redcwheel[i], alpha=1, linewidth=2)
+
+	# def(F14)
+	deff14 = [0.36, 0.42, 0.44, 0.48, 0.50, 0.52][::-1]
+	for i in range(len(deff14)):
+		ax.axvline(deff14[i], ymin = 5./7. + dy, ymax = 6./7. - dy, color=redcwheel[i], alpha=1, linewidth=2)
+
+	# DDT(L18)
+	ddtl18 = [-0.03, 0.18, 0.31][::-1]
+	for i in range(len(ddtl18)):
+		ax.axvline(ddtl18[i], ymin = 4./7. + dy, ymax = 5./7. - dy, color=redcwheel[i], alpha=1, linewidth=2)
+	ax.axvline(0.15, ymin = 4./7. + dy, ymax = 5./7. - dy, color='r', linestyle=':', alpha=1, linewidth=2)
+
+	# def(L18)
+	defl18 = [0.19, 0.39, 0.39][::-1]
+	for i in range(len(defl18)):
+		ax.axvline(defl18[i], ymin = 3./7. + dy, ymax = 4./7. - dy, color=redcwheel[i], alpha=1, linewidth=2)
+	ax.axvline(0.33, ymin = 3./7. + dy, ymax = 4./7. - dy, color='r', linestyle=':', alpha=1, linewidth=2)
+
+	# sub(L19)
+	subl19 = [0.25,-0.13,-0.23,-0.25,-0.45,-0.34][::-1]
+	for i in range(len(subl19)):
+		ax.axvline(subl19[i], ymin = 2./7. + dy, ymax = 3./7. - dy, color=redcwheel[i], alpha=1, linewidth=2)
+	ax.axvline(-0.42, ymin = 2./7. + dy, ymax = 3./7. - dy, color=bluecwheel[0], linestyle=':', alpha=1, linewidth=2)
+
+	# sub(S18)
+	subs18 = [-0.34,-0.45,-0.75,-1.04][::-1]
+	for i in range(len(subs18)):
+		ax.axvline(subs18[i], ymin = 1./7. + dy, ymax = 2./7. - dy, color=blues[i], alpha=1, linewidth=2)
+	subs18_special = [-0.23,-0.43,-0.70,-0.96][::-1]
+	for i in range(len(subs18_special)):
+		ax.axvline(subs18_special[i], ymin = 1./7. + dy, ymax = 2./7. - dy, color=blues[i], alpha=1, linewidth=2, linestyle=':')
+
+	# sub(B19)
+	subb19 = [-0.5,-0.8,-1.22,-1.33,-1.43][::-1]
+	for i in range(len(subb19)):
+		ax.axvline(subb19[i], ymin = 0./7. + dy, ymax = 1./7. - dy, color=blues[i], alpha=1, linewidth=2)
+	subb19_special = [-0.45,-0.79,-1.2,-1.3,-1.42][::-1]
+	for i in range(len(subb19_special)):
+		ax.axvline(subb19_special[i], ymin = 0./7. + dy, ymax = 1./7. - dy, color=blues[i], alpha=1, linewidth=2, linestyle=':')
+
+	'''
 	ax.axvline(0.18, color='#45ADA8', linestyle=':', linewidth=6, label='DDT(T16)')
 	ax.axvspan(0.01, 0.53, color='#B0B0B0', hatch='\\', alpha=0.6, label='DDT(S13)')
 	ax.axvspan(0.36, 0.52, color='#45ADA8', hatch='//', alpha=0.75, label='Def(F14)')
 	ax.axvspan(-1.69, -1.21, color='#9DE0AD', alpha=0.8, label='Sub(B)')
 	ax.axvspan(-1.52, -0.68, color='#547980', hatch='//', alpha=0.5, label='Sub(S18)')
+	'''
+
+	# Format plot
+	for label in (ax.get_xticklabels() + ax.get_yticklabels()):
+		label.set_fontsize(16)
+	ax.tick_params(direction='in', bottom=True, top=True, left=False, right=False)
 
 	# Output file
 	plt.savefig(outfile, bbox_inches='tight', transparent=True)
@@ -432,14 +506,14 @@ def compare_mnfe(outfile):
 def main():
 
 	# Plot for Sculptor
-	fit_mnfe_feh(['data/bscl5_1200B_final3.csv'],[False],'figures/scl_fit3', 'Sculptor dSph', fehia=-2.12, maxerror=0.3, gratings=['#594F4F'])
+	#fit_mnfe_feh(['data/bscl5_1200B_final3.csv'],[False],'figures/scl_fit3', 'Sculptor dSph', fehia=-2.12, maxerror=0.3, gratings=['#594F4F'])
 	#fit_mnfe_feh(['data/bscl5_1200B_final3.csv','data/hires_data_final/scl/north12_final.csv'],[False,True],'figures/scl_fit_total', 'Sculptor dSph', fehia=-2.34, maxerror=0.3, gratings=['#594F4F','#B0B0B0'])
 
 	# Plot for Ursa Minor
 	#fit_mnfe_feh(['data/bumia_1200B_final3.csv'],[False],'figures/umi_fit3', 'Ursa Minor dSph', fehia=-2.42, maxerror=0.3, gratings=['#594F4F'])
 
 	# Plot [Mn/Fe] values on number line
-	#compare_mnfe('figures/scl_mnfe_comparison.png')
+	compare_mnfe('figures/scl_mnfe_comparison.pdf')
 
 	return
 

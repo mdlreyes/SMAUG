@@ -9,6 +9,11 @@ import matplotlib
 #matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 
+from matplotlib import rc
+#rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
+rc('font',**{'family':'serif','serif':['Palatino']})
+rc('text', usetex=True)
+
 import os
 import sys
 import numpy as np
@@ -21,110 +26,6 @@ import pandas as pd
 from matplotlib.ticker import NullFormatter
 from statsmodels.stats.weightstats import DescrStatsW
 from cycler import cycler
-
-def plot_mn_fe(filenames, outfile, title, gratings=None, maxerror=None, snr=None, solar=False, typeii=True, typei=True):
-	"""Plot [Mn/Fe] vs [Fe/H] for all the stars in a set of files.
-
-	Inputs:
-	filename 	-- list of input filenames
-	outfile 	-- name of output file
-	title 		-- title of graph
-
-	Keywords:
-	gratings 	-- if not None, list of names for different files
-	maxerror 	-- if not None, points with error > maxerror will not be plotted
-	solar 		-- if 'True', plot line marking solar abundance
-	typeii 		-- if 'True', plot theoretical Type II yield
-	typei 		-- if 'True', plot theoretical Type II yields
-	"""
-
-	# Get data from files
-	name 	= []
-	feh 	= []
-	feherr 	= []
-	mnh 	= []
-	mnherr	= []
-	redchisq = []
-
-	# Create figure
-	fig, ax = plt.subplots(figsize=(10,5))
-
-	# Plot other lines
-	if typeii:
-		typeii_Z  = np.array([0.000000000001, 0.001,0.004,0.02])			# Metallicities from Nomoto+2006 (in total Z)
-		typeii_mn = np.array([8.72e-7, 9.72e-7, 1.16e-6, 1.54e-6])	# Mn yields from Nomoto+2006 (in units of Msun)
-		typeii_fe54 = np.array([7.32e-6, 8.34e-6, 9.03e-6, 1.13e-5]) # Fe-54 yields from Nomoto+2006 (in units of Msun)
-		typeii_fe56 = np.array([3.17e-4, 3.38e-4, 3.22e-4, 3.48e-4]) # Fe-56 yields from Nomoto+2006 (in units of Msun)
-		typeii_fe57 = np.array([4.66e-6, 6.03e-6, 6.79e-6, 9.57e-6]) # Fe-57 yields from Nomoto+2006 (in units of Msun)
-		typeii_fe58 = np.array([6.15e-12, 1.81e-7, 5.26e-7, 2.15e-6]) # Fe-58 yields from Nomoto+2006 (in units of Msun)
-
-		solar_mn = 5.43
-		solar_fe = 7.50
-
-		typeii_mnh = np.log10((typeii_mn/55.) / ((typeii_fe54/54.) + (typeii_fe56/56.) + (typeii_fe57/57.) + (typeii_fe58/58.))) - (solar_mn - solar_fe)
-		typeii_feh = np.log10(typeii_Z/0.0134) # Solar metallicity from Asplund+2009
-
-		ax.plot(typeii_feh, typeii_mnh, 'b-', label='CCSNe yield')
-
-	if typei:
-		#xmin=(-2.34+3)/2.5, 
-		ax.axhline(0.18, color='b', linestyle='dashed', label='DDT(T16)')
-		ax.axhspan(0.01, 0.53, color='g', hatch='\\', alpha=0.2, label='DDT(S13)')
-		ax.axhspan(0.36, 0.52, color='darkorange', hatch='//', alpha=0.3, label='Def(F14)')
-		ax.axhspan(-1.69, -1.21, color='r', alpha=0.2, label='Sub(B)')
-		ax.axhspan(-1.52, -0.68, color='b', hatch='//', alpha=0.2, label='Sub(S18)')
-
-	if solar:
-		ax.axhline(0, color='gold', linestyle='solid')
-
-	# Now loop over all data files
-	for i in range(len(filenames)):
-
-		file = filenames[i]
-		name 	= np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=0, dtype='str')
-		data = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=[5,6,8,9,10])
-		feh 	= data[:,0]
-		feherr 	= data[:,1]
-		mnh 	= data[:,2]
-		mnherr 	= data[:,3]
-		redchisq = data[:,4]
-
-		# Compute [Mn/Fe]
-		mnfe = mnh - feh
-		mnfeerr = np.sqrt(np.power(feherr,2.)+np.power(mnherr,2.))
-
-		# Remove points with error > maxerror
-		if maxerror is not None:
-			mask 	= np.where((mnfeerr < maxerror))[0] # & (redchisq < 3.0))
-			name 	= name[mask]
-			feh 	= feh[mask]
-			feherr  = feherr[mask]
-			mnfe 	= mnfe[mask]
-			mnfeerr = mnfeerr[mask]
-
-		# Testing: Label some stuff
-		outlier = np.where(mnfe > 1)[0]
-		#print(name[outlier])
-		notoutlier = np.where(mnfe > 0.5)[0]
-
-		ax.errorbar(feh, mnfe, yerr=mnfeerr, xerr=feherr, marker='o', linestyle='', capsize=0, zorder=99, label=gratings[i]+': N='+str(len(feh)))
-
-	# Format plot
-	ax.set_title(title, fontsize=18)
-	ax.set_xlabel('[Fe/H]', fontsize=16)
-	ax.set_ylabel('[Mn/Fe]', fontsize=16)
-	for label in (ax.get_xticklabels() + ax.get_yticklabels()):
-		label.set_fontsize(14)
-
-	#ax.set_xlim([-3,-0.75])
-	#ax.set_ylim([-2,2])
-	ax.legend(loc='best')
-
-	# Output file
-	plt.savefig(outfile, bbox_inches='tight')
-	plt.show()
-
-	return
 
 def comparison_plot(file1, file2, label1, label2, outfile, title, file1_mnh=False, file2_mnh=False, membercheck=None, memberlist=None, maxerror=None, weighted=True, checkcoords=False):
 	"""Compare [Mn/Fe] vs [Mn/Fe] for two different files.
@@ -579,8 +480,10 @@ def plot_spectrum(filename, starname, outfile, lines):
 	for label in (ax.get_xticklabels() + ax.get_yticklabels()):
 		label.set_fontsize(14)
 
-	for i in range(len(lines)):
-		plt.axvline(lines[i], color='r', linestyle='--')
+	#for i in range(len(lines)):
+	#	plt.axvline(lines[i], color='r', linestyle='--')
+
+	ax.set_ylim(-1,1)
 
 	# Output file
 	plt.savefig(outfile, bbox_inches='tight')
@@ -623,9 +526,6 @@ def main():
 
 	# Check if adding smoothing parameter does anything
 	#comparison_plot(['data/no_dlam/scl5_1200B_final.csv','data/scl5_1200B.csv'],['Don\'t fit smoothing [Mn/H]', 'Fit smoothing [Mn/H]'],'figures/scl5_1200B_smoothcheck.png','Sculptor', maxerror=1) #, weighted=False)
-
-	# Plot of dSphs for which chem evolution model is not a good fit
-	plot_mn_fe(['data/LeoIb_1200B_final3.csv','data/bfor7_1200B_final3.csv','data/CVnIa_1200B_final3.csv','data/UMaIIb_1200B_final3.csv','data/bumia_1200B_final3.csv'], 'figures/other_dsphs.png', None, gratings=['Leo I','Fornax','Canes Venatici I','Ursa Major II','Ursa Minor'], maxerror=0.3, snr=None, solar=False, typeii=False, typei=False)
 
 if __name__ == "__main__":
 	main()

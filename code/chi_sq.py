@@ -329,7 +329,7 @@ class obsSpectrum:
 
 		return best_mn, error
 
-	def plot_chisq(self, params0, minimize=True, output=False, plots=False):
+	def plot_chisq(self, params0, minimize=True, output=False, plots=False, save=False):
 		"""Plot chi-sq as a function of [Mn/H].
 
 		Inputs:
@@ -372,6 +372,9 @@ class obsSpectrum:
 			plt.xlabel('[Mn/H]', fontsize=16)
 			plt.savefig(self.outputname+'/'+self.specname+'_redchisq.png')
 			plt.close()
+
+			if save:
+				np.savetxt(self.outputname+'/'+self.specname+'_redchisq.txt',(mn_list - self.fe, chisq_list),header="[Mn/Fe], redchisq")
 		else:
 			finalsynth = self.synthetic(self.obswvl_final, mn_list[6]) #, dlam)
 			chisq_list[6] = np.sum(np.power(self.obsflux_final - finalsynth, 2.) * self.ivar_final) / (len(self.obsflux_final) - 1.)
