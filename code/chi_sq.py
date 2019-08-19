@@ -374,7 +374,7 @@ class obsSpectrum:
 			plt.close()
 
 			if save:
-				np.savetxt(self.outputname+'/'+self.specname+'_redchisq.txt',(mn_list - self.fe, chisq_list),header="[Mn/Fe], redchisq")
+				np.savetxt(self.outputname+'/'+self.specname+'_redchisq.txt',np.asarray((mn_list - self.fe, chisq_list)).T,header="[Mn/Fe], redchisq")
 		else:
 			finalsynth = self.synthetic(self.obswvl_final, mn_list[6]) #, dlam)
 			chisq_list[6] = np.sum(np.power(self.obsflux_final - finalsynth, 2.) * self.ivar_final) / (len(self.obsflux_final) - 1.)

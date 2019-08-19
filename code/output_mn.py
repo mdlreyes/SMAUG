@@ -147,10 +147,10 @@ def make_chisq_plots(filename, paramfilename, galaxyname, slitmaskname, startsta
 		file = '/raid/madlr/dsph/'+galaxyname+'/'+slitmaskname+'.csv'
 
 	name  = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=0, dtype='str')
-	mn    = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=10)
-	mnerr = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=11)
-	dlam = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=8)
-	dlamerr = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=9)
+	mn    = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=8)
+	mnerr = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=9)
+	#dlam = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=8)
+	#dlamerr = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=9)
 
 	# Get number of stars in file with observed spectra
 	Nstars = open_obs_file(filename)
@@ -167,7 +167,7 @@ def make_chisq_plots(filename, paramfilename, galaxyname, slitmaskname, startsta
 				continue
 
 			# Open star
-			star = chi_sq.obsSpectrum(filename, paramfilename, i, False, galaxyname, slitmaskname, globular)
+			star = chi_sq.obsSpectrum(filename, paramfilename, i, False, galaxyname, slitmaskname, globular, 'new')
 
 			# Check if star has already had [Mn/H] measured
 			if star.specname in name:
@@ -175,7 +175,7 @@ def make_chisq_plots(filename, paramfilename, galaxyname, slitmaskname, startsta
 				# If so, plot chi-sq contours if error is < 1 dex
 				idx = np.where(name == star.specname)
 				if mnerr[idx][0] < 1:
-					params0 = [[mn[idx][0], dlam[idx][0]],[mnerr[idx][0],dlamerr[idx][0]]]
+					params0 = [mn[idx][0], mnerr[idx][0]]
 					best_mn, error = star.plot_chisq(params0, minimize=False, plots=True, save=True)
 
 		except Exception as e:
@@ -280,7 +280,7 @@ def plot_fits_postfacto(filename, paramfilename, galaxyname, slitmaskname, start
 
 					# Write all plotting data to a file
 					hdr = 'Star '+str(star.specname)+'\n'+'obswvl\tobsflux\tsynthflux\tsynthfluxup\tsynthfluxdown\tsynthflux_nomn\n'
-					np.savetxt(outputname+'/'+str(star.specname)+'_finaldata.csv', (obswvl,obsflux,synthflux,synthfluxup,synthfluxdown,synthflux_nomn), header=hdr)
+					np.savetxt(outputname+'/'+str(star.specname)+'_finaldata.csv', np.asarray((obswvl,obsflux,synthflux,synthfluxup,synthfluxdown,synthflux_nomn)).T, header=hdr)
 
 		except Exception as e:
 			print(repr(e))
