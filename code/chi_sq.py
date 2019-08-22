@@ -105,6 +105,7 @@ class obsSpectrum:
 				#plt.xlim((6553,6573))
 				plt.savefig(self.outputname+'/'+self.specname+'_obsnormalized.png')
 				plt.close()
+				np.savetxt(self.outputname+'/'+self.specname+'_obsnormalized.txt',np.asarray((self.obswvl,self.obsflux_norm)).T)
 
 			if wvlcorr:
 				print('Doing wavelength correction...')
@@ -407,17 +408,20 @@ def main():
 	#test2 = obsSpectrum(filename, paramfilename, 26, True, galaxyname, slitmaskname, False, 'new', plot=True).plot_chisq(-1.50, output=True, plots=False)
 
 	# Code to check hi-res spectra
-	test_hires('B9354', 9, 'n5024','hires', 4733, 1.6694455544153846, -1.8671022414349092, 0.2060026649715580, -0.00022376)
-	test_hires('S16', 3, 'n5024','hires', 4465, 1.1176236470540364, -2.0168930661196254, 0.2276681163556594, -0.0002259)
-	test_hires('S230', 8, 'n5024','hires', 4849, 1.6879225969314575, -1.9910418985188603, 0.23366356933861662, -0.0002172)
-	test_hires('S29', 4, 'n5024','hires', 4542, 1.1664302349090574, -2.0045057512527262, 0.18337140203171015, -0.00023115)
-	test_hires('S32', 5, 'n5024','hires', 4694, 1.3708726167678833, -2.2178865839654534, 0.23014964700722065, -0.00022388)
+	#test_hires('B9354', 9, 'n5024','hires', 4733, 1.6694455544153846, -1.8671022414349092, 0.2060026649715580, -0.00022376)
+	#test_hires('S16', 3, 'n5024','hires', 4465, 1.1176236470540364, -2.0168930661196254, 0.2276681163556594, -0.0002259)
+	#test_hires('S230', 8, 'n5024','hires', 4849, 1.6879225969314575, -1.9910418985188603, 0.23366356933861662, -0.0002172)
+	#test_hires('S29', 4, 'n5024','hires', 4542, 1.1664302349090574, -2.0045057512527262, 0.18337140203171015, -0.00023115)
+	#test_hires('S32', 5, 'n5024','hires', 4694, 1.3708726167678833, -2.2178865839654534, 0.23014964700722065, -0.00022388)
 
 	# Code to test linelist
 	#test = obsSpectrum(filename, paramfilename, 4, True, galaxyname, slitmaskname, True, 'new', plot=True).minimize_scipy(-2.0045057512527262, output=True, plots=True)
 
 	#print('we done')
 	#test = obsSpectrum(filename, 57).plot_chisq(-2.1661300692266998)
+
+	# Get data for single star in Scl
+	obsSpectrum('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', '/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 66, False, 'scl', 'bscl5_1200B', False, 'new', plot=True).minimize_scipy(-1.8616617309640884, output=True)
 
 if __name__ == "__main__":
 	main()

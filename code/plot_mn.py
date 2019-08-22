@@ -440,57 +440,6 @@ def plot_mn_vs_something(filename, quantity, outfile, title, membercheck=None, m
 
 	return
 
-def plot_spectrum(filename, starname, outfile, lines):
-	"""Plot observed spectra.
-
-	Inputs:
-	filename 	-- list of input filename
-	starname 	-- name of star to plot
-	outfile 	-- name of output file
-	lines 		-- Mn lines to mark
-	"""
-
-	print('Opening ', filename)
-	hdu1 = fits.open(filename)
-	data = hdu1[1].data
-
-	namearray = data['OBJNAME']
-	wavearray = data['LAMBDA']
-	fluxarray = data['SPEC']
-	ivararray = data['IVAR']
-	dlamarray = data['DLAM']
-
-	# Get spectrum of a single star
-	nameidx = np.where(namearray == starname)
-	wvl  = wavearray[nameidx][0]
-	flux = fluxarray[nameidx][0]
-	ivar = ivararray[nameidx][0]
-	dlam = dlamarray[nameidx][0]
-
-	print(flux)
-
-	# Make plot
-	fig, ax = plt.subplots(figsize=(12,6))
-	ax.plot(wvl, flux, linestyle='-', color='k', marker='None')
-
-	# Format plot
-	ax.set_title(starname, fontsize=18)
-	ax.set_xlabel('Wavelength (A)', fontsize=16)
-	ax.set_ylabel('Flux', fontsize=16)
-	for label in (ax.get_xticklabels() + ax.get_yticklabels()):
-		label.set_fontsize(14)
-
-	#for i in range(len(lines)):
-	#	plt.axvline(lines[i], color='r', linestyle='--')
-
-	ax.set_ylim(-1,1)
-
-	# Output file
-	plt.savefig(outfile, bbox_inches='tight')
-	plt.show()
-
-	return
-
 def main():
 	# Globular cluster checks
 	# Linelist check using globular cluster

@@ -29,7 +29,7 @@ import matplotlib.patches as mpatches
 from statsmodels.stats.weightstats import DescrStatsW
 import cycler
 
-def fit_mnfe_feh(filenames, mnfe_check, outfile, title, fehia, maxerror=None, gratings=None):
+def fit_mnfe_feh(filenames, mnfe_check, outfile, title, fehia, maxerror=None, gratings=None, nlte=False):
 	"""Use model described in Kirby (in prep.) to determine Type Ia supernova yields for [Mn/H]
 
 	Inputs:
@@ -43,6 +43,7 @@ def fit_mnfe_feh(filenames, mnfe_check, outfile, title, fehia, maxerror=None, gr
 	maxerror 	-- if not None, points with error > maxerror will not be used in computation
 	gratings 	-- if not None, must be list of colors for different input filenames.
 					Plot points from different filenames in different colors.
+	nlte		-- if 'True', apply statistical NLTE correction
 	"""
 
 	#############
@@ -107,9 +108,15 @@ def fit_mnfe_feh(filenames, mnfe_check, outfile, title, fehia, maxerror=None, gr
 			mnfe[i] = mnh[i] - feh[i]
 			mnfeerr[i] = np.sqrt(np.power(feherr[i],2.)+np.power(mnherr[i],2.))
 
+	# Define outliers if necessary
+	outlier = np.where((mnfe > 0.2) & (feh < -2.25))[0]
+	print(name[outlier])
+	notoutlier = np.ones(len(mnfe), dtype='bool')
+	notoutlier[outlier] = False
+
 	# Remove points with error > maxerror
 	if maxerror is not None:
-		goodmask 	= np.where((mnfeerr < maxerror)) # & notoutlier) # & (redchisq < 3.0))
+		goodmask 	= np.where((mnfeerr < maxerror) & notoutlier) # & (redchisq < 3.0))
 		name 	= name[goodmask]
 		feh 	= feh[goodmask]
 		feherr  = feherr[goodmask]
@@ -117,9 +124,10 @@ def fit_mnfe_feh(filenames, mnfe_check, outfile, title, fehia, maxerror=None, gr
 		mnfeerr = mnfeerr[goodmask]
 		colors  = colors[goodmask]
 
-	# Define outliers if necessary
-	outlier = np.where((mnfe > 0.5))[0]
-	print(name[outlier])
+	if nlte:
+		nltecorr = -0.096*feh + 0.173
+		mnfe = mnfe + nltecorr
+		print('NLTE average correction: '+str(np.average(nltecorr)))
 
 	# Get R from Evan's catalog
 	rfile = fits.open('/Users/miadelosreyes/Documents/Research/MnDwarfs/code/data/dsph_data/Evandata/chemev_scl.fits')
@@ -214,7 +222,7 @@ def fit_mnfe_feh(filenames, mnfe_check, outfile, title, fehia, maxerror=None, gr
 
 	# Run MCMC for 11000 steps
 	sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(feh,mnfe,feherr,mnfeerr))
-	sampler.run_mcmc(pos,1e5)
+	sampler.run_mcmc(pos,1e3)
 
 	# Plot walkers
 	fig, ax = plt.subplots(2,1,figsize=(8,8), sharex=True)
@@ -236,7 +244,7 @@ def fit_mnfe_feh(filenames, mnfe_check, outfile, title, fehia, maxerror=None, gr
 	plt.close()
 
 	# Make corner plots
-	samples = sampler.chain[:,10000:, :].reshape((-1, ndim))
+	samples = sampler.chain[:,100:, :].reshape((-1, ndim))
 	cornerfig = corner.corner(samples, labels=[r"$\theta$", r"$b_{\bot}$"],
 								quantiles=[0.16, 0.5, 0.84],
 								show_titles=True, title_kwargs={"fontsize": 12})
@@ -320,6 +328,8 @@ def fit_mnfe_feh(filenames, mnfe_check, outfile, title, fehia, maxerror=None, gr
 
 	else:
 		ax.errorbar(feh, mnfe, markersize=8, color='k', marker='o', linestyle='', capsize=0, zorder=100, xerr=feherr, yerr=mnfeerr)
+		#if nlte:
+		#	ax.errorbar(feh, mnfe_nlte, markersize=8, color='k', marker='o', mfc='None', linestyle='', capsize=0, zorder=100, xerr=feherr, yerr=mnfeerr)
 
 	# Put sample size on plot
 	#ax.text(0.025, 0.9, 'N = '+str(len(name)), transform=ax.transAxes, fontsize=18)
@@ -356,17 +366,23 @@ def fit_mnfe_feh(filenames, mnfe_check, outfile, title, fehia, maxerror=None, gr
 	typeii2, = ax.plot(ax.get_xlim(), mnfe_cc[1]*np.ones(2), color='C9', linestyle='--', linewidth=3, zorder=0)
 
 	# Format plot
-	ax.set_title(title, fontsize=18)
+	#ax.set_title(title, fontsize=18)
 	ax.set_xlabel('[Fe/H]', fontsize=16)
 	ax.set_ylabel('[Mn/Fe]', fontsize=16)
 	for label in (ax.get_xticklabels() + ax.get_yticklabels()):
 		label.set_fontsize(14)
 	ax.tick_params(direction='in', bottom=True, top=True, left=True, right=True)
 	ax.set_xlim([-2.75,-0.75])
+	ax.set_ylim([-1.2,1.6])
 
 	# Make legend
+	title = 'N = '+str(len(name))
+	if nlte:
+		title += ', 1D NLTE'
+	else:
+		title += ', 1D LTE'
 	leg = plt.legend([(bestfit1, bestfit2), (typeia1, typeia2), (typeii1, typeii2)], ["Best fit model", "Type Ia yield", "Core-collapse yield"], 
-						fancybox=True, framealpha=0.5, loc='best', title='N = '+str(len(name)))
+						fancybox=True, framealpha=0.5, loc='best', title=title)
 	for text in leg.get_texts():
 		plt.setp(text, color='k', fontsize=12)
 	plt.setp(leg.get_title(), fontsize=14)
@@ -418,17 +434,17 @@ def compare_mnfe(outfile):
 	# Make plot
 	ax = plt.subplot(1,1,1)
 	setup(ax)
-	ax.xaxis.set_major_locator(ticker.AutoLocator())
-	ax.xaxis.set_minor_locator(ticker.AutoMinorLocator())
+	#ax.xaxis.set_major_locator(ticker.AutoLocator())
+	#ax.xaxis.set_minor_locator(ticker.AutoMinorLocator())
 	#ax.text(0.0, 0.1, "AutoLocator()", fontsize=14, transform=ax.transAxes)
-	ax.set_xlabel(r'$\mathrm{[Mn/Fe]}_{\mathrm{Ia}}$', fontsize=18)
+	ax.set_xlabel(r'$\mathrm{[Mn/Fe]}_{\mathrm{Ia}}$', fontsize=20)
 
 	dy = 0.02 # distance between lines
 
 	# Plot observed [Mn/Fe]
 	#ax.errorbar(-0.28, 8, xerr=0.03, color='k', marker='o', linestyle='', markersize=8, zorder=100)
 	ax.axvspan(xmin = -0.28 - 0.03, xmax = -0.28 + 0.03, color='gray', alpha=0.5)
-	ax.text(-0.28 - 0.11, 6.5, 'This work', rotation = 90, fontsize=18)
+	ax.text(-0.28 - 0.13, 6.5, 'This work', rotation = 90, fontsize=18)
 
 	# Plot models
 	
@@ -492,9 +508,20 @@ def compare_mnfe(outfile):
 	ax.axvspan(-1.52, -0.68, color='#547980', hatch='//', alpha=0.5, label='Sub(S18)')
 	'''
 
+	# Line separating near vs sub Mch models
+	ax.axhline(3.5, color='k', linestyle='--')
+	ax.text(-1.5,3.5+0.1,r'Near-$M_{\mathrm{Ch}}$', fontsize=18)
+	ax.text(-1.5,3.5-0.4,r'Sub-$M_{\mathrm{Ch}}$', fontsize=18)
+
+	# NLTE arrow
+	plt.arrow(-0.28 + 0.03, 6, 0.28, 0, head_width=0.1, head_length=0.05, color='gray')
+	ax.text(-0.28 + 0.05, 6.1, 'NLTE?', fontsize=16, color='gray')
+
 	# Format plot
-	for label in (ax.get_xticklabels() + ax.get_yticklabels()):
+	for label in (ax.get_xticklabels()):
 		label.set_fontsize(16)
+	for label in (ax.get_yticklabels()):
+		label.set_fontsize(18)
 	ax.tick_params(direction='in', bottom=True, top=True, left=False, right=False)
 
 	# Output file
@@ -507,13 +534,14 @@ def main():
 
 	# Plot for Sculptor
 	#fit_mnfe_feh(['data/bscl5_1200B_final3.csv'],[False],'figures/scl_fit3', 'Sculptor dSph', fehia=-2.12, maxerror=0.3, gratings=['#594F4F'])
+	#fit_mnfe_feh(['data/bscl5_1200B_final3.csv'],[False],'figures/scl_fit3_nlte', 'Sculptor dSph', fehia=-2.12, maxerror=0.3, gratings=['#594F4F'], nlte=True)
 	#fit_mnfe_feh(['data/bscl5_1200B_final3.csv','data/hires_data_final/scl/north12_final.csv'],[False,True],'figures/scl_fit_total', 'Sculptor dSph', fehia=-2.34, maxerror=0.3, gratings=['#594F4F','#B0B0B0'])
 
 	# Plot for Ursa Minor
-	#fit_mnfe_feh(['data/bumia_1200B_final3.csv'],[False],'figures/umi_fit3', 'Ursa Minor dSph', fehia=-2.42, maxerror=0.3, gratings=['#594F4F'])
+	fit_mnfe_feh(['data/bumia_1200B_final3.csv'],[False],'figures/umi_fit3', 'Ursa Minor dSph', fehia=-2.42, maxerror=0.3, gratings=['#594F4F'])
 
 	# Plot [Mn/Fe] values on number line
-	compare_mnfe('figures/scl_mnfe_comparison.pdf')
+	#compare_mnfe('figures/scl_mnfe_comparison.pdf')
 
 	return
 

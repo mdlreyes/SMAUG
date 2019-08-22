@@ -27,8 +27,9 @@ from matplotlib.ticker import NullFormatter
 from statsmodels.stats.weightstats import DescrStatsW
 from matplotlib.lines import Line2D
 import cycler
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes, mark_inset
 
-def gc_mnfe_feh(filenames, outfile, title=None, gratings=None, gratingnames=None, maxerror=None, membercheck=False, solar=False):
+def gc_mnfe_feh(filenames, outfile, title=None, gratings=None, gratingnames=None, maxerror=None, membercheck=False, solar=False, diffx=None, regression=False, nlte=False):
 	"""Plot [Mn/Fe] vs [Fe/H] for all the stars in a set of files (designed for globular clusters).
 
 	Inputs:
@@ -42,6 +43,9 @@ def gc_mnfe_feh(filenames, outfile, title=None, gratings=None, gratingnames=None
 	maxerror 	-- if not None, points with error > maxerror will not be plotted
 	membercheck -- if 'True', check GCs for membership
 	solar 		-- if 'True', plot line marking solar abundance
+	diffx 		-- if not None, plot a different parameter instead of [Fe/H] on the x-axis
+	regression 	-- if not 'False', do simple weighted linear regression to each file
+	nlte 		-- if not 'False', apply statistical NLTE correction
 	"""
 
 	# Create figure
@@ -60,7 +64,6 @@ def gc_mnfe_feh(filenames, outfile, title=None, gratings=None, gratingnames=None
 		data = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=[5,6,8,9,10])
 		feh 	= data[:,0]
 		feherr 	= data[:,1]
-		#feherr 	= np.ones(len(feh)) * 0.1
 		mnh 	= data[:,2]
 		mnherr 	= data[:,3]
 		redchisq = data[:,4]
@@ -68,6 +71,18 @@ def gc_mnfe_feh(filenames, outfile, title=None, gratings=None, gratingnames=None
 		# Compute [Mn/Fe]
 		mnfe = mnh - feh
 		mnfeerr = mnherr #np.sqrt(np.power(feherr,2.)+np.power(mnherr,2.))
+
+		# Add NLTE corrections if needed
+		if nlte:
+			nltecorr = -0.096*feh + 0.173
+			mnfe = mnfe + nltecorr
+
+		# Change x-axis quantity if needed
+		xlabel='[Fe/H]'
+		if diffx == 'Teff':
+			feh = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=3)
+			feherr = np.zeros(len(feh))
+			xlabel=r'$T_{\mathrm{eff}}$'
 
 		# Remove points with error > maxerror
 		if maxerror is not None:
@@ -103,18 +118,43 @@ def gc_mnfe_feh(filenames, outfile, title=None, gratings=None, gratingnames=None
 			mnfe = mnfe_new
 			mnfeerr = mnfeerr_new
 
+		if regression:
+			'''
+			# Start by defining log likelihood function
+			def lnlike(params, x, y, xerr, yerr):
+				theta, bperp = params
+
+				delta = np.asarray(y)*np.cos(theta) - np.asarray(x)*np.sin(theta) - bperp
+				sigma = np.sqrt(np.asarray(yerr)**2. * np.cos(theta)**2. + np.asarray(xerr)**2. * np.sin(theta)**2.)
+
+				L = np.sum( (-1.*np.log(np.sqrt(2.*np.pi)*sigma) - (np.power(delta,2.))/(2*np.power(sigma,2.))) )
+
+				return L
+
+			# Basic max-likelihood fit
+			nll = lambda *args: -lnlike(*args)
+			result = op.minimize(nll, [0., 0.], args=(feh, mnfe, feherr, mnfeerr))
+			theta_init, b_init = result["x"]
+			print(theta_init, b_init)
+
+			xlim = np.array([4100,5500])
+			ax.plot(xlim, xlim*np.tan(theta_init) + b_init/(np.cos(theta_init)), color=edges[i], marker='None', linestyle='-')
+			'''
+			extralabel = r'$R^{2}$='+'{:0.2f}'.format(np.corrcoef(feh,mnfe)[0,1])
+			print(extralabel)
+
 		# Plot solar abundance
 		#if solar:
 		#	ax.axhline(0, color='r', linestyle=':')
 
 		# Make plot
-		ax.errorbar(feh, mnfe, yerr=mnfeerr, xerr=feherr, markerfacecolor=colors[i], markeredgecolor=edges[i], ecolor=edges[i], marker=markers[i], markersize=8, linestyle='', capsize=3, label=gratingnames[i]+' (N='+str(len(feh))+')')
+		ax.errorbar(feh, mnfe, yerr=mnfeerr, xerr=feherr, markerfacecolor=colors[i], markeredgecolor=edges[i], ecolor=edges[i], marker=markers[i], markersize=8, linestyle='', label=gratingnames[i]+' (N='+str(len(feh))+')')
 		#ax.text(0.025, 0.9, 'N = '+str(len(name)), transform=ax.transAxes, fontsize=14)
 
 	# Format plot
 	if title is not None:
 		ax.set_title(title, fontsize=20)
-	ax.set_xlabel('[Fe/H]', fontsize=20)
+	ax.set_xlabel(xlabel, fontsize=20)
 	ax.set_ylabel('[Mn/Fe]', fontsize=20)
 	for label in (ax.get_xticklabels() + ax.get_yticklabels()):
 		label.set_fontsize(18)
@@ -214,7 +254,12 @@ def plot_hist(files, labels, quantity, outfile, membercheck=None, memberlist=Non
 
 		elif quantity=='temp':
 			x = data['Temp']
-			xlabel = r'$T_{eff}$' + ' (K)'
+			xlabel = r'$T_{\mathrm{eff}}$' + ' (K)'
+
+			mask = np.where((data['[Fe/H]'] > -1.2) & (data['[Fe/H]'] < -1.0))[0]
+			x = np.asarray(x)[mask]
+
+			ax.axvline(np.average(x), color=edges[i])
 
 		elif quantity=='feh':
 			x = data['[Fe/H]']
@@ -399,7 +444,7 @@ def plot_hires_comparison(filenames, objnames, glob, offset, sigmasys=True):
 
 	return
 
-def plot_mn_fe(filenames, outfile, title, gratings=None, maxerror=None, snr=None, solar=False, typeii=True, typei=True, averages=False, n=4):
+def plot_mn_fe(filenames, outfile, title, gratings=None, maxerror=None, xlim=None, ylim=None, snr=None, solar=False, typeii=True, typei=True, averages=False, n=4):
 	"""Plot [Mn/Fe] vs [Fe/H] for all the stars in a set of files.
 
 	Inputs:
@@ -410,6 +455,7 @@ def plot_mn_fe(filenames, outfile, title, gratings=None, maxerror=None, snr=None
 	Keywords:
 	gratings 	-- if not None, list of names for different files
 	maxerror 	-- if not None, points with error > maxerror will not be plotted
+	xlim, ylim 	-- if not None, points outside limits will not be plotted
 	solar 		-- if 'True', plot line marking solar abundance
 	typeii 		-- if 'True', plot theoretical Type II yield
 	typei 		-- if 'True', plot theoretical Type II yields
@@ -485,6 +531,23 @@ def plot_mn_fe(filenames, outfile, title, gratings=None, maxerror=None, snr=None
 			mnfe 	= mnfe[mask]
 			mnfeerr = mnfeerr[mask]
 
+		# Remove outlier points
+		if xlim is not None:
+			mask = np.where((feh > xlim[0]) & (feh < xlim[1]))[0]
+			name 	= name[mask]
+			feh 	= feh[mask]
+			feherr  = feherr[mask]
+			mnfe 	= mnfe[mask]
+			mnfeerr = mnfeerr[mask]
+
+		if ylim is not None:
+			mask = np.where((mnfe > ylim[0]) & (mnfe < ylim[1]))[0]
+			name 	= name[mask]
+			feh 	= feh[mask]
+			feherr  = feherr[mask]
+			mnfe 	= mnfe[mask]
+			mnfeerr = mnfeerr[mask]
+
 		# Testing: Label some stuff
 		outlier = np.where(mnfe > 1)[0]
 		#print(name[outlier])
@@ -508,7 +571,7 @@ def plot_mn_fe(filenames, outfile, title, gratings=None, maxerror=None, snr=None
 				mnfeerr_matched = mnfeerr[bin_match]
 
 				# Check if there's anything in bin
-				if len(bin_match) > 0:
+				if len(bin_match) > 1:
 					weights = 1./np.power(mnfeerr_matched,2.)
 					binerror = np.sqrt(np.sum(np.power(mnfeerr_matched,2.)))/len(mnfeerr_matched)
 
@@ -539,7 +602,100 @@ def plot_mn_fe(filenames, outfile, title, gratings=None, maxerror=None, snr=None
 
 	return
 
+def plot_spectrum(file_full, file_ivar, file_nomn, file_chisq, outfile):
+	"""Plot observed spectra.
+
+	Inputs:
+	file_full 	-- input filename with entire observed spectrum
+	file_ivar 	-- input filename with ivar data
+	file_nomn 	-- input filename with example spectrum without any Mn ([Mn/H] = -10.)
+	file_chisq 	-- input filename with chisq data
+	outfile 	-- name of output file
+	"""
+
+	# Set up plot
+	fig, ax = plt.subplots(figsize=(12,4))
+
+	# Make main plot with entire observed spectrum
+	full = np.genfromtxt(file_full)
+	ax.plot(full[:,0], full[:,1], linestyle='-', color='k', marker='None')
+
+	ax.set_xlabel(r'Wavelength (\AA)', fontsize=16)
+	ax.set_ylabel('Normalized Flux', fontsize=16)
+	for label in (ax.get_xticklabels() + ax.get_yticklabels()):
+		label.set_fontsize(14)
+
+	linelist = np.array([4739.1, 4754.0, 4761.9, 4765.8, 4783.4, 
+						 4823.5, 5407.3, 5420.3, 5516.8, 5537.7, 
+						 6013.3, 6016.6, 6021.8, 6384.7, 6491.7])
+	linewidth = np.array([1.,1.,1.5,1.,1.,
+						  1.,1.,1.,1.,1.,
+						  1.,1.,1.,1.,1.])
+	for i in range(len(linelist)):
+		ax.axvspan(linelist[i] - linewidth[i], linelist[i] + linewidth[i], color='green', zorder=100, alpha=0.5)
+
+	ax.set_ylim(0.25,1.5)
+	ax.set_xlim(4700,6500)
+
+	# Create zoom inset outside the main axes
+	axins = inset_axes(ax, width="100%", height="100%",
+                   bbox_to_anchor=(0., -1.2, 1.5, 1.0),
+                   bbox_transform=ax.transAxes, loc=2, borderpad=0)
+	axins.set_xlabel(r'Wavelength (\AA)', fontsize=16)
+	axins.set_ylabel('Normalized Flux', fontsize=16)
+	for label in (axins.get_xticklabels() + axins.get_yticklabels()):
+		label.set_fontsize(14)
+
+	for i in range(len(linelist)):
+		axins.axvspan(linelist[i] - linewidth[i], linelist[i] + linewidth[i], color='green', zorder=0, alpha=0.25)
+
+	nomn = np.genfromtxt(file_nomn, skip_header=3)
+	ivar = np.genfromtxt(file_ivar, usecols=5, skip_header=2, delimiter=',')
+	axins.errorbar(nomn[:,0], nomn[:,1], yerr=1./np.sqrt(ivar), marker='.', color='k', linestyle='None', label='Observed spectrum')
+	axins.plot(nomn[:,0],nomn[:,5], color='b', linestyle='-', label='No Mn')
+	axins.fill_between(nomn[:,0], nomn[:,3], nomn[:,4], color='r', alpha=0.5, label=r'$\mathrm{[Mn/Fe]}=-0.33\pm0.15$')
+	axins.plot(nomn[:,0],nomn[:,2], color='r', linestyle='--')
+
+	axins.set_xlim(4730, 4790)
+	axins.set_ylim(0.82,1.10)
+	mark_inset(ax, axins, loc1=2, loc2=1, fc="none", ec="0.5", linestyle='-')
+
+	axins.spines['bottom'].set_color('0.5')
+	axins.spines['top'].set_color('0.5')
+	axins.spines['right'].set_color('0.5')
+	axins.spines['left'].set_color('0.5')
+	#axins.tick_params(axis='x', colors='red')
+	#axins.tick_params(axis='y', colors='red')
+
+	axins.legend(loc='upper left', fontsize=14)
+
+	# Add additional panel for the chi-sq plot
+	# Create zoom inset outside the main axes
+	axins2 = inset_axes(ax, width="100%", height="100%",
+                   bbox_to_anchor=(1.12, 0., 0.38, 1.0),
+                   bbox_transform=ax.transAxes, loc=2, borderpad=0)
+	axins2.set_xlabel(r'[Mn/Fe]', fontsize=16)
+	axins2.set_ylabel(r'$\chi^{2}_{\mathrm{reduced}}$', fontsize=16)
+	for label in (axins2.get_xticklabels() + axins2.get_yticklabels()):
+		label.set_fontsize(14)
+
+	chisq = np.genfromtxt(file_chisq, skip_header=1)
+	axins2.plot(chisq[:,0], chisq[:,1], marker='o', linestyle='-', color='purple')
+	axins2.axvline(-0.33, color='r', linestyle='--', linewidth=2)
+	axins2.axvspan(-0.33 + 0.15, -0.33 - 0.15, color='r', alpha=0.3)
+
+	# Output file
+	plt.savefig(outfile, bbox_inches='tight')
+	plt.show()
+
+	# Make reduced chi-sq plot
+
+	return
+
 def main():
+	# Example spectrum
+	#plot_spectrum(file_full='data/samplespec/1011721_obsnormalized.txt', file_ivar='data/samplespec/1011721_data.csv', file_nomn='data/samplespec/1011721_finaldata.csv', file_chisq='data/samplespec/1011721_redchisq.txt', outfile='figures/samplespec.pdf')
+
 	# GC checks
 	#gc_mnfe_feh(['data/7089l1_1200B_final.csv','data/7078l1_1200B_final.csv','data/n5024b_1200B_final.csv'], 'figures/gc_checks/GCs_mnfe_feh.pdf', gratingnames=['M2', 'M15', 'M53'], maxerror=0.3, membercheck=True, solar=True)
 	#plot_hist(['data/7089l1_1200B_final.csv','data/7078l1_1200B_final.csv','data/n5024b_1200B_final.csv'], ['M2: '+r'$\,\,\,\sigma_{\mathrm{sys}}=0.19$','M15: '+r'$\sigma_{\mathrm{sys}}=0.06$','M53: '+r'$\sigma_{\mathrm{sys}}=0.05$'], 'error', 'figures/gc_checks/errorhist.pdf', membercheck=['M2','M15','M53'], memberlist='data/gc_checks/table_catalog.dat', maxerror=0.3, sigmasys=[0.20,0.06,0.05])
@@ -554,8 +710,13 @@ def main():
 	# dSph plots without chem evolution model
 	#plot_mn_fe(['data/bscl5_1200B_final3.csv','data/LeoIb_1200B_final3.csv','data/bfor7_1200B_final3.csv','data/CVnIa_1200B_final3.csv','data/UMaIIb_1200B_final3.csv','data/bumia_1200B_final3.csv'], 'figures/other_dsphs.pdf', None, gratings=['Sculptor','Leo I','Fornax','Canes Venatici I','Ursa Major II','Ursa Minor'], maxerror=0.3, snr=None, solar=False, typeii=False, typei=False, n=6)
 	#plot_mn_fe(['data/bscl5_1200B_final3.csv','data/CVnIa_1200B_final3.csv','data/UMaIIb_1200B_final3.csv','data/bumia_1200B_final3.csv'], 'figures/other_dsphs_test.pdf', None, gratings=['Sculptor','Canes Venatici I','Ursa Major II','Ursa Minor'], maxerror=0.3, snr=None, solar=False, typeii=False, typei=False)
-	#plot_mn_fe(['data/bscl5_1200B_final3.csv','data/LeoIb_1200B_final3.csv','data/bfor7_1200B_final3.csv'], 'figures/other_dsphs_zoom.pdf', None, gratings=['Sculptor','Leo I','Fornax'], maxerror=0.2, snr=None, solar=False, typeii=False, typei=False, averages=True)
+	#plot_mn_fe(['data/bscl5_1200B_final3.csv','data/LeoIb_1200B_final3.csv','data/bfor7_1200B_final3.csv'], 'figures/other_dsphs_zoom_test.pdf', None, gratings=['Sculptor','Leo I','Fornax'], maxerror=0.3, snr=None, solar=False, typeii=False, typei=False, averages=True, xlim=[-2.50,-0.50], ylim=[-1.0,0.75])
 
+	# NLTE checks
+	#gc_mnfe_feh(['data/7089l1_1200B_final.csv','data/7078l1_1200B_final.csv','data/n5024b_1200B_final.csv'], 'figures/gc_checks/GCs_mnfe_feh_nlte.pdf', gratingnames=['M2', 'M15', 'M53'], maxerror=0.3, membercheck=True, solar=True, nlte=True)
+	#gc_mnfe_feh(['data/7089l1_1200B_final.csv','data/7078l1_1200B_final.csv','data/n5024b_1200B_final.csv'], 'figures/gc_checks/GCs_mnfe_teff.pdf', gratingnames=['M2', 'M15', 'M53'], maxerror=0.3, membercheck=True, solar=True, diffx='Teff')
+	#gc_mnfe_feh(['data/7089l1_1200B_final.csv','data/7078l1_1200B_final.csv','data/n5024b_1200B_final.csv'], 'figures/gc_checks/GCs_mnfe_teff_nlte.pdf', gratingnames=['M2', 'M15', 'M53'], maxerror=0.3, membercheck=True, solar=True, diffx='Teff', nlte=True)
+	plot_hist(['data/bscl5_1200B_final3.csv','data/LeoIb_1200B_final3.csv','data/bfor7_1200B_final3.csv'], ['Scl', 'LeoI', 'For'], 'temp', 'figures/nltecheck_dsphtemp.png')
 
 if __name__ == "__main__":
 	main()
