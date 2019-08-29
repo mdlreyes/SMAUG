@@ -88,7 +88,8 @@ def north_etal_12(coordfile, datafile1, datafile2, outfile, scl=True):
 
 				# Average all of the [Mn/Fe] to get a final abundance
 				mnfe = np.average([mnfe5407, mnfe5420, mnfe5516], weights=[1./(mnfeerr5407**2.),1./(mnfeerr5420**2.),1./(mnfeerr5516**2.)])
-				mnfeerr = 1./np.sqrt((1./mnfeerr5407)**2. + (1./mnfeerr5420)**2. + (1./mnfeerr5516)**2.)
+				#mnfeerr = 1./np.sqrt((1./mnfeerr5407)**2. + (1./mnfeerr5420)**2. + (1./mnfeerr5516)**2.)
+				mnfeerr = np.sqrt(mnfeerr5407**2. + mnfeerr5420**2. + mnfeerr5516**2.)/3.
 
 				# Get coordinates
 				starra = coorddata['RA'][i]
@@ -568,7 +569,7 @@ def match_hires(hiresfilelist, sourcelist, obsfile, outputname):
 
 def main():
 	# Sculptor
-	#north_etal_12('data/hires_data/scl/scl_north_sample.coord','data/hires_data/scl/Sculptor_north_tab1.tsv','data/hires_data/scl/Sculptor_north_tab2.tsv','scl/north12_final.csv')
+	north_etal_12('data/hires_data/scl/scl_north_sample.coord','data/hires_data/scl/Sculptor_north_tab1.tsv','data/hires_data/scl/Sculptor_north_tab2.tsv','scl/north12_final.csv')
 	#for file in ['shetrone03','geisler05','jablonka15','simon15','tafelmeyer10','skuladottir15']:
 	#	saga_hires('data/hires_data/'+file+'.csv','scl/'+file+'_final.csv')
 
@@ -615,19 +616,19 @@ def main():
 	#match_hires(hiresfilelist=['data/hires_data_final/GCs/M53_apogee_final.csv','data/hires_data_final/GCs/M53_lamb_final.csv'], sourcelist=['APOGEE', 'Lamb et al. (2014)'], obsfile='data/n5024b_1200B_final.csv', outputname='data/hires_data_final/GCs/M53_matched.csv')
 
 	# Match hi-res files for Sculptor
-	#files = ['north12','geisler05','jablonka15','shetrone03','simon15','skuladottir15','tafelmeyer10']
-	#names = ['North+12','Geiser+05','Jablonka+15','Shetrone+03','Simon+15','Skuladottir+15','Tafelmeyer+10']
-	#for i in range(len(files)):
-	#	match_hires(hiresfilelist=['data/hires_data_final/scl/'+files[i]+'_final.csv'], sourcelist=[names[i]], obsfile='data/bscl5_1200B_final3.csv', outputname='data/hires_data_final/scl/'+files[i]+'_matched.csv')
+	files = ['north12','geisler05','jablonka15','shetrone03','simon15','skuladottir15','tafelmeyer10']
+	names = ['North+12','Geiser+05','Jablonka+15','Shetrone+03','Simon+15','Skuladottir+15','Tafelmeyer+10']
+	for i in range(len(files)):
+		match_hires(hiresfilelist=['data/hires_data_final/scl/'+files[i]+'_final.csv'], sourcelist=[names[i]], obsfile='data/bscl5_1200B_final3.csv', outputname='data/hires_data_final/scl/'+files[i]+'_matched.csv')
 
 	# Match hi-res files for Fornax
-	files = ['north12','shetrone03','tafelmeyer10']
-	names = ['North+12','Shetrone+03','Tafelmeyer+10']
-	for i in range(len(files)):
-		match_hires(hiresfilelist=['data/hires_data_final/for/'+files[i]+'_final.csv'], sourcelist=[names[i]], obsfile='data/bfor7_1200B_final3.csv', outputname='data/hires_data_final/for/'+files[i]+'_matched.csv')
+	#files = ['north12','shetrone03','tafelmeyer10']
+	#names = ['North+12','Shetrone+03','Tafelmeyer+10']
+	#for i in range(len(files)):
+	#	match_hires(hiresfilelist=['data/hires_data_final/for/'+files[i]+'_final.csv'], sourcelist=[names[i]], obsfile='data/bfor7_1200B_final3.csv', outputname='data/hires_data_final/for/'+files[i]+'_matched.csv')
 
 	# Match hi-res files for Leo I
-	match_hires(hiresfilelist=['data/hires_data_final/leoi/shetrone03_final.csv'], sourcelist=['Shetrone+03'], obsfile='data/LeoIb_1200B_final3.csv', outputname='data/hires_data_final/leoi/shetrone03_matched.csv')
+	#match_hires(hiresfilelist=['data/hires_data_final/leoi/shetrone03_final.csv'], sourcelist=['Shetrone+03'], obsfile='data/LeoIb_1200B_final3.csv', outputname='data/hires_data_final/leoi/shetrone03_matched.csv')
 
 	# Match hi-res files for Ursa Major II
 	#match_hires(hiresfilelist=['data/hires_data_final/umaii/frebel10_final.csv'], sourcelist=['Frebel+10'], obsfile='data/UMaIIb_1200B_final3.csv', outputname='data/hires_data_final/umaii/frebel10_matched.csv')

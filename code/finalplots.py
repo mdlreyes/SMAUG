@@ -477,7 +477,7 @@ def plot_mn_fe(filenames, outfile, title, gratings=None, maxerror=None, xlim=Non
 	cwheel = [np.array(mpl.rcParams['axes.prop_cycle'])[x]['color'] for x in range(n)]
 
 	# Create figure
-	fig, ax = plt.subplots(figsize=(10,5))
+	fig, ax = plt.subplots(figsize=(10,8))
 
 	# Plot other lines
 	if typeii:
@@ -587,10 +587,10 @@ def plot_mn_fe(filenames, outfile, title, gratings=None, maxerror=None, xlim=Non
 
 	# Format plot
 	ax.set_title(title, fontsize=18)
-	ax.set_xlabel('[Fe/H]', fontsize=16)
-	ax.set_ylabel('[Mn/Fe]', fontsize=16)
+	ax.set_xlabel('[Fe/H]', fontsize=24)
+	ax.set_ylabel('[Mn/Fe]', fontsize=24)
 	for label in (ax.get_xticklabels() + ax.get_yticklabels()):
-		label.set_fontsize(14)
+		label.set_fontsize(18)
 
 	#ax.set_xlim([-3,-0.75])
 	#ax.set_ylim([-2,2])
@@ -708,15 +708,15 @@ def main():
 	#plot_hires_comparison(['data/hires_data_final/GCs/M2_matched.csv', 'data/hires_data_final/GCs/M15_matched.csv', 'data/hires_data_final/north12_matched_total.csv', 'data/hires_data_final/shetrone03_matched_total.csv', 'data/hires_data_final/frebel10_matched.csv'], objnames=['M2', 'M15', 'Scl/For', 'For/LeoI', 'UMaII'], glob=[True, True, False, False, False], offset=[0.,5.43-5.39,5.43-5.39,(5.43-5.39)-(7.50-7.52), 0.])
 
 	# dSph plots without chem evolution model
-	#plot_mn_fe(['data/bscl5_1200B_final3.csv','data/LeoIb_1200B_final3.csv','data/bfor7_1200B_final3.csv','data/CVnIa_1200B_final3.csv','data/UMaIIb_1200B_final3.csv','data/bumia_1200B_final3.csv'], 'figures/other_dsphs.pdf', None, gratings=['Sculptor','Leo I','Fornax','Canes Venatici I','Ursa Major II','Ursa Minor'], maxerror=0.3, snr=None, solar=False, typeii=False, typei=False, n=6)
+	plot_mn_fe(['data/bscl5_1200B_final3.csv','data/LeoIb_1200B_final3.csv','data/bfor7_1200B_final3.csv','data/CVnIa_1200B_final3.csv','data/UMaIIb_1200B_final3.csv','data/bumia_1200B_final3.csv'], 'figures/other_dsphs.pdf', None, gratings=['Sculptor','Leo I','Fornax','Canes Venatici I','Ursa Major II','Ursa Minor'], maxerror=0.3, snr=None, solar=False, typeii=False, typei=False, n=6)
 	#plot_mn_fe(['data/bscl5_1200B_final3.csv','data/CVnIa_1200B_final3.csv','data/UMaIIb_1200B_final3.csv','data/bumia_1200B_final3.csv'], 'figures/other_dsphs_test.pdf', None, gratings=['Sculptor','Canes Venatici I','Ursa Major II','Ursa Minor'], maxerror=0.3, snr=None, solar=False, typeii=False, typei=False)
-	#plot_mn_fe(['data/bscl5_1200B_final3.csv','data/LeoIb_1200B_final3.csv','data/bfor7_1200B_final3.csv'], 'figures/other_dsphs_zoom_test.pdf', None, gratings=['Sculptor','Leo I','Fornax'], maxerror=0.3, snr=None, solar=False, typeii=False, typei=False, averages=True, xlim=[-2.50,-0.50], ylim=[-1.0,0.75])
+	plot_mn_fe(['data/bscl5_1200B_final3.csv','data/LeoIb_1200B_final3.csv','data/bfor7_1200B_final3.csv'], 'figures/other_dsphs_zoom_test.pdf', None, gratings=['Sculptor','Leo I','Fornax'], maxerror=0.3, snr=None, solar=False, typeii=False, typei=False, averages=True, xlim=[-2.50,-0.50], ylim=[-1.0,0.75])
 
 	# NLTE checks
 	#gc_mnfe_feh(['data/7089l1_1200B_final.csv','data/7078l1_1200B_final.csv','data/n5024b_1200B_final.csv'], 'figures/gc_checks/GCs_mnfe_feh_nlte.pdf', gratingnames=['M2', 'M15', 'M53'], maxerror=0.3, membercheck=True, solar=True, nlte=True)
 	#gc_mnfe_feh(['data/7089l1_1200B_final.csv','data/7078l1_1200B_final.csv','data/n5024b_1200B_final.csv'], 'figures/gc_checks/GCs_mnfe_teff.pdf', gratingnames=['M2', 'M15', 'M53'], maxerror=0.3, membercheck=True, solar=True, diffx='Teff')
 	#gc_mnfe_feh(['data/7089l1_1200B_final.csv','data/7078l1_1200B_final.csv','data/n5024b_1200B_final.csv'], 'figures/gc_checks/GCs_mnfe_teff_nlte.pdf', gratingnames=['M2', 'M15', 'M53'], maxerror=0.3, membercheck=True, solar=True, diffx='Teff', nlte=True)
-	plot_hist(['data/bscl5_1200B_final3.csv','data/LeoIb_1200B_final3.csv','data/bfor7_1200B_final3.csv'], ['Scl', 'LeoI', 'For'], 'temp', 'figures/nltecheck_dsphtemp.png')
+	#plot_hist(['data/bscl5_1200B_final3.csv','data/LeoIb_1200B_final3.csv','data/bfor7_1200B_final3.csv'], ['Scl', 'LeoI', 'For'], 'temp', 'figures/nltecheck_dsphtemp.png')
 
 if __name__ == "__main__":
 	main()

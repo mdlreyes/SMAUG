@@ -23,17 +23,17 @@ import corner
 import scipy.optimize as op
 import math
 from astropy.io import fits, ascii
-import pandas
+import pandas as pd 
 import matplotlib.ticker as ticker
 import matplotlib.patches as mpatches
 from statsmodels.stats.weightstats import DescrStatsW
 import cycler
 
-def fit_mnfe_feh(filenames, mnfe_check, outfile, title, fehia, maxerror=None, gratings=None, nlte=False):
+def fit_mnfe_feh(file, mnfe_check, outfile, title, fehia, maxerror=None, nlte=False, bestfit=False, sne=False, literature=None, ia_comparison=False):
 	"""Use model described in Kirby (in prep.) to determine Type Ia supernova yields for [Mn/H]
 
 	Inputs:
-	filename 	-- list of input filenames
+	file 		-- input filenames
 	mnfe_check 	-- list of bools indicating whether input file includes [Mn/Fe] (True) or [Mn/H] (False)
 	outfile 	-- name of output file
 	title 		-- title of graph
@@ -41,9 +41,9 @@ def fit_mnfe_feh(filenames, mnfe_check, outfile, title, fehia, maxerror=None, gr
 
 	Keywords:
 	maxerror 	-- if not None, points with error > maxerror will not be used in computation
-	gratings 	-- if not None, must be list of colors for different input filenames.
-					Plot points from different filenames in different colors.
 	nlte		-- if 'True', apply statistical NLTE correction
+	bestfit, sne, ia_comparison -- if 'True', plot best-fit model / SNe yields / Z-dep Type Ia models
+	literature  -- if not None, must be list of files with data that can be overplotted
 	"""
 
 	#############
@@ -56,45 +56,18 @@ def fit_mnfe_feh(filenames, mnfe_check, outfile, title, fehia, maxerror=None, gr
 	feherr 	= []
 	mnh 	= []
 	mnherr	= []
-	colors  = []
 	redchisq = []
 	mnfeflag = []
 
-	for i in range(len(filenames)):
+	name 	= np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=0, dtype='str')
 
-		file = filenames[i]
-		current_name 	= np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=0, dtype='str')
-
-		data = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=[5,6,8,9,10])
-		current_feh 	= data[:,0]
-		current_feherr 	= data[:,1]
-		current_mnh 	= data[:,2]
-		current_mnherr 	= data[:,3]
-		current_redchisq = data[:,4]
-		current_mnfeflag = len(current_feh) * [mnfe_check[i]]
-
-		# Append to total data arrays
-		name.append(current_name)
-		feh.append(current_feh)
-		feherr.append(current_feherr)
-		mnh.append(current_mnh)
-		mnherr.append(current_mnherr)
-		redchisq.append(current_redchisq)
-		mnfeflag.append(current_mnfeflag)
-
-		if gratings is not None:
-			current_grating = len(current_feh) * [gratings[i]]
-			colors.append(current_grating)
-
-	# Convert back to numpy arrays
-	name 	= np.hstack(name)
-	feh 	= np.hstack(feh)
-	feherr 	= np.hstack(feherr)
-	mnh 	= np.hstack(mnh)
-	mnherr  = np.hstack(mnherr)
-	colors  = np.hstack(colors)
-	redchisq = np.hstack(redchisq)
-	mnfeflag = np.hstack(mnfeflag)
+	data = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=[5,6,8,9,10])
+	feh 	= data[:,0]
+	feherr 	= data[:,1]
+	mnh 	= data[:,2]
+	mnherr 	= data[:,3]
+	redchisq = data[:,4]
+	mnfeflag = len(feh) * [mnfe_check]
 
 	# Compute [Mn/Fe]
 	mnfe = np.zeros(len(mnh))
@@ -109,23 +82,25 @@ def fit_mnfe_feh(filenames, mnfe_check, outfile, title, fehia, maxerror=None, gr
 			mnfeerr[i] = np.sqrt(np.power(feherr[i],2.)+np.power(mnherr[i],2.))
 
 	# Define outliers if necessary
-	outlier = np.where((mnfe > 0.2) & (feh < -2.25))[0]
-	print(name[outlier])
-	notoutlier = np.ones(len(mnfe), dtype='bool')
-	notoutlier[outlier] = False
+	#outlier = np.where((mnfe > 0.7) & (feh < -2.25))[0]
+	#outlier = np.where(((feh-feherr) < -2.5))[0]
+	#outlier = np.where((mnfe > 0.25))
+	#print(name[outlier])
+	#notoutlier = np.ones(len(mnfe), dtype='bool')
+	#notoutlier[outlier] = False
 
 	# Remove points with error > maxerror
 	if maxerror is not None:
-		goodmask 	= np.where((mnfeerr < maxerror) & notoutlier) # & (redchisq < 3.0))
+		goodmask 	= np.where((mnfeerr < maxerror)) # & notoutlier) # & (redchisq < 3.0))
 		name 	= name[goodmask]
 		feh 	= feh[goodmask]
 		feherr  = feherr[goodmask]
 		mnfe 	= mnfe[goodmask]
 		mnfeerr = mnfeerr[goodmask]
-		colors  = colors[goodmask]
 
 	if nlte:
 		nltecorr = -0.096*feh + 0.173
+		mnfe_lte = mnfe
 		mnfe = mnfe + nltecorr
 		print('NLTE average correction: '+str(np.average(nltecorr)))
 
@@ -262,7 +237,7 @@ def fit_mnfe_feh(filenames, mnfe_check, outfile, title, fehia, maxerror=None, gr
 	##################
 
 	# Define axis for plot
-	fig, ax = plt.subplots(figsize=(10,5))
+	fig, ax = plt.subplots(figsize=(10,8))
 
 	# Compute core-collapse yield
 	all_thetas = samples[:,0] # all values in the chain
@@ -310,87 +285,337 @@ def fit_mnfe_feh(filenames, mnfe_check, outfile, title, fehia, maxerror=None, gr
 	# Create figure #
 	#################
 
-	# Scatter plot
-	if len(gratings) > 1:
-		plotcolors = np.zeros(len(gratings), dtype='bool')
-		for i in range(len(feh)):
+	# List to hold all patches and labels
+	patches = []
+	labels = []
 
-			if plotcolors[0] == False and colors[i] == '#B0B0B0':
-				ax.errorbar(feh[i], mnfe[i], color=colors[i], marker='o', linestyle='', capsize=3, zorder=100, label='North+12') #, xerr=feherr[i], yerr=mnfeerr[i])
-				plotcolors[0] = True
+	# Plot literature values
+	if literature is not None:
 
-			elif plotcolors[1] == False and colors[i] == '#594F4F':
-				ax.errorbar(feh[i], mnfe[i], color=colors[i], marker='o', linestyle='', capsize=3, zorder=100, label='This work') #, xerr=feherr[i], yerr=mnfeerr[i])
-				plotcolors[1] = True
+		# Plot scatter plot of our measurements
+		ax.errorbar(feh, mnfe, markersize=8, color='k', marker='o', linestyle='', capsize=0, zorder=102) #, xerr=feherr, yerr=mnfeerr)
+		handle1, = ax.plot([],[], color='k', marker='o', linestyle='None', mfc='k', markersize=8)
+		patches.append(handle1)
+		labels.append('This work')
 
-			else:
-				ax.errorbar(feh[i], mnfe[i], color=colors[i], marker='o', linestyle='', capsize=3, zorder=100) #, xerr=feherr[i], yerr=mnfeerr[i])
+		for litfile in literature:
 
+			if litfile == 'Sobeck+06':
+				data = np.genfromtxt('data/hires_data_final/sobeck06.csv', delimiter=[9,4,9,5,6,5,6,6,6], skip_header=24, usecols=[7,8])
+				current_feh 	= data[:,0]
+				current_feherr 	= np.zeros(len(current_feh))
+				current_mnfe 	= data[:,1]
+				current_mnfeerr = np.zeros(len(current_mnfe))
+
+				current_label = r'Sobeck+06 ($N='+str(len(current_feh))+' $)'
+				marker = '.'
+				color = 'darkgray'
+
+			if litfile == 'North+12':
+				data = np.genfromtxt('data/hires_data_final/scl/north12_final.csv', delimiter='\t', skip_header=1, usecols=[5,6,8,9])
+				current_feh 	= data[:,0]
+				current_feherr 	= data[:,1]
+				current_mnfe 	= data[:,2]
+				current_mnfeerr = data[:,3]
+
+				current_label = r'North+12 ($N='+str(len(current_feh))+' $)'
+				marker = 's'
+				color = 'darkgreen'
+
+			ax.errorbar(current_feh, current_mnfe, markersize=8, color=color, marker=marker, linestyle='', capsize=0, zorder=100, xerr=current_feherr, yerr=current_mnfeerr)
+			handle1, = ax.plot([],[], color=color, marker=marker, linestyle='None', mfc=color, markersize=8)
+			patches.append(handle1)
+			labels.append(current_label)
+
+		outfile += '_lit'
+
+	# Scatter plot of our observations
+	elif nlte==False: 
+		if ia_comparison==False:
+			ax.errorbar(feh, mnfe, markersize=8, color='k', marker='o', linestyle='', capsize=0, zorder=100, xerr=feherr, yerr=mnfeerr)
+
+	# NLTE corrections
 	else:
-		ax.errorbar(feh, mnfe, markersize=8, color='k', marker='o', linestyle='', capsize=0, zorder=100, xerr=feherr, yerr=mnfeerr)
-		#if nlte:
-		#	ax.errorbar(feh, mnfe_nlte, markersize=8, color='k', marker='o', mfc='None', linestyle='', capsize=0, zorder=100, xerr=feherr, yerr=mnfeerr)
+		# Plot NLTE
+		nlteplot = ax.errorbar(feh, mnfe, markersize=8, color='k', marker='o', linestyle='', capsize=0, zorder=100, xerr=feherr, yerr=mnfeerr, label='1D NLTE')
+		handle1, = ax.plot([],[], color='k', marker='o', linestyle='None', mfc='k', markersize=8)
+		patches.append(handle1)
+		labels.append('1D NLTE')
 
-	# Put sample size on plot
-	#ax.text(0.025, 0.9, 'N = '+str(len(name)), transform=ax.transAxes, fontsize=18)
-
-	#for i in range(len(outlier)):
-	#	idx = outlier[i]
-	#	plt.text(feh[idx], mnfe[idx], name[idx])
+		# Plot LTE
+		lteplot, = ax.plot(feh, mnfe_lte, markersize=8, color='k', marker='o', mfc='None', linestyle='', zorder=100, label='1D LTE')
+		patches.append(lteplot)
+		labels.append('1D LTE')
 
 	# Plot best-fit model
-	ax.fill_between(xfit, yfit[2], yfit[0], color='r', alpha=0.25, zorder=200)
-	bestfit1 = mpatches.Patch(color='r', alpha=0.25)
-	bestfit2, = ax.plot(xfit, yfit[1], 'r-', linewidth=3, zorder=200)
+	if bestfit:
+		ax.fill_between(xfit, yfit[2], yfit[0], color='C9', alpha=0.25, zorder=200)
+		bestfit1 = mpatches.Patch(color='C9', alpha=0.25)
+		bestfit2, = ax.plot(xfit, yfit[1], color='C9', linestyle='-', linewidth=3, zorder=200)
 
-	# Plot Type Ia [Mn/Fe] yield
-	mask = np.nonzero(mnfe_ia[1])
-	ax.fill_between(xfit[plotmask], mnfe_ia[2][plotmask], mnfe_ia[0][plotmask], color='C0', alpha=0.25)
-	typeia1 = mpatches.Patch(color='C0', alpha=0.25)
-	typeia2, = ax.plot(xfit[mask], mnfe_ia[1][mask], color='C0', linestyle=':', linewidth=3)
+		patches.append((bestfit1, bestfit2))
+		labels.append("Best fit model")
 
-	fehmeasure = -1.5 # [Fe/H] at which to measure [Mn/Fe]_Ia
-	idx_feh = np.argmin(np.abs(xfit - fehmeasure))
-	print('[Mn/Fe] at most metal rich end:')
-	print(mnfe_ia[1][-1])
-	print(mnfe_ia[2][-1]-mnfe_ia[1][-1])
-	print(mnfe_ia[1][-1]-mnfe_ia[0][-1])
-	print('final Mn fit:')
-	print(mnfe_ia[1][idx_feh])
-	print(mnfe_ia[2][idx_feh]-mnfe_ia[1][idx_feh])
-	print(mnfe_ia[1][idx_feh]-mnfe_ia[0][idx_feh])
+	if sne:
 
-	# Also plot core-collapse yield
-	ax.fill_between(ax.get_xlim(), mnfe_cc[2], mnfe_cc[0], color='C9', alpha=0.25, zorder=0)
-	typeii1 = mpatches.Patch(color='C9', alpha=0.25)
-	typeii2, = ax.plot(ax.get_xlim(), mnfe_cc[1]*np.ones(2), color='C9', linestyle='--', linewidth=3, zorder=0)
+		# Plot Type Ia [Mn/Fe] yield
+		mask = np.nonzero(mnfe_ia[1])
+		ax.fill_between(xfit[plotmask], mnfe_ia[2][plotmask], mnfe_ia[0][plotmask], color='r', alpha=0.4, zorder=200)
+		typeia1 = mpatches.Patch(color='r', alpha=0.4)
+		typeia2, = ax.plot(xfit[mask], mnfe_ia[1][mask], color='r', linestyle='--', linewidth=3, zorder=200)
+
+		fehmeasure = -1.5 # [Fe/H] at which to measure [Mn/Fe]_Ia
+		idx_feh = np.argmin(np.abs(xfit - fehmeasure))
+		print('[Mn/Fe] at most metal rich end:')
+		print(mnfe_ia[1][-1])
+		print(mnfe_ia[2][-1]-mnfe_ia[1][-1])
+		print(mnfe_ia[1][-1]-mnfe_ia[0][-1])
+		print('final Mn fit:')
+		print(mnfe_ia[1][idx_feh])
+		print(mnfe_ia[2][idx_feh]-mnfe_ia[1][idx_feh])
+		print(mnfe_ia[1][idx_feh]-mnfe_ia[0][idx_feh])
+
+		patches.append((typeia1, typeia2))
+		labels.append("Type Ia yield")
+
+		# Also plot core-collapse yield
+		ax.fill_between(ax.get_xlim(), mnfe_cc[2], mnfe_cc[0], color='C0', alpha=0.4, zorder=150)
+		typeii1 = mpatches.Patch(color='C0', alpha=0.4)
+		typeii2, = ax.plot(ax.get_xlim(), mnfe_cc[1]*np.ones(2), color='C0', linestyle='-', linewidth=3, zorder=150)
+
+		patches.append((typeii1, typeii2))
+		labels.append("Core-collapse yield")
+
+	ax.set_xlim([-2.8,-0.75])
+	ax.set_ylim([-1.2,1.0])
+
+	if ia_comparison:
+		outfile += '_zdep'
+
+		ax.set_xlim([-2.1,-0.8])
+		ax.set_ylim([-2.0,0.1])
+
+		# Get container for all legends
+		legends = []
+
+		# Plot Type Ia yield
+		mask = np.nonzero(mnfe_ia[1])
+		ax.fill_between(xfit[plotmask], mnfe_ia[2][plotmask], mnfe_ia[0][plotmask], color='r', alpha=0.4, zorder=200)
+		typeia1 = mpatches.Patch(color='r', alpha=0.4)
+		typeia2, = ax.plot(xfit[mask], mnfe_ia[1][mask], color='r', linestyle='--', linewidth=3, zorder=200)
+
+		legends.append(ax.legend([(typeia1,typeia2)], ['This work'], bbox_to_anchor=(1.04,1.0), loc=2, borderaxespad=0, fontsize=20, frameon=False))
+
+		# Get properties for each plot
+		authors = ['sub(S18)','sub(L19)','sub(B19)']
+		linestyles = ['-','--',':']
+
+		# Get colors
+		blues = plt.cm.Blues(np.linspace(0.3,1.,6))
+
+		# Loop over each author and plot lines for each model
+		for k in range(len(authors)):
+
+			feh, mnfe, mass = get_theory(authors[k])
+
+			if authors[k] == 'sub(L19)':
+				line, = ax.plot(feh, mnfe, color=blues[4], linestyle=linestyles[k], label=r'1.10$M_{\odot}$', zorder=0, linewidth=1.5)
+
+				l1 = ax.legend(handles=[line], title='sub(L19)', bbox_to_anchor=(1.04,0.88), loc=2, borderaxespad=0, fontsize=18, frameon=False)
+				plt.setp(l1.get_title(), fontsize=20)
+				l1._legend_box.align="left"
+
+				legends.append(l1)
+
+				print(feh,mnfe)
+
+			if authors[k] == 'sub(S18)':
+
+				lines = []
+
+				# Loop over some masses
+				whichmasses = [1,2,3,4]
+				#whichmasses = [0,2,3,4]
+				for m in range(len(whichmasses)):
+
+					# Set correct color
+					colorid=m
+
+					line, = ax.plot(feh, mnfe[whichmasses[m]], color=blues[colorid], linestyle=linestyles[k], label=str(mass[whichmasses[m]])+r'$M_{\odot}$', zorder=0, linewidth=1.5)
+					lines.append(line)
+
+				l1 = ax.legend(handles=lines, title='sub(S18)', bbox_to_anchor=(1.04,0.68), borderaxespad=0, fontsize=18, frameon=False)
+				plt.setp(l1.get_title(), fontsize=20)
+				l1._legend_box.align="left"
+
+				legends.append(l1)
+
+			if authors[k] == 'sub(B19)':
+
+				lines = []
+
+				# Loop over some masses
+				whichmasses = [0,1,2,3,4]
+				#whichmasses = [0,1,2]
+				for m in range(len(whichmasses)):
+
+					# Set correct color
+					#colorid = [1,3,4]
+					colorid = m
+
+					line, = ax.plot(feh, mnfe[whichmasses[m]], color=blues[colorid], linestyle=linestyles[k], label=str(mass[whichmasses[m]])+r'$M_{\odot}$', zorder=0, linewidth=1.5)
+					lines.append(line)
+
+				l1 = ax.legend(handles=lines, title='sub(B19)', bbox_to_anchor=(1.04,0.31), loc=2, borderaxespad=0, fontsize=18, frameon=False)
+				plt.setp(l1.get_title(), fontsize=20)
+				l1._legend_box.align="left"
+
+				legends.append(l1)
+
+	# Make main legend
+	if ia_comparison:
+		# Put all legends on plot
+		for legend in legends:
+			ax.add_artist(legend)
+
+	else:
+		if literature is None:
+			leg = plt.legend(patches, labels, fancybox=True, framealpha=0.5, loc='best', title='N = '+str(len(name)))
+		else:
+			leg = plt.legend(patches, labels, fancybox=True, framealpha=0.5, loc='best')
+		for text in leg.get_texts():
+			plt.setp(text, color='k', fontsize=18)
+		plt.setp(leg.get_title(), fontsize=20)
+		leg._legend_box.align="left"
 
 	# Format plot
 	#ax.set_title(title, fontsize=18)
-	ax.set_xlabel('[Fe/H]', fontsize=16)
-	ax.set_ylabel('[Mn/Fe]', fontsize=16)
+	ax.set_xlabel('[Fe/H]', fontsize=24)
+	ax.set_ylabel('[Mn/Fe]', fontsize=24)
+	if ia_comparison:
+		ax.set_ylabel(r'[Mn/Fe]$_{\mathrm{Ia}}$', fontsize=24)
 	for label in (ax.get_xticklabels() + ax.get_yticklabels()):
-		label.set_fontsize(14)
+		label.set_fontsize(18)
 	ax.tick_params(direction='in', bottom=True, top=True, left=True, right=True)
-	ax.set_xlim([-2.75,-0.75])
-	ax.set_ylim([-1.2,1.6])
-
-	# Make legend
-	title = 'N = '+str(len(name))
-	if nlte:
-		title += ', 1D NLTE'
-	else:
-		title += ', 1D LTE'
-	leg = plt.legend([(bestfit1, bestfit2), (typeia1, typeia2), (typeii1, typeii2)], ["Best fit model", "Type Ia yield", "Core-collapse yield"], 
-						fancybox=True, framealpha=0.5, loc='best', title=title)
-	for text in leg.get_texts():
-		plt.setp(text, color='k', fontsize=12)
-	plt.setp(leg.get_title(), fontsize=14)
-	leg._legend_box.align="left"
 
 	# Output file
 	plt.savefig(outfile+'_mnfe.pdf', bbox_inches='tight') #, transparent=True)
 	plt.show()
+
+	return
+
+def get_theory(author):
+	""" Return theoretical model yields."""
+	mnsolar = 5.43
+	fesolar = 7.50
+
+	if author=='sub(L19)':
+		# Get [Fe/H]
+		Z = np.array((0.,0.2,1.,2.,4.,6.,10.))/100.
+		feh = np.log10(Z/0.02)
+
+		# Set low end of [Fe/H]
+		feh[0] = -2.1
+		equivZ = 10.**(feh[0])*0.02
+
+		# Get [Mn/Fe]
+		mnmass = np.array((1.79e-3,1.95e-3,1.89e-3,2.28e-3,2.60e-3,3.85e-3,7.26e-3))
+		fe54mass = np.array((8.76e-4,1.36e-3,3.59e-3,7.80e-3,1.23e-2,1.94e-2,3.96e-2))
+		fe56mass = np.array((6.73e-1,6.69e-1,6.34e-1,6.10e-1,5.83e-1,5.57e-1,5.15e-1))
+		fe57mass = np.array((1.51e-2,1.60e-2,1.83e-2,2.12e-2,2.52e-2,2.84e-2,3.30e-2))
+		fe58mass = np.array((6.90e-6,6.90e-6,9.56e-6,4.39e-4,9.61e-6,1.12e-5,3.94e-6))
+		fe60mass = np.array((1.6e-13,1.1e-13,5.65e-13,1.34e-9,5.63e-13,4.99e-10,1.88e-14))
+		femass = np.sum((fe54mass,fe56mass,fe57mass,fe58mass,fe60mass), axis=0)
+		feamu = (54.*fe54mass + 56.*fe56mass + 57.*fe57mass + 58.*fe58mass)/femass
+
+		# Properly interpolate to the lowest end ([Fe/H]~-2)
+		mnmass[0] = np.interp(equivZ,Z[:2],mnmass[:2])
+		femass[0] = np.interp(equivZ,Z[:2],femass[:2])
+
+		mnfe = np.log10((mnmass/55.)/(femass/feamu)) - mnsolar + fesolar
+
+		mass = None
+
+	if author=='sub(S18)':
+		file = 'data/theoryyields/shen18_decayed.txt'
+
+		# Get mass
+		mass = np.array((0.8,0.85,0.9,1.0,1.1))
+
+		# Get [Fe/H]
+		Z = np.array((0.000,0.005,0.010,0.020))
+		feh = np.log10(Z/0.02)
+
+		# Set low end of [Fe/H]
+		feh[0] = -2.1
+		equivZ = 10.**(feh[0])*0.02
+
+		# Get [Mn/Fe]
+		mnmass = np.zeros((len(mass),len(feh)))
+		femass = np.zeros((len(mass),len(feh)))
+		feamu = np.zeros((len(mass),len(feh)))
+
+		for i in range(len(feh)):
+			data = pd.read_csv(file,delimiter='\s+',skiprows=8*i+3,nrows=5)
+
+			mnmass[:,i] = np.asarray(data['55Mn'])
+			fe54mass = np.asarray(data['54Fe'])
+			fe56mass = np.asarray(data['56Fe'])
+			fe57mass = np.asarray(data['57Fe'])
+			fe58mass = np.asarray(data['58Fe'])
+
+			femass[:,i] = np.sum((fe54mass,fe56mass,fe57mass,fe58mass), axis=0)
+			feamu[:,i] = (54.*fe54mass + 56.*fe56mass + 57.*fe57mass + 58.*fe58mass)/femass[:,i]
+
+		# Properly interpolate to the lowest end ([Fe/H]~-2)
+		for i in range(len(mass)):
+			#print(mnmass[i,:2])
+			#print(Z[:2])
+			mnmass[i,0] = np.interp(equivZ,Z[:2],mnmass[i,:2])
+			femass[i,0] = np.interp(equivZ,Z[:2],femass[i,:2])
+
+		feamu = np.average((54.,56.,57.,58.))
+		mnfe = np.log10((mnmass/55.)/(femass/feamu)) - mnsolar + fesolar
+
+	if author=='sub(B19)':
+		file = 'data/theoryyields/Table_4_v2.txt'
+
+		# Arrange datafile into a nice format
+		data = pd.read_fwf(file, skiprows=20)
+		data['He2'] = data['He']+data['2.1'].map(str)
+		data = data.transpose()
+		data.columns = data.iloc[-1]
+		data = data[4:-1]
+
+		# Get mass
+		mass = np.array((0.88,0.97,1.06,1.10,1.15))
+
+		# Get [Fe/H]
+		Z = np.array((2.25E-4,2.25E-3,9.00E-3,2.25E-2,6.75E-2))
+		feh = np.log10(Z/0.02)
+
+		# Get [Mn/Fe]
+		mnmass = np.zeros((len(mass),len(feh)))
+		femass = np.zeros((len(mass),len(feh)))
+		feamu = np.zeros((len(mass),len(feh)))
+
+		for i in range(len(feh)):
+			seq = i+5*np.arange(len(mass))
+			mnmass[:,i] = np.asarray(data['Mn55'])[seq]
+			#femass[:,i] = np.asarray(data['Fe'])[seq]
+
+			fe54mass = np.asarray(data['Fe54'])[seq]
+			fe56mass = np.asarray(data['Fe56'])[seq]
+			fe57mass = np.asarray(data['Fe57'])[seq]
+			fe58mass = np.asarray(data['Fe58'])[seq]
+
+			femass[:,i] = np.sum((fe54mass,fe56mass,fe57mass,fe58mass), axis=0)
+			feamu[:,i] = (54.*fe54mass + 56.*fe56mass + 57.*fe57mass + 58.*fe58mass)/femass[:,i]
+
+		feamu = 55.#np.average((54.,56.,57.,58.))
+		mnfe = np.log10((mnmass/55.)/(femass/feamu)) - mnsolar + fesolar
+
+	return feh, mnfe, mass
 
 def compare_mnfe(outfile):
 	"""Plot [Mn/Fe] values on number line.
@@ -443,8 +668,8 @@ def compare_mnfe(outfile):
 
 	# Plot observed [Mn/Fe]
 	#ax.errorbar(-0.28, 8, xerr=0.03, color='k', marker='o', linestyle='', markersize=8, zorder=100)
-	ax.axvspan(xmin = -0.28 - 0.03, xmax = -0.28 + 0.03, color='gray', alpha=0.5)
-	ax.text(-0.28 - 0.13, 6.5, 'This work', rotation = 90, fontsize=18)
+	ax.axvspan(xmin = -0.30 - 0.03, xmax = -0.30 + 0.03, color='gray', alpha=0.5)
+	ax.text(-0.30 - 0.13, 6.5, 'This work', rotation = 90, fontsize=18)
 
 	# Plot models
 	
@@ -514,8 +739,8 @@ def compare_mnfe(outfile):
 	ax.text(-1.5,3.5-0.4,r'Sub-$M_{\mathrm{Ch}}$', fontsize=18)
 
 	# NLTE arrow
-	plt.arrow(-0.28 + 0.03, 6, 0.28, 0, head_width=0.1, head_length=0.05, color='gray')
-	ax.text(-0.28 + 0.05, 6.1, 'NLTE?', fontsize=16, color='gray')
+	plt.arrow(-0.30 + 0.03, 6, 0.33, 0, head_width=0.1, head_length=0.05, color='gray')
+	ax.text(-0.30 + 0.05, 6.1, 'NLTE?', fontsize=16, color='gray')
 
 	# Format plot
 	for label in (ax.get_xticklabels()):
@@ -533,15 +758,19 @@ def compare_mnfe(outfile):
 def main():
 
 	# Plot for Sculptor
-	#fit_mnfe_feh(['data/bscl5_1200B_final3.csv'],[False],'figures/scl_fit3', 'Sculptor dSph', fehia=-2.12, maxerror=0.3, gratings=['#594F4F'])
-	#fit_mnfe_feh(['data/bscl5_1200B_final3.csv'],[False],'figures/scl_fit3_nlte', 'Sculptor dSph', fehia=-2.12, maxerror=0.3, gratings=['#594F4F'], nlte=True)
+	#fit_mnfe_feh('data/bscl5_1200B_final3.csv',False,'figures/scl_fit3', 'Sculptor dSph', fehia=-2.12, maxerror=0.3, bestfit=True)
+	fit_mnfe_feh('data/bscl5_1200B_final3.csv',False,'figures/scl_fit3', 'Sculptor dSph', fehia=-2.12, maxerror=0.3, sne=True, literature=['Sobeck+06','North+12'])
+	#fit_mnfe_feh('data/bscl5_1200B_final3.csv',False,'figures/scl_fit3_nlte', 'Sculptor dSph', fehia=-2.12, maxerror=0.3, nlte=True) 
 	#fit_mnfe_feh(['data/bscl5_1200B_final3.csv','data/hires_data_final/scl/north12_final.csv'],[False,True],'figures/scl_fit_total', 'Sculptor dSph', fehia=-2.34, maxerror=0.3, gratings=['#594F4F','#B0B0B0'])
 
 	# Plot for Ursa Minor
-	fit_mnfe_feh(['data/bumia_1200B_final3.csv'],[False],'figures/umi_fit3', 'Ursa Minor dSph', fehia=-2.42, maxerror=0.3, gratings=['#594F4F'])
+	#fit_mnfe_feh(['data/bumia_1200B_final3.csv'],[False],'figures/umi_fit3', 'Ursa Minor dSph', fehia=-2.42, maxerror=0.3, gratings=['#594F4F'])
 
 	# Plot [Mn/Fe] values on number line
 	#compare_mnfe('figures/scl_mnfe_comparison.pdf')
+
+	# Z-dep comparison
+	fit_mnfe_feh('data/bscl5_1200B_final3.csv',False,'figures/scl_fit3', 'Sculptor dSph', fehia=-2.12, maxerror=0.3, ia_comparison=True)
 
 	return
 
