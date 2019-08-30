@@ -293,7 +293,7 @@ def fit_mnfe_feh(file, mnfe_check, outfile, title, fehia, maxerror=None, nlte=Fa
 	if literature is not None:
 
 		# Plot scatter plot of our measurements
-		ax.errorbar(feh, mnfe, markersize=8, color='k', marker='o', linestyle='', capsize=0, zorder=102) #, xerr=feherr, yerr=mnfeerr)
+		ax.errorbar(feh, mnfe, markersize=8, color='k', marker='o', linestyle='', capsize=0, zorder=102, alpha=0.8) #, xerr=feherr, yerr=mnfeerr)
 		handle1, = ax.plot([],[], color='k', marker='o', linestyle='None', mfc='k', markersize=8)
 		patches.append(handle1)
 		labels.append('This work')
@@ -310,6 +310,7 @@ def fit_mnfe_feh(file, mnfe_check, outfile, title, fehia, maxerror=None, nlte=Fa
 				current_label = r'Sobeck+06 ($N='+str(len(current_feh))+' $)'
 				marker = '.'
 				color = 'darkgray'
+				zorder = 1
 
 			if litfile == 'North+12':
 				data = np.genfromtxt('data/hires_data_final/scl/north12_final.csv', delimiter='\t', skip_header=1, usecols=[5,6,8,9])
@@ -321,8 +322,9 @@ def fit_mnfe_feh(file, mnfe_check, outfile, title, fehia, maxerror=None, nlte=Fa
 				current_label = r'North+12 ($N='+str(len(current_feh))+' $)'
 				marker = 's'
 				color = 'darkgreen'
+				zorder = 2
 
-			ax.errorbar(current_feh, current_mnfe, markersize=8, color=color, marker=marker, linestyle='', capsize=0, zorder=100, xerr=current_feherr, yerr=current_mnfeerr)
+			ax.errorbar(current_feh, current_mnfe, markersize=8, color=color, marker=marker, linestyle='', capsize=0, xerr=current_feherr, yerr=current_mnfeerr, zorder=zorder)
 			handle1, = ax.plot([],[], color=color, marker=marker, linestyle='None', mfc=color, markersize=8)
 			patches.append(handle1)
 			labels.append(current_label)
@@ -364,16 +366,13 @@ def fit_mnfe_feh(file, mnfe_check, outfile, title, fehia, maxerror=None, nlte=Fa
 		typeia1 = mpatches.Patch(color='r', alpha=0.4)
 		typeia2, = ax.plot(xfit[mask], mnfe_ia[1][mask], color='r', linestyle='--', linewidth=3, zorder=200)
 
-		fehmeasure = -1.5 # [Fe/H] at which to measure [Mn/Fe]_Ia
-		idx_feh = np.argmin(np.abs(xfit - fehmeasure))
-		print('[Mn/Fe] at most metal rich end:')
-		print(mnfe_ia[1][-1])
-		print(mnfe_ia[2][-1]-mnfe_ia[1][-1])
-		print(mnfe_ia[1][-1]-mnfe_ia[0][-1])
-		print('final Mn fit:')
-		print(mnfe_ia[1][idx_feh])
-		print(mnfe_ia[2][idx_feh]-mnfe_ia[1][idx_feh])
-		print(mnfe_ia[1][idx_feh]-mnfe_ia[0][idx_feh])
+		fehmeasures = np.array((-1.5,-1.0,-2.0)) # [Fe/H] at which to measure [Mn/Fe]_Ia
+		for fehmeasure in fehmeasures:
+			idx_feh = np.argmin(np.abs(xfit - fehmeasure))
+			print('[Mn/Fe] at '+str(fehmeasure))
+			print(mnfe_ia[1][idx_feh])
+			print(mnfe_ia[2][idx_feh]-mnfe_ia[1][idx_feh])
+			print(mnfe_ia[1][idx_feh]-mnfe_ia[0][idx_feh])
 
 		patches.append((typeia1, typeia2))
 		labels.append("Type Ia yield")
@@ -504,8 +503,12 @@ def fit_mnfe_feh(file, mnfe_check, outfile, title, fehia, maxerror=None, nlte=Fa
 
 	return
 
-def get_theory(author):
-	""" Return theoretical model yields."""
+def get_theory(author, linear=False):
+	""" Return theoretical model yields.
+
+	Keywords:
+	linear -- if 'True', return {Z, absolute Mn mass, Fe mass} instead of {[Fe/H], [Mn/Fe]}
+	"""
 	mnsolar = 5.43
 	fesolar = 7.50
 
@@ -574,7 +577,19 @@ def get_theory(author):
 			mnmass[i,0] = np.interp(equivZ,Z[:2],mnmass[i,:2])
 			femass[i,0] = np.interp(equivZ,Z[:2],femass[i,:2])
 
-		feamu = np.average((54.,56.,57.,58.))
+			# Test for metallicity lag due to SFH
+			'''
+			if mass[i] > 0.9 and mass[i] < 1.1:
+				tests = np.array((-1.4,-1.5))
+				testZ = np.power(10.,tests)*0.02
+				for iz in testZ:
+					testmn = np.interp(iz,Z[:2],mnmass[i,:2])
+					testfe = np.interp(iz,Z[:2],femass[i,:2])
+					testamu = (54.*np.interp(iz,Z[:2],fe54mass[:2]) + 56.*np.interp(iz,Z[:2],fe56mass[:2]) + 57.*np.interp(iz,Z[:2],fe57mass[:2]) + 58.*np.interp(iz,Z[:2],fe58mass[:2]))/testfe
+
+					print('Test:',mass[i],iz,np.log10((testmn/55.)/(testfe/testamu)) - mnsolar + fesolar)
+			'''
+
 		mnfe = np.log10((mnmass/55.)/(femass/feamu)) - mnsolar + fesolar
 
 	if author=='sub(B19)':
@@ -612,10 +627,65 @@ def get_theory(author):
 			femass[:,i] = np.sum((fe54mass,fe56mass,fe57mass,fe58mass), axis=0)
 			feamu[:,i] = (54.*fe54mass + 56.*fe56mass + 57.*fe57mass + 58.*fe58mass)/femass[:,i]
 
-		feamu = 55.#np.average((54.,56.,57.,58.))
 		mnfe = np.log10((mnmass/55.)/(femass/feamu)) - mnsolar + fesolar
 
+	if linear:
+		return Z, mnmass, femass, mass
+
 	return feh, mnfe, mass
+
+def compute_fractions(feh_input, mnfe_ia, subchmodel, mass_input, mchmodel='S13_N100'):
+	""" Compute what fraction of Type Ia SNe must be near-MCh vs sub-MCh based on [Mn/Fe]_{Ia}.
+
+	Inputs:
+	feh_input 	-- desired metallicity
+	mnfe_ia 	-- [Mn/Fe]_{Ia}
+	subchmodel 	-- which model to use for sub-MCh yields
+					options: 'sub(L19)','sub(S18)'
+	mass_input 	-- mass of model to use
+
+	Keywords:
+	mchmodel 	-- which model to use for near-MCh yields
+					options: 'S13_N100'
+	"""
+
+	# Some constants
+	mnsolar = 5.43
+	fesolar = 7.50
+	feamu = 55.8
+
+	# Convert observed [Mn/Fe]_{Ia} to (Mn mass)/(Fe mass)
+	mnfemass_obs = 10.**(mnfe_ia + mnsolar - fesolar) * 55. / feamu
+
+	# Interpolate sub-MCh model to desired Z
+	modelZ, mnmass_model, femass_model, mass = get_theory(subchmodel, linear=True)
+	print('Model:',subchmodel)
+
+	testZ 	= np.power(10.,feh_input)*0.02
+
+	if subchmodel == 'sub(L19)':
+		print('Mass:',1.1)
+		mnmass_subch = np.interp(testZ,modelZ[:2],mnmass_model[:2])
+		femass_subch = np.interp(testZ,modelZ[:2],femass_model[:2])
+	else:
+		idx = np.where((mass < (mass_input + 0.1)) & (mass > (mass_input - 0.1)))[0]
+		print('Mass:',mass[idx])
+
+		print(testZ,modelZ[:2],mnmass_model[idx,:2])
+		mnmass_subch = np.interp(testZ,modelZ[:2],mnmass_model[idx,:2][0])
+		femass_subch = np.interp(testZ,modelZ[:2],femass_model[idx,:2][0])
+
+	# Assume a near-MCh model abundance
+	if mchmodel == 'S13_N100':
+		mnmass_mch = 9.29e-3
+		femass_mch = 9.94e-2 + 6.22e-1 + 1.88e-2 + 8.02e-5
+
+	# Compute fraction of Type Ia SNe that are sub-MCh
+	A = (mnfemass_obs * femass_mch - mnmass_mch)/((mnmass_subch-mnmass_mch) + mnfemass_obs*(femass_subch - femass_mch))
+	print('Fraction of Type Ia SNe that are sub-MCh:', A)
+	print('Fraction of Type Ia SNe that are near-MCh:', 1.-A)
+
+	return
 
 def compare_mnfe(outfile):
 	"""Plot [Mn/Fe] values on number line.
@@ -707,21 +777,21 @@ def compare_mnfe(outfile):
 	subl19 = [0.25,-0.13,-0.23,-0.25,-0.45,-0.34][::-1]
 	for i in range(len(subl19)):
 		ax.axvline(subl19[i], ymin = 2./7. + dy, ymax = 3./7. - dy, color=redcwheel[i], alpha=1, linewidth=2)
-	ax.axvline(-0.42, ymin = 2./7. + dy, ymax = 3./7. - dy, color=bluecwheel[0], linestyle=':', alpha=1, linewidth=2)
+	ax.axvline(-0.44, ymin = 2./7. + dy, ymax = 3./7. - dy, color=bluecwheel[0], linestyle=':', alpha=1, linewidth=2)
 
 	# sub(S18)
-	subs18 = [-0.34,-0.45,-0.75,-1.04][::-1]
+	subs18 = [-0.64,-0.75,-1.05,-1.33][::-1]
 	for i in range(len(subs18)):
 		ax.axvline(subs18[i], ymin = 1./7. + dy, ymax = 2./7. - dy, color=blues[i], alpha=1, linewidth=2)
-	subs18_special = [-0.23,-0.43,-0.70,-0.96][::-1]
+	subs18_special = [-0.55,-0.73,-1.00,-1.26][::-1]
 	for i in range(len(subs18_special)):
 		ax.axvline(subs18_special[i], ymin = 1./7. + dy, ymax = 2./7. - dy, color=blues[i], alpha=1, linewidth=2, linestyle=':')
 
 	# sub(B19)
-	subb19 = [-0.5,-0.8,-1.22,-1.33,-1.43][::-1]
+	subb19 = [-0.55,-0.81,-1.16,-1.28,-1.42][::-1]
 	for i in range(len(subb19)):
 		ax.axvline(subb19[i], ymin = 0./7. + dy, ymax = 1./7. - dy, color=blues[i], alpha=1, linewidth=2)
-	subb19_special = [-0.45,-0.79,-1.2,-1.3,-1.42][::-1]
+	subb19_special = [-0.50,-0.81,-1.16,-1.28,-1.42][::-1]
 	for i in range(len(subb19_special)):
 		ax.axvline(subb19_special[i], ymin = 0./7. + dy, ymax = 1./7. - dy, color=blues[i], alpha=1, linewidth=2, linestyle=':')
 
@@ -759,7 +829,7 @@ def main():
 
 	# Plot for Sculptor
 	#fit_mnfe_feh('data/bscl5_1200B_final3.csv',False,'figures/scl_fit3', 'Sculptor dSph', fehia=-2.12, maxerror=0.3, bestfit=True)
-	fit_mnfe_feh('data/bscl5_1200B_final3.csv',False,'figures/scl_fit3', 'Sculptor dSph', fehia=-2.12, maxerror=0.3, sne=True, literature=['Sobeck+06','North+12'])
+	#fit_mnfe_feh('data/bscl5_1200B_final3.csv',False,'figures/scl_fit3', 'Sculptor dSph', fehia=-2.12, maxerror=0.3, sne=True, literature=['Sobeck+06','North+12'])
 	#fit_mnfe_feh('data/bscl5_1200B_final3.csv',False,'figures/scl_fit3_nlte', 'Sculptor dSph', fehia=-2.12, maxerror=0.3, nlte=True) 
 	#fit_mnfe_feh(['data/bscl5_1200B_final3.csv','data/hires_data_final/scl/north12_final.csv'],[False,True],'figures/scl_fit_total', 'Sculptor dSph', fehia=-2.34, maxerror=0.3, gratings=['#594F4F','#B0B0B0'])
 
@@ -770,7 +840,12 @@ def main():
 	#compare_mnfe('figures/scl_mnfe_comparison.pdf')
 
 	# Z-dep comparison
-	fit_mnfe_feh('data/bscl5_1200B_final3.csv',False,'figures/scl_fit3', 'Sculptor dSph', fehia=-2.12, maxerror=0.3, ia_comparison=True)
+	#fit_mnfe_feh('data/bscl5_1200B_final3.csv',False,'figures/scl_fit3', 'Sculptor dSph', fehia=-2.12, maxerror=0.3, ia_comparison=True)
+
+	# Compute fractions of Type Ia SNe
+	compute_fractions(-2., -0.30, 'sub(L19)', 1.1, mchmodel='S13_N100')
+	compute_fractions(-1., -0.29, 'sub(S18)', 1.0, mchmodel='S13_N100')
+	compute_fractions(-2., -0.30, 'sub(S18)', 1.0, mchmodel='S13_N100')
 
 	return
 
