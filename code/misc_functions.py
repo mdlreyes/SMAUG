@@ -51,6 +51,33 @@ def put_feherr(filelist, feh_filelist):
 
 	return
 
+def put_vt(filelist, feh_filelist):
+	""" Put microturbulent velocities into data files that don't already have them. """
+
+	for num in range(len(filelist)):
+
+		# Open file
+		data = pd.read_csv(filelist[num], delimiter='\t')
+		names = np.asarray(data['Name'], dtype='str')
+
+		# Get file where [Fe/H] error is stored
+		f = fits.open(feh_filelist[num])
+		fehids = f[1].data['OBJNAME'].astype('str')
+		feherr = f[1].data['VT']
+
+		# Match IDs to corret [Fe/H] error
+		idx = np.array([item in names for item in fehids])
+		print(fehids[idx])
+		#for i in range(len(names)):
+		#	print(names[i], fehids[idx][i])
+
+		# Update dataframe
+		data['error([Fe/H])'] = np.sqrt(np.power(feherr[idx],2.) + 0.10103081**2.)
+
+		data.to_csv(filelist[num], sep='\t', index=False)
+
+	return
+
 def plot_gaia(filename, outputname):
 	""" Plot Gaia PMs from a tab-delimited file. """
 

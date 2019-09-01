@@ -298,6 +298,9 @@ def fit_mnfe_feh(file, mnfe_check, outfile, title, fehia, maxerror=None, nlte=Fa
 		patches.append(handle1)
 		labels.append('This work')
 
+		print('Average of our measurements: ',np.average(mnfe))
+		print('Spread in our measurements: ',np.std(mnfe))
+
 		for litfile in literature:
 
 			if litfile == 'Sobeck+06':
@@ -316,7 +319,7 @@ def fit_mnfe_feh(file, mnfe_check, outfile, title, fehia, maxerror=None, nlte=Fa
 				data = np.genfromtxt('data/hires_data_final/scl/north12_final.csv', delimiter='\t', skip_header=1, usecols=[5,6,8,9])
 				current_feh 	= data[:,0]
 				current_feherr 	= data[:,1]
-				current_mnfe 	= data[:,2]
+				current_mnfe 	= data[:,2] - 5.43 + 5.39
 				current_mnfeerr = data[:,3]
 
 				current_label = r'North+12 ($N='+str(len(current_feh))+' $)'
@@ -357,6 +360,8 @@ def fit_mnfe_feh(file, mnfe_check, outfile, title, fehia, maxerror=None, nlte=Fa
 
 		patches.append((bestfit1, bestfit2))
 		labels.append("Best fit model")
+
+		print('Average best-fit model:',np.average(yfit[1]))
 
 	if sne:
 
@@ -503,13 +508,15 @@ def fit_mnfe_feh(file, mnfe_check, outfile, title, fehia, maxerror=None, nlte=Fa
 
 	return
 
-def get_theory(author, linear=False):
+def get_theory(author, nickel=False, linear=False):
 	""" Return theoretical model yields.
 
 	Keywords:
-	linear -- if 'True', return {Z, absolute Mn mass, Fe mass} instead of {[Fe/H], [Mn/Fe]}
+	false 	-- if 'True', return nickel yields instead of manganese
+	linear 	-- if 'True', return {Z, absolute Mn mass, Fe mass} instead of {[Fe/H], [Mn/Fe]}
 	"""
 	mnsolar = 5.43
+	nisolar = 6.22
 	fesolar = 7.50
 
 	if author=='sub(L19)':
@@ -521,8 +528,19 @@ def get_theory(author, linear=False):
 		feh[0] = -2.1
 		equivZ = 10.**(feh[0])*0.02
 
-		# Get [Mn/Fe]
+		# Get Mn
 		mnmass = np.array((1.79e-3,1.95e-3,1.89e-3,2.28e-3,2.60e-3,3.85e-3,7.26e-3))
+
+		# Get Ni
+		ni58mass = np.array((4.35e-3,5.59e-3,1.56e-2,3.26e-2,5.80e-2,8.56e-2,1.40e-1))
+		ni60mass = np.array((1.0e-2,1.2e-2,9.8e-3,8.28e-3,6.37e-3,5.34e-3,3.57e-3))
+		ni61mass = np.array((5.14e-4,5.26e-4,5.85e-4,5.99e-4,5.98e-4,5.47e-4,4.63e-4))
+		ni62mass = np.array((4.81e-4,6.51e-4,1.33e-3,2.20e-3,2.92e-3,3.30e-3,3.63e-3))
+		ni64mass = np.array((1.43e-9,1.44e-9,3.64e-9,6.96e-7,3.55e-9,4.69e-8,3.77e-10))
+		nimass = np.sum((ni58mass,ni60mass,ni61mass,ni62mass,ni64mass), axis=0)
+		niamu = (58.*ni58mass + 60.*ni60mass + 61.*ni61mass + 62.*ni62mass + 64.*ni64mass)/nimass
+
+		# Get Fe
 		fe54mass = np.array((8.76e-4,1.36e-3,3.59e-3,7.80e-3,1.23e-2,1.94e-2,3.96e-2))
 		fe56mass = np.array((6.73e-1,6.69e-1,6.34e-1,6.10e-1,5.83e-1,5.57e-1,5.15e-1))
 		fe57mass = np.array((1.51e-2,1.60e-2,1.83e-2,2.12e-2,2.52e-2,2.84e-2,3.30e-2))
@@ -533,9 +551,11 @@ def get_theory(author, linear=False):
 
 		# Properly interpolate to the lowest end ([Fe/H]~-2)
 		mnmass[0] = np.interp(equivZ,Z[:2],mnmass[:2])
+		nimass[0] = np.interp(equivZ,Z[:2],nimass[:2])
 		femass[0] = np.interp(equivZ,Z[:2],femass[:2])
 
 		mnfe = np.log10((mnmass/55.)/(femass/feamu)) - mnsolar + fesolar
+		nife = np.log10((nimass/niamu)/(femass/feamu)) - nisolar + fesolar
 
 		mass = None
 
@@ -555,26 +575,38 @@ def get_theory(author, linear=False):
 
 		# Get [Mn/Fe]
 		mnmass = np.zeros((len(mass),len(feh)))
+		nimass = np.zeros((len(mass),len(feh)))
+		niamu  = np.zeros((len(mass),len(feh)))
 		femass = np.zeros((len(mass),len(feh)))
-		feamu = np.zeros((len(mass),len(feh)))
+		feamu  = np.zeros((len(mass),len(feh)))
 
 		for i in range(len(feh)):
 			data = pd.read_csv(file,delimiter='\s+',skiprows=8*i+3,nrows=5)
 
 			mnmass[:,i] = np.asarray(data['55Mn'])
+
 			fe54mass = np.asarray(data['54Fe'])
 			fe56mass = np.asarray(data['56Fe'])
 			fe57mass = np.asarray(data['57Fe'])
 			fe58mass = np.asarray(data['58Fe'])
-
 			femass[:,i] = np.sum((fe54mass,fe56mass,fe57mass,fe58mass), axis=0)
 			feamu[:,i] = (54.*fe54mass + 56.*fe56mass + 57.*fe57mass + 58.*fe58mass)/femass[:,i]
+
+			ni58mass = np.asarray(data['58Ni'])
+			ni60mass = np.asarray(data['60Ni'])
+			ni61mass = np.asarray(data['61Ni'])
+			ni62mass = np.asarray(data['62Ni'])
+			ni64mass = np.asarray(data['64Ni'])
+			nimass[:,i] = np.sum((ni58mass,ni60mass,ni61mass,ni62mass,ni64mass), axis=0)
+			niamu[:,i] = (58.*ni58mass + 60.*ni60mass + 61.*ni61mass + 62.*ni62mass + 64.*ni64mass)/nimass[:,i]
+
 
 		# Properly interpolate to the lowest end ([Fe/H]~-2)
 		for i in range(len(mass)):
 			#print(mnmass[i,:2])
 			#print(Z[:2])
 			mnmass[i,0] = np.interp(equivZ,Z[:2],mnmass[i,:2])
+			nimass[i,0] = np.interp(equivZ,Z[:2],nimass[i,:2])
 			femass[i,0] = np.interp(equivZ,Z[:2],femass[i,:2])
 
 			# Test for metallicity lag due to SFH
@@ -591,6 +623,7 @@ def get_theory(author, linear=False):
 			'''
 
 		mnfe = np.log10((mnmass/55.)/(femass/feamu)) - mnsolar + fesolar
+		nife = np.log10((nimass/niamu)/(femass/feamu)) - nisolar + fesolar
 
 	if author=='sub(B19)':
 		file = 'data/theoryyields/Table_4_v2.txt'
@@ -611,8 +644,10 @@ def get_theory(author, linear=False):
 
 		# Get [Mn/Fe]
 		mnmass = np.zeros((len(mass),len(feh)))
+		nimass = np.zeros((len(mass),len(feh)))
+		niamu  = np.zeros((len(mass),len(feh)))
 		femass = np.zeros((len(mass),len(feh)))
-		feamu = np.zeros((len(mass),len(feh)))
+		feamu  = np.zeros((len(mass),len(feh)))
 
 		for i in range(len(feh)):
 			seq = i+5*np.arange(len(mass))
@@ -623,11 +658,23 @@ def get_theory(author, linear=False):
 			fe56mass = np.asarray(data['Fe56'])[seq]
 			fe57mass = np.asarray(data['Fe57'])[seq]
 			fe58mass = np.asarray(data['Fe58'])[seq]
-
 			femass[:,i] = np.sum((fe54mass,fe56mass,fe57mass,fe58mass), axis=0)
 			feamu[:,i] = (54.*fe54mass + 56.*fe56mass + 57.*fe57mass + 58.*fe58mass)/femass[:,i]
 
+			ni58mass = np.asarray(data['Ni58'])[seq]
+			ni60mass = np.asarray(data['Ni60'])[seq]
+			ni61mass = np.asarray(data['Ni61'])[seq]
+			ni62mass = np.asarray(data['Ni62'])[seq]
+			ni64mass = np.asarray(data['Ni64'])[seq]
+			nimass[:,i] = np.sum((ni58mass,ni60mass,ni61mass,ni62mass,ni64mass), axis=0)
+			niamu[:,i] = (58.*ni58mass + 60.*ni60mass + 61.*ni61mass + 62.*ni62mass + 64.*ni64mass)/nimass[:,i]
+
 		mnfe = np.log10((mnmass/55.)/(femass/feamu)) - mnsolar + fesolar
+		nife = np.log10((nimass/niamu)/(femass/feamu)) - nisolar + fesolar
+
+	if nickel:
+		mnmass = nimass
+		mnfe = nife
 
 	if linear:
 		return Z, mnmass, femass, mass
@@ -682,6 +729,60 @@ def compute_fractions(feh_input, mnfe_ia, subchmodel, mass_input, mchmodel='S13_
 
 	# Compute fraction of Type Ia SNe that are sub-MCh
 	A = (mnfemass_obs * femass_mch - mnmass_mch)/((mnmass_subch-mnmass_mch) + mnfemass_obs*(femass_subch - femass_mch))
+	print('Fraction of Type Ia SNe that are sub-MCh:', A)
+	print('Fraction of Type Ia SNe that are near-MCh:', 1.-A)
+
+	return
+
+def compute_fractions_ni(feh_input, nife_ia, subchmodel, mass_input, mchmodel='S13_N100'):
+	""" Compute what fraction of Type Ia SNe must be near-MCh vs sub-MCh based on [Ni/Fe]_{Ia}.
+
+	Inputs:
+	feh_input 	-- desired metallicity
+	nife_ia 	-- [Ni/Fe]_{Ia}
+	subchmodel 	-- which model to use for sub-MCh yields
+					options: 'sub(L19)','sub(S18)'
+	mass_input 	-- mass of model to use
+
+	Keywords:
+	mchmodel 	-- which model to use for near-MCh yields
+					options: 'S13_N100'
+	"""
+
+	# Some constants
+	nisolar = 6.22
+	fesolar = 7.50
+	feamu = 55.8
+	niamu = 58.7
+
+	# Convert observed [Mn/Fe]_{Ia} to (Mn mass)/(Fe mass)
+	nifemass_obs = 10.**(nife_ia + nisolar - fesolar) * 55. / feamu
+
+	# Interpolate sub-MCh model to desired Z
+	modelZ, nimass_model, femass_model, mass = get_theory(subchmodel, nickel=True, linear=True)
+	print('Model:',subchmodel)
+
+	testZ 	= np.power(10.,feh_input)*0.02
+
+	if subchmodel == 'sub(L19)':
+		print('Mass:',1.1)
+		nimass_subch = np.interp(testZ,modelZ[:2],nimass_model[:2])
+		femass_subch = np.interp(testZ,modelZ[:2],femass_model[:2])
+	else:
+		idx = np.where((mass < (mass_input + 0.1)) & (mass > (mass_input - 0.1)))[0]
+		print('Mass:',mass[idx])
+
+		print(testZ,modelZ[:2],nimass_model[idx,:2])
+		nimass_subch = np.interp(testZ,modelZ[:2],nimass_model[idx,:2][0])
+		femass_subch = np.interp(testZ,modelZ[:2],femass_model[idx,:2][0])
+
+	# Assume a near-MCh model abundance
+	if mchmodel == 'S13_N100':
+		nimass_mch = 6.90e-2 + 4.54e-3 + 4.76e-5 + 4.00e-4 + 3.83e-8
+		femass_mch = 9.94e-2 + 6.22e-1 + 1.88e-2 + 8.02e-5
+
+	# Compute fraction of Type Ia SNe that are sub-MCh
+	A = (nifemass_obs * femass_mch - nimass_mch)/((nimass_subch-nimass_mch) + nifemass_obs*(femass_subch - femass_mch))
 	print('Fraction of Type Ia SNe that are sub-MCh:', A)
 	print('Fraction of Type Ia SNe that are near-MCh:', 1.-A)
 
@@ -843,9 +944,14 @@ def main():
 	#fit_mnfe_feh('data/bscl5_1200B_final3.csv',False,'figures/scl_fit3', 'Sculptor dSph', fehia=-2.12, maxerror=0.3, ia_comparison=True)
 
 	# Compute fractions of Type Ia SNe
-	compute_fractions(-2., -0.30, 'sub(L19)', 1.1, mchmodel='S13_N100')
-	compute_fractions(-1., -0.29, 'sub(S18)', 1.0, mchmodel='S13_N100')
-	compute_fractions(-2., -0.30, 'sub(S18)', 1.0, mchmodel='S13_N100')
+	#compute_fractions(-2., -0.30, 'sub(L19)', 1.1, mchmodel='S13_N100')
+	#compute_fractions(-1., -0.29, 'sub(S18)', 1.0, mchmodel='S13_N100')
+	#compute_fractions(-2., -0.30, 'sub(S18)', 1.0, mchmodel='S13_N100')
+
+	# Compute fractions of Type Ia SNe
+	compute_fractions_ni(-1.5, -0.26, 'sub(L19)', 1.1, mchmodel='S13_N100')
+	compute_fractions_ni(-1.5, -0.26, 'sub(S18)', 1.0, mchmodel='S13_N100')
+	#compute_fractions_ni(-2., -0.26, 'sub(S18)', 1.0, mchmodel='S13_N100')
 
 	return
 
