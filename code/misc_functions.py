@@ -62,17 +62,20 @@ def put_vt(filelist, feh_filelist):
 
 		# Get file where [Fe/H] error is stored
 		f = fits.open(feh_filelist[num])
-		fehids = f[1].data['OBJNAME'].astype('str')
-		feherr = f[1].data['VT']
+		ids = np.asarray(f[1].data['OBJNAME'].astype('<U6'))
+		if filelist[num]=='data/LeoIb_1200B_final3.csv':
+			for i in range(len(ids)):
+				ids[i] = 'S'+ids[i]
+		vt = f[1].data['VT']
 
 		# Match IDs to corret [Fe/H] error
-		idx = np.array([item in names for item in fehids])
-		print(fehids[idx])
+		idx = np.array([item in names for item in ids])
+		print(ids[idx])
 		#for i in range(len(names)):
 		#	print(names[i], fehids[idx][i])
 
 		# Update dataframe
-		data['error([Fe/H])'] = np.sqrt(np.power(feherr[idx],2.) + 0.10103081**2.)
+		data['vt'] = vt[idx]
 
 		data.to_csv(filelist[num], sep='\t', index=False)
 
@@ -101,7 +104,12 @@ def main():
 	#put_feherr(filelist = ['data/7078l1_1200B_final.csv', 'data/7089l1_1200B_final.csv', 'data/n5024b_1200B_final.csv'], feh_filelist = ['data/glob_data/feherr_data/7078l1_flexteff.fits.gz','data/glob_data/feherr_data/7089l1_flexteff.fits.gz','data/glob_data/feherr_data/n5024_flexteff.fits.gz'])
 	#plot_gaia('data/gc_checks/7089l1_parallaxes.csv', 'figures/gc_checks/7089l1_pmcheck.png')
 	#put_feherr(filelist = ['data/bscl5_1200B_final3.csv', 'data/bfor7_1200B_final3.csv', 'data/LeoIb_1200B_final3.csv','data/CVnIa_1200B_final3.csv'], feh_filelist = ['data/dsph_data/feherr_data/bscl5_flexteff.fits.gz','data/dsph_data/feherr_data/bfor7_flexteff.fits.gz','data/dsph_data/feherr_data/LeoIb_flexteff.fits.gz','data/dsph_data/feherr_data/CVnIa_flexteff.fits.gz'])
-	put_feherr(filelist = ['data/LeoIb_1200B_final3.csv'], feh_filelist = ['data/dsph_data/feherr_data/LeoIb_moogify.fits.gz'])
+	#put_feherr(filelist = ['data/LeoIb_1200B_final3.csv'], feh_filelist = ['data/dsph_data/feherr_data/LeoIb_moogify.fits.gz'])
+
+	#put_vt(filelist = ['data/7078l1_1200B_final.csv', 'data/7089l1_1200B_final.csv', 'data/n5024b_1200B_final.csv'], feh_filelist = ['data/glob_data/feherr_data/7078l1_flexteff.fits.gz','data/glob_data/feherr_data/7089l1_flexteff.fits.gz','data/glob_data/feherr_data/n5024_flexteff.fits.gz'])
+	#put_vt(filelist = ['data/bscl5_1200B_final3.csv', 'data/bfor7_1200B_final3.csv', 'data/LeoIb_1200B_final3.csv','data/CVnIa_1200B_final3.csv'], feh_filelist = ['data/dsph_data/feherr_data/bscl5_flexteff.fits.gz','data/dsph_data/feherr_data/bfor7_flexteff.fits.gz','data/dsph_data/feherr_data/leoi_moogify_member.fits.gz','data/dsph_data/feherr_data/CVnIa_flexteff.fits.gz'])
+	#put_vt(filelist = ['data/LeoIb_1200B_final3.csv'], feh_filelist = ['data/dsph_data/feherr_data/leoi_moogify_member.fits.gz'])
+	put_vt(filelist = ['data/bumia_1200B_final3.csv','data/umi_moogifynocut.fits.gz'], feh_filelist = ['data/dsph_data/feherr_data/UMaIIb_flexteff.fits.gz'])
 
 if __name__ == "__main__":
 	main()

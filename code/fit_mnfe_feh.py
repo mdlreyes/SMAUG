@@ -79,7 +79,7 @@ def fit_mnfe_feh(file, mnfe_check, outfile, title, fehia, maxerror=None, nlte=Fa
 			mnfeerr[i] = mnherr[i]
 		else:
 			mnfe[i] = mnh[i] - feh[i]
-			mnfeerr[i] = np.sqrt(np.power(feherr[i],2.)+np.power(mnherr[i],2.))
+			mnfeerr[i] = np.sqrt(np.power(feherr[i],2.)+np.power(mnherr[i],2.)+0.08**2.)
 
 	# Define outliers if necessary
 	#outlier = np.where((mnfe > 0.7) & (feh < -2.25))[0]
@@ -491,6 +491,10 @@ def fit_mnfe_feh(file, mnfe_check, outfile, title, fehia, maxerror=None, nlte=Fa
 			plt.setp(text, color='k', fontsize=18)
 		plt.setp(leg.get_title(), fontsize=20)
 		leg._legend_box.align="left"
+
+	if nlte:
+		ax.set_xlim([-2.8,-0.75])
+		ax.set_ylim([-1.0,1.5])
 
 	# Format plot
 	#ax.set_title(title, fontsize=18)
@@ -931,8 +935,7 @@ def main():
 	# Plot for Sculptor
 	#fit_mnfe_feh('data/bscl5_1200B_final3.csv',False,'figures/scl_fit3', 'Sculptor dSph', fehia=-2.12, maxerror=0.3, bestfit=True)
 	#fit_mnfe_feh('data/bscl5_1200B_final3.csv',False,'figures/scl_fit3', 'Sculptor dSph', fehia=-2.12, maxerror=0.3, sne=True, literature=['Sobeck+06','North+12'])
-	#fit_mnfe_feh('data/bscl5_1200B_final3.csv',False,'figures/scl_fit3_nlte', 'Sculptor dSph', fehia=-2.12, maxerror=0.3, nlte=True) 
-	#fit_mnfe_feh(['data/bscl5_1200B_final3.csv','data/hires_data_final/scl/north12_final.csv'],[False,True],'figures/scl_fit_total', 'Sculptor dSph', fehia=-2.34, maxerror=0.3, gratings=['#594F4F','#B0B0B0'])
+	fit_mnfe_feh('data/bscl5_1200B_final3.csv',False,'figures/scl_fit3_nlte', 'Sculptor dSph', fehia=-2.12, maxerror=0.3, nlte=True, sne=True) 
 
 	# Plot for Ursa Minor
 	#fit_mnfe_feh(['data/bumia_1200B_final3.csv'],[False],'figures/umi_fit3', 'Ursa Minor dSph', fehia=-2.42, maxerror=0.3, gratings=['#594F4F'])
@@ -949,8 +952,8 @@ def main():
 	#compute_fractions(-2., -0.30, 'sub(S18)', 1.0, mchmodel='S13_N100')
 
 	# Compute fractions of Type Ia SNe
-	compute_fractions_ni(-1.5, -0.26, 'sub(L19)', 1.1, mchmodel='S13_N100')
-	compute_fractions_ni(-1.5, -0.26, 'sub(S18)', 1.0, mchmodel='S13_N100')
+	#compute_fractions_ni(-1.5, -0.26, 'sub(L19)', 1.1, mchmodel='S13_N100')
+	#compute_fractions_ni(-1.5, -0.26, 'sub(S18)', 1.0, mchmodel='S13_N100')
 	#compute_fractions_ni(-2., -0.26, 'sub(S18)', 1.0, mchmodel='S13_N100')
 
 	return

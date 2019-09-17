@@ -1,0 +1,112 @@
+galaxy               slitmask     directory
+Sculptor             scl1         /raid/m31/dsph/scl/scl1/            
+                     scl2         /raid/m31/dsph/scl/scl2/            
+                     scl3         /raid/m31/dsph/scl/scl3/            
+                     scl5         /raid/m31/dsph/scl/scl5/            
+                     scl6         /raid/m31/dsph/scl/scl6/            
+Fornax               for1B        /raid/m31/dsph/for/for1B/           
+                     for3B        /raid/m31/dsph/for/for3B/           
+                     for4B        /raid/m31/dsph/for/for4B/           
+                     for6         /raid/m31/dsph/for/for6/            
+                     for7         /raid/m31/dsph/for/for7/            
+Leo I                leoi         /raid/m31/leoi/deimos/              
+                     LIN1_1       /raid/m31/leoi/LIN1_1/              
+                     LIN1_2       /raid/m31/leoi/LIN1_2/              
+                     LIN1_3       /raid/m31/leoi/LIN1_3/              
+                     LIN1_4       /raid/m31/leoi/LIN1_4/              
+                     LIN2_1       /raid/m31/leoi/LIN2_1/              
+                     LIN2_2       /raid/m31/leoi/LIN2_2/              
+                     LIN2_3       /raid/m31/leoi/LIN2_3/              
+                     LIN2_4       /raid/m31/leoi/LIN2_4/              
+                     LIN3_1       /raid/m31/leoi/LIN3_1/              
+                     LIN3_2       /raid/m31/leoi/LIN3_2/              
+                     LIN3_3       /raid/m31/leoi/LIN3_3/              
+                     LIN3_4       /raid/m31/leoi/LIN3_4/              
+Sextans              sex1         /raid/m31/dsph/sex/sex1/            
+                     sex2         /raid/m31/dsph/sex/sex2/            
+                     sex3         /raid/m31/dsph/sex/sex3/            
+                     sex4         /raid/m31/dsph/sex/sex4/            
+                     sex6         /raid/m31/dsph/sex/sex6/            
+                     sexmi1       /raid/caltech/moogify/sexmi1/       
+                     sexmi2       /raid/caltech/moogify/sexmi2/       
+                     sexmi3       /raid/caltech/moogify/sexmi3/       
+                     sexmi4       /raid/caltech/moogify/sexmi4/       
+                     sexmi5       /raid/caltech/moogify/sexmi5/       
+Leo II               L2A          /raid/m31/dsph/leoii/L2A/           
+                     L2B          /raid/m31/dsph/leoii/L2B/           
+                     L2C          /raid/m31/dsph/leoii/L2C/           
+                     L2D          /raid/m31/dsph/leoii/L2D/           
+                     L2E          /raid/m31/dsph/leoii/L2E/           
+                     L2F          /raid/m31/dsph/leoii/L2F/           
+Ursa Minor           umi1         /raid/m31/dsph/umi/umi1/            
+                     umi2         /raid/m31/dsph/umi/umi2/            
+                     umi3         /raid/m31/dsph/umi/umi3/            
+                     umi6         /raid/m31/dsph/umi/umi6/            
+                     umima1       /raid/caltech/moogify/umima1/       
+                     umima2       /raid/caltech/moogify/umima2/       
+                     umima3       /raid/caltech/moogify/umima3/       
+                     umimi1       /raid/caltech/moogify/umimi1/       
+                     umimi2       /raid/caltech/moogify/umimi2/       
+                     umimi3       /raid/caltech/moogify/umimi3/       
+                     umix1        /raid/caltech/moogify/umix1/        
+                     umix2        /raid/caltech/moogify/umix2/        
+                     umix4        /raid/caltech/moogify/umix4/        
+                     uss-1        /raid/caltech/moogify/uss-1/        
+                     uss-2        /raid/caltech/moogify/uss-2/        
+                     uss-3        /raid/caltech/moogify/uss-3/        
+                     uss-4        /raid/caltech/moogify/uss-4/        
+                     uss-5        /raid/caltech/moogify/uss-5/        
+                     uss-6        /raid/caltech/moogify/uss-6/        
+                     uss-7        /raid/caltech/moogify/uss-7/        
+                     uss-8        /raid/caltech/moogify/uss-8/        
+                     uss-9c       /raid/caltech/moogify/uss-9c/       
+                     uss-10       /raid/caltech/moogify/uss-10/       
+                     uss-11       /raid/caltech/moogify/uss-11/       
+                     uss-12       /raid/caltech/moogify/uss-12/       
+Draco                dra1         /raid/m31/dsph/dra/dra1/            
+                     dra2         /raid/m31/dsph/dra/dra2/            
+                     dra3         /raid/m31/dsph/dra/dra3/            
+                     dra4         /raid/m31/dsph/dra/dra4/            
+                     dra5         /raid/m31/dsph/dra/dra5/            
+                     dra7         /raid/m31/dsph/dra/dra7/            
+                     dra8         /raid/m31/dsph/dra/dra8/            
+                     dra9         /raid/m31/dsph/dra/dra9/            
+Segue 2              seg2_1       /raid/caltech/moogify/seg2_1/       
+                     seg2_2       /raid/caltech/moogify/seg2_2/       
+                     seg2_3       /raid/caltech/moogify/seg2_3/       
+                     seg2_4       /raid/caltech/moogify/seg2_4/       
+                     seg2_5       /raid/caltech/moogify/seg2_5/       
+                     seg2_6       /raid/caltech/moogify/seg2_6/       
+                     seg2_7       /raid/caltech/moogify/seg2_7/       
+                     seg2_8       /raid/caltech/moogify/seg2_8/       
+Canes Venatici I     cvni         /raid/m31/udwarf/CVnI/
+Coma Berenices       CB           /raid/m31/udwarf/CB/                
+Ursa Major I         UMaI         /raid/m31/udwarf/UMaI/              
+Ursa Major II        UMaII        /raid/m31/udwarf/UMaII/             
+Hercules             Herc         /raid/m31/udwarf/Herc/              
+Leo IV               LeoIV        /raid/m31/udwarf/LeoIV/             
+Canes Venatici II    CVnII        /raid/m31/udwarf/CVnII/             
+Leo T                leot         /raid/m31/udwarf/LeoT/              
+NGC 6822             n6822a       /raid/caltech/moogify/n6822a/       
+                     n6822b       /raid/caltech/moogify/n6822b/       
+IC 1613              i1613a       /raid/caltech/moogify/i1613a/       
+Pegasus              pega         /raid/caltech/moogify/pega/         
+Aquarius             aqra         /raid/caltech/moogify/aqra/         
+                     aqrd         /raid/caltech/moogify/aqrd/         
+Cetus                ceta         /raid/caltech/moogify/ceta/         
+                     cetb         /raid/caltech/moogify/cetb/         
+Sagittarius DIG      sagdia       /raid/caltech/moogify/sagdia/       
+                     sagdib       /raid/caltech/moogify/sagdib/       
+Leo A                leoaaW       /raid/caltech/moogify/leoaaW/       
+                     leoac        /raid/caltech/moogify/leoac/        
+                     leoa_rizzi   /raid/caltech/moogify/leoa_rizzi/   
+VV124                vv124a       /raid/caltech/moogify/vv124a/       
+Sextans B            sexb1        /raid/caltech/moogify/sexb1/        
+NGC 3109             N3109a       /raid/caltech/moogify/N3109a/       
+Andromeda I          and1a        /raid/caltech/moogify/and1a/        
+Andromeda III        and3a        /raid/caltech/moogify/and3a/        
+Andromeda V          and5a        /raid/caltech/moogify/and5a/        
+                     and5b        /raid/caltech/moogify/and5b/        
+Andromeda VII        and7a        /raid/caltech/moogify/and7a/        
+Andromeda X          and10a       /raid/caltech/moogify/and10a/       
+                     and10b       /raid/caltech/moogify/and10b/       
