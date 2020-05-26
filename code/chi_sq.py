@@ -30,7 +30,7 @@ from make_plots import make_plots
 # Observed spectrum
 class obsSpectrum:
 
-	def __init__(self, obsfilename, paramfilename, starnum, wvlcorr, galaxyname, slitmaskname, globular, lines, obsspecial=None, plot=False, hires=None, smooth=None):
+	def __init__(self, obsfilename, paramfilename, starnum, wvlcorr, galaxyname, slitmaskname, globular, lines, obsspecial=None, plot=False, hires=None, smooth=None, specialparams=None):
 
 		# Observed star
 		self.obsfilename 	= obsfilename 	# File with observed spectra
@@ -55,6 +55,11 @@ class obsSpectrum:
 
 			# Get measured parameters from observed spectrum
 			self.temp, self.logg, self.fe, self.alpha, self.fe_err = open_obs_file(self.paramfilename, self.starnum, specparams=True, objname=self.specname)
+			if specialparams is not None:
+				self.temp = specialparams[0]
+				self.logg = specialparams[1]
+				self.fe = specialparams[2]
+				self.alpha = specialparams[3]
 
 			if plot:
 				# Plot observed spectrum
@@ -102,7 +107,6 @@ class obsSpectrum:
 				plt.axvspan(4856, 4866, alpha=0.5, color='red')
 				plt.axvspan(6558, 6568, alpha=0.5, color='red')
 				plt.ylim((0,5))
-				#plt.xlim((6553,6573))
 				plt.savefig(self.outputname+'/'+self.specname+'_obsnormalized.png')
 				plt.close()
 				np.savetxt(self.outputname+'/'+self.specname+'_obsnormalized.txt',np.asarray((self.obswvl,self.obsflux_norm)).T)

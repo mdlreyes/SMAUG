@@ -1,0 +1,82 @@
+To whom it may concern,
+
+We thank the referee for their helpful response and constructive comments. In response to the referee's feedback, we have made the following changes:
+
+1. In equation 2, the statistical (fitting) and systematic errors are included. This equation is used to calculate systematic errors, but
+- 1a. Where are the statistical errors provided for the reader?
+
+>> Table 7 (previously Table 5) lists the total error (statistical and systematic errors added in quadrature). The statistical errors from fitting can therefore be computed from these total errors by removing our final estimate of the systematic error (0.08 dex, described in Section 3.2.3). We have added a footnote to Table 7 to clarify this.
+
+- 1b. Were errors in the stellar parameters taken into account?
+
+>> Rather than attempting to quantify all individual sources of systematic error (such as uncertainties in stellar parameters) for each star, we instead estimate an "error floor" for all stars. This error floor can be thought of as a "total" systematic error, which can be added in quadrature with the statistical error to obtain a total error. This should account for all sources of non-statistical errors, including uncertainties in stellar parameters.
+
+We have restructured Section 3.2 to more clearly explain this uncertainty analysis. As part of this restructuring, we have also shown (in Section 3.2.2) that variations in stellar parameters produce only small changes in [Mn/Fe] (i.e., stellar parameter errors are not the main source of systematic error in [Mn/Fe]). This is primarily because to first order, variations in stellar parameters affect both [Mn/H] and [Fe/H] in the same way, so the ratio [Mn/Fe] does not significantly change.
+
+- 1c. What are the errors in Teff, logg, and [alpha/Fe], as they are not included in Table 5.
+
+>> We have added these errors to Table 7 (previously Table 5).
+
+- 1d. I am concerned that systematic sources of error (e.g., the uncertainties in the stellar parameters) have been ignored in this analysis, which will reduce the apparent MRS sigma values. Furthermore, it is not clear why the authors average the results from individual stars in any system that undergoes chemical evolution (range in [Fe/H], and T/logg up the RGB) to reduce their statistical errors by root(N) in [Mn/Fe].
+
+>> As noted in point 1b above, the systematic uncertainty "error floor" (which includes uncertainties in stellar parameters, along with other systematic sources of error) is included throughout our analysis. We do not quite follow the referee's second point, as we have not at any point reduced our statistical errors in [Mn/Fe] by root(N). We hope the new version of Section 3.2 better clarifies our uncertainty analysis.
+
+2. In equation 3, the comparison with the HRS is confusing. The procedure is to adopt the uncertainties reported in the HRS literature, yet
+- 2a. those values are not tabulated anywhere nor referenced; the actual number (0.16) appears out of the blue.
+
+>> We thank the referee for bringing up this point and the following excellent points regarding the HRS comparison. While restructuring the discussion of our uncertainty analysis in Section 3.2., we redid our error floor calculation: our error floor estimate is now based only on the assumption that stars in an individual globular cluster should exhibit no intrinsic dispersion in [Mn/Fe]. The HRS literature measurements are now used to validate our error analysis.
+
+To address point 2a specifically, we have also added a new table (Table 6) to explicitly list the HRS and MRS measurements for the stars in this comparison sample.
+
+- 2b. It is not clear how that number varies between samples or literature papers,
+
+- 2c. nor if that number included the systematic errors from uncertainties in stellar parameters.
+
+>> To respond to points 2b and 2c, the new Table 6 lists [Mn/Fe] errors for the HRS and MRS measurements, as well as the stellar parameters assumed in the HRS measurements (when available). (The online table will also list the MRS stellar parameters for ease of comparison.) Although the exact details of the error calculations vary among HRS literature sources, nearly all sources report errors that account for both statistical uncertainty (variation among Mn lines) and systematic uncertainty (uncertainties in stellar parameters). The only exception is North et al. (2012), who do not provide total errors---we are able to compute statistical uncertainties but cannot account for systematic uncertainties in stellar parameters. We have added text to this effect in the caption for Table 6.
+
+- 2d. it is difficult to understand how sigma-MRS is about half that of sigma-HRS, especially given the size of the error bars and the [Mn/Fe] distributions in Figure 4. Since these are measurements from individual stars and the goal is to look for chemical evolution trends, then having a smaller sigma-MRS by, e.g., dividing by a larger sample size or root(N), is not a good assumption. Alternatively, is the SNR so much larger for the MRS than HRS? If so, this has not been included or discussed.
+
+>> We thank the referee for identifying this error. In Figure 4 (now the left panel of Figure 4), we incorrectly plotted only the statistical errors in [Mn/Fe] from the HRS measurements, so the HRS error bars in Figure 4 were drastically underestimated. We have corrected this. At no point in our analysis do we divide the [Mn/Fe] error by root(N). We hope this alleviates the referee's concern.
+
+- 2e. Later on page 12 (Section 4.2, paragraph 5) there is a note that the spread in the MRS results is sigma~0.29 , but again, I cannot see how that number was found based on the data plotted in Figure 4. This is another sigma value presented without sufficient information for the reader to check and/or to know what assumptions were used by the authors.
+
+>> This sigma~0.29 is the dispersion in the MRS [Mn/Fe] measurements, which we estimate using the standard deviation of all MRS measurements for stars in Sculptor. We have modified the text in Section 4.2 to clarify how this number is calculated.
+
+- 2f. The binned data for Sculptor from Figure 7 is consistent with the HRS, and suggests that the low [Mn/Fe] from the MRS data in Figure 4 is just noise (and an under representation of the total errors from the MRS data analysis). This makes the logic in the first half of the paper extremely difficult to follow, or at least the writing in Section 4.2. Please clarify (e.g., this MRS sample only clearly observes more stars below [Fe/H] = -1.2, and not below [Mn/Fe]=-0.3 as stated, due to the large individual 1-sigma errors).
+
+>> We agree with the referee that the comparison between our results and North+12 in Section 4.2 is confusing, and we have rewritten this passage.
+
+- 2f. The authors need to show their work for their calculations of sigma-MRS and sigma-HRS, and state their assumptions more clearly. Do the results hold up to 3-sigma errors?
+
+>> We hope the updated version of Section 3.2.2 addresses this point.
+
+- 3. The authors do not explain why they have selected the specific globular clusters and dwarf galaxies in their sample. For example, why not the Sgr dwarf remnant?
+
+>> We have added the following text to Section 2: "Our target selection prioritizes globular clusters and dSphs previously observed with the red 1200G grating on DEIMOS." Much of our final target selection was also based on the positions of various objects in the Northern Hemisphere sky when we were assigned observing time.
+
+- 4. Some of the parameters used in equation 4 are not defined.
+
+>> We thank the referee for identifying this mistake and have added text defining the parameters $b_{\perp}$ and $\theta$.
+
+- 5. Figure 5 is very helpful, but could the authors clarify "For theoretical yields, red (or blue) lines indicated yields at solar metallicities (or Z=10^-1.5 Zsun)." Was the second "yields" in that sentence supposed to be the progenitor metallicities? If not, then its unclear how the DDT(L18) model gives sub-Ch yields (blue lines) at above solar [Mn/Fe] (x-axis). If so, then is the chemical evolution model presented in this paper for Mn is itself dependent on metallicity-dependent yields (e.g., comment bottom of page 15, Section 5.2, paragraph 4, "If [Mn/Fe] yields from sub-Ch Type Ia SN are metallicity-dependent, then differences ...").
+
+>> We have rewritten this caption to clarify its meaning: "Red (blue) lines indicate theoretical yields from solar metallicity ($10^{-1.5}Z_{\odot}$) progenitors."
+
+The simple chemical evolution model described in Sec. 4.1 does not itself make any assumptions about the dependence of Type Ia SN yields on progenitor metallicity. The comment in paragraph 4 of Sec. 5.2 is simply intended to describe one potential implication if [Mn/Fe] yields from Type Ia SNe do indeed depend on the progenitor metallicity; we have edited some text in an attempt to better clarify this point.
+
+- 6. Figure 7 is very interesting. Could the authors correct or clarify that errors in stellar parameters (T, logg) were included in the errorbars in the left panel. Were those propagated into the results in the right panel (while individual errors are not shown, the combined errors of the averaged data points can be calculated and shown along with the dispersions).
+
+>> As described in Section 3.2, total errors (i.e., combined statistical and systematic errors, which subsume errors from stellar parameter uncertainties) are used throughout the entirety of our analysis. The left panel of Figure 7 does plot these total errors, and the right panel shows the combined errors of the averaged data points. We have added text to the caption of Figure 7 to clarify this.
+
+- 7. Given the spectrum synthesis nature of this analysis, the NLTE corrections to the Mn II line are difficult to interpret in Section 5.3 since none of the NLTE corrections for the nearest neighbors and blended lines are included. What would the corrections have looked like if, at least, NLTE corrections to FeI were also included in the spectrum syntheses?
+
+>> Our measurements use Mn I non-resonance lines rather than Mn II lines. Our NLTE correction estimates do not depend on our MRS spectral synthesis method. We directly estimate overall NLTE corrections to [Mn/Fe] (as a function of [Fe/H]) using the results of Bergemann et al. (2019), who also use spectral synthesis methods. Bergemann et al. use high-resolution spectral synthesis to determine the NLTE corrections from *individual* Mn I lines, rather than estimating NLTE corrections from medium-resolution spectral synthesis of *many* Mn I lines (as we do to measure [Mn/Fe] in this work). However, since some of the lines Bergemann et al. use are also in our line list, we can estimate the maximum effect that NLTE corrections to these shared lines would have on [Mn/Fe].
+
+The referee brings up a good point that NLTE corrections may also affect Fe I. However, Bergemann et al. (2012) find that "iron abundances computed in LTE with one-dimensional atmospheres are typically different from non-LTE (NLTE) computations by \lesssim 0.1 dex." The resulting change in [Mn/Fe] would therefore be \lesssim 0.1 dex (with an additional \lesssim 0.01 dex change from the second-order dependence on metallicity described by Eq. 10). This change is smaller than the average NLTE corrections predicted in Section 5.3.
+
+--
+
+We appreciate the constructive feedback and hope we have adequately addressed the referee's comments.
+
+Sincerely,
+Mithi Alexa C. de los Reyes

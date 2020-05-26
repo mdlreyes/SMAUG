@@ -1,0 +1,21 @@
+To whom it may concern,
+
+We thank the referee for their helpful comment. In response to the referee's feedback, we have made the following changes:
+
+- The last comment in the rebuttal to the original referee report about NLTE corrections on FeI appears to be a misquote or a misunderstanding, possibly confusing small NLTE corrections in main-sequence stars like the Sun, with much larger corrections typical of giants like most stars in this sample. Firstly, there are several more up-to-date NLTE and/or 3D calculations for FeI now available (e.g., Bergemann et al. 2017 ApJ 2017.847,16; Mashonkina et al. 2019 A&A, 631, 43 ; and also individual lines can be checked directly using the INSPECT webpage at http://inspect.coolstars19.com). However, even in Bergemann et al. 2012 it is clear that FeI NLTE corrections can be very large, e.g., see their Fig. 13 for star G64-12. This background is currently missing in Section 5.3 of the revised manuscript and the comment in the rebuttal is confusing, either unclear or incorrect.
+
+>> We thank the referee for catching this error. The quote in our response to the original referee report was indeed a misquote. We have double-checked the listed references (Bergemann et al. 2017, Mashonkina et al. 2019, Bergemann et al. 2012), as well as the individual line corrections on the INSPECT webpage. We find that although many stars do indeed have large NLTE corrections (up to ~0.5 dex) in FeI, these are limited to relatively metal-poor stars ([Fe/H] \lesssim -2.0) compared to the bulk of stars in our sample. For example, G64-12 in Bergemann et al. (2012) has [Fe/H]=-3.14, significantly more metal-poor than all of the stars in our sample. The larger FeI corrections are therefore not relevant to our particular sample.
+
+We agree that this background is important to include in the text of the manuscript, and we have added the following as a footnote in Section 5.3:
+
+"We note that although we consider primarily NLTE effects on Mn I lines, NLTE conditions can also affect Fe I lines. Predictions for NLTE Fe I corrections can be quite large (up to 0.5 dex; see, e.g., Mashonkina et al. 2019, Bergemann et al. 2017, Bergemann et al. 2012). However, these large corrections are generally applicable for metal-poor stars with $[\mathrm{Fe/H}]\lesssim -2.0$. For cool giant stars with metallicities comparable to the bulk of our sample ($[\mathrm{Fe/H}]>-2.0$), Mashonkina et al. (2019) predict NLTE corrections $\lesssim 0.1$~dex (cf. their Fig 8). This change is smaller than the average NLTE corrections predicted by Equation 10."
+
+--
+
+We appreciate the constructive feedback and hope we have adequately addressed the referee's comment.
+
+Sincerely,
+Mithi Alexa C. de los Reyes
+Evan N. Kirby
+Ken J. Shen
+Ivo R. Seitenzahl

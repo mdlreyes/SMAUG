@@ -4,9 +4,8 @@
 #
 # - createPar: for a given *.atm file and linelist, output *.par file
 # - runMoog: runs MOOG for each Mn linelist (calls createPar), splices output spectrum
-# 
+#
 # Created 4 Jan 18
-# Updated 10 Aug 18
 ###################################################################
 
 import os
@@ -21,8 +20,7 @@ import tempfile
 import shutil
 	
 def createPar(name, atmfile='', linelist='', directory=''):
-	"""Create *.par file using *.atm file and linelist.
-	"""
+	"""Create *.par file using *.atm file and linelist."""
 
 	# Open linelist and get wavelength range to synthesize spectrum
 	wavelengths = np.genfromtxt(linelist, skip_header=1, usecols=0)
@@ -87,7 +85,6 @@ def runMoog(temp, logg, fe, alpha, directory='/raid/madlr/moogspectra/', element
 
 	# Define list of Mn linelists
 	if lines == 'new':
-		#linelists = np.array(['Mn47394783','Mn4823','Mn53945432','Mn55165537','Mn60136021','Mn6384','Mn6491'])
 		linelists = np.array(['Mn47394783_new','Mn4823','Mn54075420_new','Mn55165537','Mn60136021','Mn6384','Mn6491'])
 	elif lines == 'old':
 		linelists = np.array(['linelist_Mn47544762','linelist_Mn4783','linelist_Mn4823','linelist_Mn5394','linelist_Mn5537','linelist_Mn60136021']) 
@@ -96,7 +93,6 @@ def runMoog(temp, logg, fe, alpha, directory='/raid/madlr/moogspectra/', element
 
 	# Create identifying filename (including all parameters + linelist used)
 	name = getAtm(temp, logg, fe, alpha, directory='') # Add all parameters to name
-	#name = name[:-4] # remove .atm
 
 	# Add the new elements to filename, if any
 	if elements is not None:
@@ -139,9 +135,6 @@ def runMoog(temp, logg, fe, alpha, directory='/raid/madlr/moogspectra/', element
 		flux = data[~np.isnan(data)][:-1]
 
 		spectrum.append([1.-flux, wavelength])
-
-	#spectrum = np.vstack((wavelength, flux)).T
-	#np.savetxt(directory+parname, spectrum)
 
 	# Output synthetic spectrum in a format that continuum_div functions will understand (list of arrays)
 

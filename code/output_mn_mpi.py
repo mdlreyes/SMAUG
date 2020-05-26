@@ -81,7 +81,7 @@ def prep_run(filename, galaxyname, slitmaskname, membercheck=None, memberlist='/
 
 	return galaxyname, slitmaskname, filename, Nstars, RA, Dec, membercheck, membernames, globular
 
-def mp_worker(i, filename, paramfilename, wvlcorr, galaxyname, slitmaskname, globular, lines, plots, Nstars, RA, Dec, membercheck, membernames):
+def mp_worker(i, filename, paramfilename, wvlcorr, galaxyname, slitmaskname, globular, lines, plots, Nstars, RA, Dec, membercheck, membernames, correctionslist, corrections):
 	""" Function to parallelize: chi-sq fitting for a single star """
 
 	try:
@@ -103,20 +103,61 @@ def mp_worker(i, filename, paramfilename, wvlcorr, galaxyname, slitmaskname, glo
 				print('Not in member list! Skipped '+specname)
 				return None
 
+		# Vary stellar parameters
+		if int(specname) in np.asarray(correctionslist['ID']):
+			idx = np.where(np.asarray(correctionslist['ID']) == int(specname))[0]
+
+			# Vary the quantity required
+			if corrections[0] == 'Teff':
+				colstring = 'Teff'+str(int(np.abs(corrections[2])))
+				if corrections[1] == 'up':
+					temp = temp + corrections[2] # Make the correction go the right direction
+					fe = fe + float(correctionslist['FeH_'+colstring][idx])
+				else:
+					temp = temp - corrections[2]
+					fe = fe - float(correctionslist['FeH_'+colstring][idx])
+
+			elif corrections[0] == 'logg':
+				colstring = 'logg0'+str(int(10*np.abs(corrections[2])))
+				if corrections[1] == 'up':
+					logg = logg + corrections[2] # Make the correction go the right direction
+					fe = fe - float(correctionslist['FeH_'+colstring][idx])
+				else:
+					logg = logg - corrections[2]
+					fe = fe + float(correctionslist['FeH_'+colstring][idx])
+
+			# Now determine the direction to vary alpha
+			'''
+			key = corrections[0]+str(corrections[2])
+			if corrections[3] == 'up':
+				alpha = alpha + float(correctionslist['MgFe_'+key][idx] + 4*correctionslist['SiFe_'+key][idx] + 2*correctionslist['CaFe_'+key][idx] + 6*correctionslist['TiFe_'+key][idx])/13
+			else:
+				alpha = alpha - float(correctionslist['MgFe_'+key][idx] + 4*correctionslist['SiFe_'+key][idx] + 2*correctionslist['CaFe_'+key][idx] + 6*correctionslist['TiFe_'+key][idx])/13
+			'''
+
+		else:
+			print('No stellar parameter corrections listed!')
+			return None
+
 		# Run optimization code
-		star = chi_sq.obsSpectrum(filename, paramfilename, i, wvlcorr, galaxyname, slitmaskname, globular, lines, plot=True)
+		star = chi_sq.obsSpectrum(filename, paramfilename, i, wvlcorr, galaxyname, slitmaskname, globular, lines, plot=True, specialparams=[temp, logg, fe, alpha])
 		best_mn, error, finalchisq = star.plot_chisq(fe, output=True, plots=plots)
 
 		print('Finished star '+star.specname, '#'+str(i+1)+'/'+str(Nstars)+' stars')
 
-		return star.specname, str(RA[i]), str(Dec[i]), str(star.temp), str(star.logg[0]), str(star.fe[0]), str(star.fe_err[0]), str(star.alpha[0]), str(best_mn[0]), str(error[0]), str(finalchisq)
+		result = np.array([star.temp, star.logg, star.fe, star.fe_err, star.alpha, best_mn, error])
+		for i in range(len(result)):
+			if np.isscalar(result[i])==False:
+				result[i] = result[i][0]
+
+		return star.specname, str(RA[i]), str(Dec[i]), str(result[0]), str(result[1]), str(result[2]), str(result[3]), str(result[4]), str(result[5]), str(result[6]), str(finalchisq)
 
 	except Exception as e:
 		print(repr(e))
 		print('Skipped star #'+str(i+1)+'/'+str(Nstars)+' stars')
 		return None
 
-def mp_handler(galaxyname, slitmaskname, filename, Nstars, RA, Dec, membercheck, membernames, globular, startstar=0, paramfilename=None, lines='new', plots=True, wvlcorr=False):
+def mp_handler(galaxyname, slitmaskname, filename, Nstars, RA, Dec, membercheck, membernames, globular, startstar=0, paramfilename=None, lines='new', plots=True, wvlcorr=False, corrections=None):
 	""" Measure Mn abundances using parallel processing and write to file.
 
 	Inputs: takes all inputs from prep_run
@@ -129,10 +170,17 @@ def mp_handler(galaxyname, slitmaskname, filename, Nstars, RA, Dec, membercheck,
 	plots 			-- if 'True' (default), plot final fits/resids while doing the fits
 	wvlcorr 		-- if 'True' (default), do linear wavelength corrections following G. Duggan's code for 900ZD data;
 						else (for 1200B data), don't do corrections
+	corrections 	-- array describing stellar parameter variations:
+						- corrections[0]: 'Teff' or 'logg'
+						- corrections[1]: 'up' or 'down' for Teff/logg
+						- corrections[2]: amount by which to vary
+						- corrections[3]: 'up' or 'down' for [alpha/Fe]
 	"""
 
 	# Create output file
-	if globular:
+	if corrections is not None:
+		outputname = '/raid/madlr/dsph/'+galaxyname+'/'+corrections[0]+corrections[1]+str(corrections[2])+'.csv' #+'_alpha'+corrections[3]+'.csv'
+	elif globular:
 		outputname = '/raid/madlr/glob/'+galaxyname+'/'+slitmaskname+'.csv'
 	else:
 		outputname = '/raid/madlr/dsph/'+galaxyname+'/'+slitmaskname+'.csv'
@@ -146,8 +194,14 @@ def mp_handler(galaxyname, slitmaskname, filename, Nstars, RA, Dec, membercheck,
 	if paramfilename is None:
 		paramfilename = filename
 
+	# Upload correctionlist
+	if corrections is not None:
+		correctionslist = pandas.read_csv('Kirby10_stellarparam_corrections_scl.txt', delimiter='\s+')
+	else:
+		correctionslist = None
+
 	# Define function to parallelize
-	func = functools.partial(mp_worker, filename=filename, paramfilename=paramfilename, wvlcorr=wvlcorr, galaxyname=galaxyname, slitmaskname=slitmaskname, globular=globular, lines=lines, plots=plots, Nstars=Nstars, RA=RA, Dec=Dec, membercheck=membercheck, membernames=membernames)
+	func = functools.partial(mp_worker, filename=filename, paramfilename=paramfilename, wvlcorr=wvlcorr, galaxyname=galaxyname, slitmaskname=slitmaskname, globular=globular, lines=lines, plots=plots, Nstars=Nstars, RA=RA, Dec=Dec, membercheck=membercheck, membernames=membernames, correctionslist=correctionslist, corrections=corrections)
 
 	# Begin the parallelization
 	p = multiprocessing.Pool()
@@ -169,10 +223,22 @@ def main():
 	# Measure Mn abundances for dSphs
 	#mp_handler(*prep_run('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'bscl5_1200B', globular=False))
 	#mp_handler(*prep_run('/raid/caltech/moogify/bfor7_1200B/moogify.fits.gz', 'for', 'bfor7_1200B', globular=False))
-	mp_handler(*prep_run('/raid/caltech/moogify/LeoIb_1200B/moogify.fits.gz', 'leoi', 'LeoIb_1200B', globular=False))
-	#mp_handler(*prep_run('/raid/caltech/moogify/CVnIa_1200B/moogify.fits.gz', 'cvni', 'CVnIa_1200B', globular=False))
+	#mp_handler(*prep_run('/raid/caltech/moogify/LeoIb_1200B/moogify.fits.gz', 'leoi', 'LeoIb_1200B', globular=False))
+	#mp_handler(*prep_run('/raid/madlr/test/CVnIa_1200B_moogifynew.fits.gz', 'cvni', 'CVnIa_1200B', globular=False))
 	#mp_handler(*prep_run('/raid/caltech/moogify/umaIIb_1200B/moogify.fits.gz', 'umaii', 'umaIIb_1200B', globular=False))
-	#mp_handler(*prep_run('/raid/caltech/moogify/bumia_1200B/moogify.fits.gz', 'umi', 'bumia_1200B', globular=False))
+	#mp_handler(*prep_run('/raid/madlr/test/bumia_1200B_moogifynew.fits.gz', 'umi', 'bumia_1200B', globular=False))
+
+	# Check stellar param variations
+	#mp_handler(*prep_run('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'bscl5_1200B', globular=False), corrections=['Teff','up',125,'up'])
+	#mp_handler(*prep_run('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'bscl5_1200B', globular=False), corrections=['Teff','up',125])
+	#mp_handler(*prep_run('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'bscl5_1200B', globular=False), corrections=['Teff','down',125])
+	#mp_handler(*prep_run('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'bscl5_1200B', globular=False), corrections=['Teff','up',250])
+	#mp_handler(*prep_run('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'bscl5_1200B', globular=False), corrections=['Teff','down',250])
+
+	#mp_handler(*prep_run('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'bscl5_1200B', globular=False), corrections=['logg','up',0.3])
+	#mp_handler(*prep_run('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'bscl5_1200B', globular=False), corrections=['logg','down',0.3])
+	#mp_handler(*prep_run('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'bscl5_1200B', globular=False), corrections=['logg','up',0.6])
+	#mp_handler(*prep_run('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'bscl5_1200B', globular=False), corrections=['logg','down',0.6])
 
 if __name__ == "__main__":
 	main()

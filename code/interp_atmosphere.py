@@ -13,7 +13,6 @@
 # - writeAtm: given atmosphere, put contents into a *.atm file
 # 
 # Created 2 Nov 17
-# Updated 22 June 18
 ###################################################################
 
 import os
@@ -239,8 +238,6 @@ def interpolateAtm(temp, logg, fe, alpha, hgrid=False, griddir='/raid/grid7/atmo
 		alphaUp = round_to(alphanew, 1, 'up')/10.
 		alphaDown = round_to(alphanew, 1, 'down')/10.
 
-		#print('Interpolation parameters: ', tempUp, tempDown, loggUp, loggDown, feUp, feDown, alphaUp, alphaDown)
-
 		# Check that points are within range of grid
 		if tempError:
 			raise ValueError('T = ' + str(temp) + ' is out of range!')
@@ -264,10 +261,6 @@ def interpolateAtm(temp, logg, fe, alpha, hgrid=False, griddir='/raid/grid7/atmo
 		loggUp = loggDown = find_nearest(loggnew, array=np.array([0.5, 1.0, 1.5, 2.0, 2.5]))
 		feUp = feDown = find_nearest(loggnew, array=np.array([-2.0, -1.0]))
 		alphaUp = alphaDown = find_nearest(alphanew, array=np.array([0.0]))
-
-	#elif (temp > 3700) & (temp < 4200) & (logg > 40) & (fe <= -4.8):
-	#	print('Error: Out of range!') 
-	#	return
 
 	# If within grid, interpolate!
 
@@ -328,7 +321,6 @@ def interpolateAtm(temp, logg, fe, alpha, hgrid=False, griddir='/raid/grid7/atmo
 
 					# Read in grid point (atmosphere file)
 					iflux = readAtm(tempInterval[i],loggInterval[j],feInterval[m],alphaInterval[n],inputdir=griddir) #[:,0]
-					#print(iflux)
 
 					# Compute weighted sum of grid points
 					## If first iteration, initialize flux as weighted value of lowest grid point 
@@ -393,7 +385,14 @@ def writeAtm(temp, logg, fe, alpha, dir='/raid/madlr/atm/', elements=None, abund
 
 		# Footer text
 		#############
-		microturbvel 	= atmosphere[0,6]
+		# microturbvel 	= atmosphere[0,6]
+		if np.isscalar(logg):
+			microturbvel = (2.13 - 0.23*logg) * 1e5
+		else:
+			microturbvel = (2.13 - 0.23*logg[0]) * 1e5
+		# print('TEST: ', microturbvel, test)
+		# XXX CHECK TO MAKE SURE THIS IS THE SAME AS XI COMPUTED FROM LOGG XXX
+
 		alphatxt 	= str('\n      12      ' + ('%5.2f' % float(7.60 + fe + alpha)) +
 					'\n      14      ' + ('%5.2f' % float(7.51 + fe + alpha)) +
 					'\n      16      ' + ('%5.2f' % float(7.12 + fe + alpha)) +
@@ -448,7 +447,3 @@ def writeAtm(temp, logg, fe, alpha, dir='/raid/madlr/atm/', elements=None, abund
 			footer=footertxt, comments='')
 
 		return filestr+'.atm'
-
-#print( readAtm(temp=7000, logg=1.0, fe=-0.5, alpha=0.5) )
-#print( interpolateAtm(temp=6900, logg=3.0, fe=-0.5, alpha=0.5) )
-#writeAtm(temp=5900, logg=0.1, fe=-0.5, alpha=0.5, elements=[25], abunds=[0.5])
