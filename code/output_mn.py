@@ -301,7 +301,7 @@ def main():
 	#run_chisq('/raid/caltech/moogify/bscl6/moogify.fits.gz', '/raid/gduggan/moogify/bscl6_moogify.fits.gz', 'scl', 'scl6', startstar=0, lines='new', plots=True)
 
 	# Measure Mn abundances for Sculptor using new 1200B data
-	run_chisq('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', '/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'bscl5_1200B', startstar=2, lines='new', plots=True, wvlcorr=False)
+	#run_chisq('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', '/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'bscl5_1200B', startstar=2, lines='new', plots=True, wvlcorr=False)
 	#plot_fits_postfacto('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', '/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'bscl5_1200B', startstar=66, globular=False, lines='new')
 	#make_chisq_plots('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', '/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'bscl5_1200B', startstar=66, globular=False)
 	'''
@@ -344,6 +344,12 @@ def main():
 
 	# Plot chi-sq contours for stars that already have [Mn/H] measured
 	#make_chisq_plots('/raid/caltech/moogify/n2419b_blue/moogify.fits.gz', '/raid/gduggan/moogify/n2419b_blue_moogify.fits.gz', 'n2419b_blue', 'n2419b_blue', startstar=11, globular=True)
+
+	# Measure Mn abundances for new (Apr 2021) data
+	#run_chisq('/raid/caltech/moogify/sex10_1200B/moogify.fits.gz', '/raid/caltech/moogify/sex10_1200B/moogify.fits.gz', 'sex', 'sex10_1200B', startstar=0, globular=False, lines='new', plots=True, wvlcorr=True)
+	#run_chisq('/raid/caltech/moogify/dra10_1200B/moogify.fits.gz', '/raid/caltech/moogify/dra10_1200B/moogify.fits.gz', 'dra', 'dra10_1200B', startstar=0, globular=False, lines='new', plots=True, wvlcorr=True)
+	run_chisq('/raid/caltech/moogify/CVnIa_1200B/moogify.fits.gz', '/raid/caltech/moogify/CVnIa_1200B/moogify.fits.gz', 'cvni', 'CVnIa_1200B', startstar=99, globular=False, lines='new', plots=True, wvlcorr=True)
+
 
 if __name__ == "__main__":
 	main()

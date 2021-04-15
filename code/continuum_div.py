@@ -503,4 +503,4 @@ def mask_obs_for_abundance(obswvl, obsflux_norm, ivar_norm, dlam, lines = 'new',
 		if (lines[line][0] < obswvl[~mask][0]) or (lines[line][1] > obswvl[~mask][-1]):
 			skip = np.delete(skip, np.where(skip==line))
 
-	return np.asarray(obsfluxmask), np.asarray(obswvlmask), np.asarray(ivarmask), np.asarray(dlammask), np.asarray(skip)
+	return np.asarray(obsfluxmask, dtype=object), np.asarray(obswvlmask, dtype=object), np.asarray(ivarmask, dtype=object), np.asarray(dlammask, dtype=object), np.asarray(skip)

@@ -94,7 +94,7 @@ def mp_worker(i, filename, paramfilename, wvlcorr, galaxyname, slitmaskname, glo
 
 		# Check for bad parameter measurement
 		if np.isclose(temp, 4750.) and np.isclose(fe,-1.5) and np.isclose(alpha,0.2):
-			print('Bad parameter measurement! Skipped #'+str(i+1)+'/'+str(Nstars)+' stars')
+			print('Bad parameter measurement! Parameters: '+str(temp)+', '+str(fe)+', '+str(alpha)+ ' Skipped #'+str(i+1)+'/'+str(Nstars)+' stars')
 			return None
 
 		# Do membership check
@@ -104,27 +104,28 @@ def mp_worker(i, filename, paramfilename, wvlcorr, galaxyname, slitmaskname, glo
 				return None
 
 		# Vary stellar parameters
-		if int(specname) in np.asarray(correctionslist['ID']):
-			idx = np.where(np.asarray(correctionslist['ID']) == int(specname))[0]
+		if correctionslist is not None:
+			if int(specname) in np.asarray(correctionslist['ID']):
+				idx = np.where(np.asarray(correctionslist['ID']) == int(specname))[0]
 
-			# Vary the quantity required
-			if corrections[0] == 'Teff':
-				colstring = 'Teff'+str(int(np.abs(corrections[2])))
-				if corrections[1] == 'up':
-					temp = temp + corrections[2] # Make the correction go the right direction
-					fe = fe + float(correctionslist['FeH_'+colstring][idx])
-				else:
-					temp = temp - corrections[2]
-					fe = fe - float(correctionslist['FeH_'+colstring][idx])
+				# Vary the quantity required
+				if corrections[0] == 'Teff':
+					colstring = 'Teff'+str(int(np.abs(corrections[2])))
+					if corrections[1] == 'up':
+						temp = temp + corrections[2] # Make the correction go the right direction
+						fe = fe + float(correctionslist['FeH_'+colstring][idx])
+					else:
+						temp = temp - corrections[2]
+						fe = fe - float(correctionslist['FeH_'+colstring][idx])
 
-			elif corrections[0] == 'logg':
-				colstring = 'logg0'+str(int(10*np.abs(corrections[2])))
-				if corrections[1] == 'up':
-					logg = logg + corrections[2] # Make the correction go the right direction
-					fe = fe - float(correctionslist['FeH_'+colstring][idx])
-				else:
-					logg = logg - corrections[2]
-					fe = fe + float(correctionslist['FeH_'+colstring][idx])
+				elif corrections[0] == 'logg':
+					colstring = 'logg0'+str(int(10*np.abs(corrections[2])))
+					if corrections[1] == 'up':
+						logg = logg + corrections[2] # Make the correction go the right direction
+						fe = fe - float(correctionslist['FeH_'+colstring][idx])
+					else:
+						logg = logg - corrections[2]
+						fe = fe + float(correctionslist['FeH_'+colstring][idx])
 
 			# Now determine the direction to vary alpha
 			'''
@@ -137,7 +138,6 @@ def mp_worker(i, filename, paramfilename, wvlcorr, galaxyname, slitmaskname, glo
 
 		else:
 			print('No stellar parameter corrections listed!')
-			return None
 
 		# Run optimization code
 		star = chi_sq.obsSpectrum(filename, paramfilename, i, wvlcorr, galaxyname, slitmaskname, globular, lines, plot=True, specialparams=[temp, logg, fe, alpha])
@@ -145,7 +145,7 @@ def mp_worker(i, filename, paramfilename, wvlcorr, galaxyname, slitmaskname, glo
 
 		print('Finished star '+star.specname, '#'+str(i+1)+'/'+str(Nstars)+' stars')
 
-		result = np.array([star.temp, star.logg, star.fe, star.fe_err, star.alpha, best_mn, error])
+		result = np.array([star.temp, star.logg, star.fe, star.fe_err, star.alpha, best_mn, error], dtype=object)
 		for i in range(len(result)):
 			if np.isscalar(result[i])==False:
 				result[i] = result[i][0]
@@ -157,7 +157,7 @@ def mp_worker(i, filename, paramfilename, wvlcorr, galaxyname, slitmaskname, glo
 		print('Skipped star #'+str(i+1)+'/'+str(Nstars)+' stars')
 		return None
 
-def mp_handler(galaxyname, slitmaskname, filename, Nstars, RA, Dec, membercheck, membernames, globular, startstar=0, paramfilename=None, lines='new', plots=True, wvlcorr=False, corrections=None):
+def mp_handler(galaxyname, slitmaskname, filename, Nstars, RA, Dec, membercheck, membernames, globular, startstar=0, paramfilename=None, lines='new', plots=True, wvlcorr=True, corrections=None):
 	""" Measure Mn abundances using parallel processing and write to file.
 
 	Inputs: takes all inputs from prep_run
@@ -209,6 +209,7 @@ def mp_handler(galaxyname, slitmaskname, filename, Nstars, RA, Dec, membercheck,
 	with open(outputname, 'a') as f:
 		for result in p.imap(func, range(startstar, Nstars)):
 			if result is not None:
+				print('Final result: ', result)
 				f.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' % result)
 
 	return
@@ -227,6 +228,13 @@ def main():
 	#mp_handler(*prep_run('/raid/madlr/test/CVnIa_1200B_moogifynew.fits.gz', 'cvni', 'CVnIa_1200B', globular=False))
 	#mp_handler(*prep_run('/raid/caltech/moogify/umaIIb_1200B/moogify.fits.gz', 'umaii', 'umaIIb_1200B', globular=False))
 	#mp_handler(*prep_run('/raid/madlr/test/bumia_1200B_moogifynew.fits.gz', 'umi', 'bumia_1200B', globular=False))
+
+	# New data
+	#mp_handler(*prep_run('/raid/caltech/moogify/sex10_1200B/moogify.fits.gz', 'sex', 'sex10_1200B', globular=False))
+	#mp_handler(*prep_run('/raid/caltech/moogify/dra10_1200B/moogify.fits.gz', 'dra', 'dra10_1200B', globular=False))
+	#mp_handler(*prep_run('/raid/caltech/moogify/CVnIa_1200B/moogify.fits.gz', 'cvni', 'CVnIa_1200B', globular=False))
+	#mp_handler(*prep_run('/raid/caltech/moogify/LeoIIb_1200B/moogify.fits.gz', 'leoii', 'LeoIIb_1200B', globular=False))
+	mp_handler(*prep_run('/raid/caltech/moogify/bumia_1200B/moogify.fits.gz', 'umi', 'bumia_1200B', globular=False),paramfilename='/raid/madlr/test/bumia_1200B_moogifynew.fits.gz')
 
 	# Check stellar param variations
 	#mp_handler(*prep_run('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'bscl5_1200B', globular=False), corrections=['Teff','up',125,'up'])

@@ -53,7 +53,7 @@ def return_hydrogen_synth(temp,logg,fe,alpha,dlam,wvl_radius=10):
 	# Wavelength
 	wvlb  = np.arange(4851, 4871+step*.1, step)
 	# Relative flux
-	fluxb = interpolateAtm(hteff, hlogg, hfeh, halpha, hgrid=True, griddir='/raid/gduggan/gridhbeta/synths/')
+	fluxb = interpolateAtm(hteff, hlogg, hfeh, halpha, hgrid=True, griddir='/raid/gduggan/s/gridhbeta/synths/')
 	relfluxb = scipy.ndimage.filters.gaussian_filter(1.0-fluxb,gauss_sigma)
 	
 	# Halpha
@@ -64,14 +64,14 @@ def return_hydrogen_synth(temp,logg,fe,alpha,dlam,wvl_radius=10):
 	relfluxa = scipy.ndimage.filters.gaussian_filter(1.0-fluxa,gauss_sigma)
 
 	# Mask out regions outside the line regions
-	h_lines = [4341, 4861, 6563]
+	h_lines = [4341, 4861] #, 6563]
 	masky = (wvly > h_lines[0]-wvl_radius) & (wvly < h_lines[0] + wvl_radius)
 	maskb = (wvlb > h_lines[1]-wvl_radius) & (wvlb < h_lines[1] + wvl_radius)
-	maska = (wvla > h_lines[2]-wvl_radius) & (wvla < h_lines[2] + wvl_radius)
+	#maska = (wvla > h_lines[2]-wvl_radius) & (wvla < h_lines[2] + wvl_radius)
 
 	# Put the spectra into arrays
-	wvlh = np.array([wvly[masky],wvlb[maskb],wvla[maska]])
-	relfluxh = np.array([relfluxy[masky],relfluxb[maskb],relfluxa[maska]])
+	wvlh = np.array([wvly[masky],wvlb[maskb]]) #,wvla[maska]])
+	relfluxh = np.array([relfluxy[masky],relfluxb[maskb]]) #,relfluxa[maska]])
 	############# DANGER DANGER DANGER - hard coded reducing flux from hbeta synthesis
 
 	return wvlh, relfluxh, subtitle
@@ -102,7 +102,7 @@ def h_continuum(obs_wvl,obs_flux_norm,obs_flux_std,spec_wvl,spec_flux,f_data,wvl
 	wvl_end_gap = obs_wvl[chipgap + 5]
 
 	# Loop over H line regions
-	h_lines = [4341, 4861, 6563]
+	h_lines = [4341, 4861] #, 6563]
 	for i in range(len(h_lines)):
 
 		# Compute line regions
@@ -182,7 +182,7 @@ def find_wvl_offset(wvlh,f_data,f_synth_adj,wvl_radius=10):
 	conv_array = []
 
 	# Loop over all H lines
-	h_lines = [4341, 4861, 6563]
+	h_lines = [4341, 4861] #, 6563]
 	for i in range(len(h_lines)):
 
 		# Create wavelength grid for the large data wavelength interval that matches synthetic spectra -> wvl_data
@@ -246,10 +246,10 @@ def fit_wvl(obs_wvl, obs_flux_norm, obs_flux_std, dlam,
 	mask_red_data = obs_wvl > wvl_end_gap
 
 	# Check that all three hydrogen lines are included in the data
-	h_lines = [4341, 4861, 6563]
+	h_lines = [4341, 4861] #, 6563]
 	h_lines_blue_chip = (h_lines > obs_wvl[0]) & (h_lines < wvl_begin_gap)
 	h_lines_red_chip = (h_lines < obs_wvl[-1]) & (h_lines > wvl_end_gap)
-	if np.sum(h_lines_blue_chip)+np.sum(h_lines_red_chip) != 3:
+	if np.sum(h_lines_blue_chip)+np.sum(h_lines_red_chip) != len(h_lines):
 		print(h_lines_blue_chip,h_lines_red_chip, "Halpha, beta, or gamma is missing. Wavelength is not fine-tuned.")
 		return obs_wvl
 

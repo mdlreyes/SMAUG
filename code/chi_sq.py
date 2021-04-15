@@ -125,7 +125,8 @@ class obsSpectrum:
 
 					print('Done with wavelength correction!')
 
-				except:
+				except Exception as e:
+					print(repr(e))
 					print('Couldn\'t complete wavelength correction for some reason.')
 
 			# Crop observed spectrum into regions around Mn lines

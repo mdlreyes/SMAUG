@@ -162,6 +162,9 @@ def getAtm(temp, logg, fe, alpha, directory):
 	else:
 		alphapart 	= 'a_' + '{:02}'.format(alpha)
 
+	#if directory[-1] != '/':
+	#	directory = directory+'/'
+
 	filestr	= directory + filebase + fepart + alphapart
 
 	return filestr

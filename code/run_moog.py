@@ -27,7 +27,7 @@ def createPar(name, atmfile='', linelist='', directory=''):
 	wavelengthrange = [ math.floor(wavelengths[0]),math.ceil(wavelengths[-1]) ]
 
 	# Define filename
-	filestr = directory + name + '.par'
+	filestr = directory + '/'+ name + '.par'
 
 	# Check if file already exists
 	exists, readytowrite = checkFile(filestr)
@@ -131,7 +131,7 @@ def runMoog(temp, logg, fe, alpha, directory='/raid/madlr/moogspectra/', element
 		outfile = tempdir+'/'+parname+'.out2'
 
 		wavelength = np.linspace(wavelengthrange[0],wavelengthrange[1],math.ceil((wavelengthrange[1]-wavelengthrange[0])/0.02), endpoint=True)
-		data = pandas.read_csv(outfile, skiprows=[0,1,-1], delimiter=' ').as_matrix()
+		data = pandas.read_csv(outfile, skiprows=[0,1,-1], delimiter=' ').to_numpy()
 		flux = data[~np.isnan(data)][:-1]
 
 		spectrum.append([1.-flux, wavelength])
