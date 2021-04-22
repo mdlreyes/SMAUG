@@ -140,7 +140,7 @@ def mp_worker(i, filename, paramfilename, wvlcorr, galaxyname, slitmaskname, glo
 			print('No stellar parameter corrections listed!')
 
 		# Run optimization code
-		star = chi_sq.obsSpectrum(filename, paramfilename, i, wvlcorr, galaxyname, slitmaskname, globular, lines, plot=True, specialparams=[temp, logg, fe, alpha])
+		star = chi_sq.obsSpectrum(filename, paramfilename, i, wvlcorr, galaxyname, slitmaskname, globular, lines, RA[i], Dec[i], plot=True, specialparams=[temp, logg, fe, alpha])
 		best_mn, error, finalchisq = star.plot_chisq(fe, output=True, plots=plots)
 
 		print('Finished star '+star.specname, '#'+str(i+1)+'/'+str(Nstars)+' stars')
@@ -234,7 +234,7 @@ def main():
 	#mp_handler(*prep_run('/raid/caltech/moogify/dra10_1200B/moogify.fits.gz', 'dra', 'dra10_1200B', globular=False))
 	#mp_handler(*prep_run('/raid/caltech/moogify/CVnIa_1200B/moogify.fits.gz', 'cvni', 'CVnIa_1200B', globular=False))
 	#mp_handler(*prep_run('/raid/caltech/moogify/LeoIIb_1200B/moogify.fits.gz', 'leoii', 'LeoIIb_1200B', globular=False))
-	mp_handler(*prep_run('/raid/caltech/moogify/bumia_1200B/moogify.fits.gz', 'umi', 'bumia_1200B', globular=False),paramfilename='/raid/madlr/test/bumia_1200B_moogifynew.fits.gz')
+	mp_handler(*prep_run('/raid/caltech/moogify/bumia_1200B/moogify.fits.gz', 'umi', 'bumia_1200B', globular=False)) #,paramfilename='/raid/madlr/test/bumia_1200B_moogifynew.fits.gz')
 
 	# Check stellar param variations
 	#mp_handler(*prep_run('/raid/caltech/moogify/bscl5_1200B/moogify.fits.gz', 'scl', 'bscl5_1200B', globular=False), corrections=['Teff','up',125,'up'])

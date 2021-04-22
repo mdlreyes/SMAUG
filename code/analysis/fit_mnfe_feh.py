@@ -6,8 +6,8 @@
 # Updated 29 Nov 18
 ###################################################################
 
-import matplotlib as mpl
-#matplotlib.use('TkAgg')
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 
 from matplotlib import rc
@@ -82,16 +82,17 @@ def fit_mnfe_feh(file, mnfe_check, outfile, title, fehia, maxerror=None, nlte=Fa
 			mnfeerr[i] = np.sqrt(np.power(mnherr[i],2.)+0.10**2.)
 
 	# Define outliers if necessary
-	#outlier = np.where((mnfe > 0.7) & (feh < -2.25))[0]
+	outlier = np.where((feh < -2.25) & (mnfeerr < maxerror))[0]
 	#outlier = np.where(((feh-feherr) < -2.5))[0]
 	#outlier = np.where((mnfe > 0.25))
-	#print(name[outlier])
-	#notoutlier = np.ones(len(mnfe), dtype='bool')
-	#notoutlier[outlier] = False
+	print(name[outlier])
+	print(mnfe[outlier])
+	notoutlier = np.ones(len(mnfe), dtype='bool')
+	notoutlier[outlier] = False
 
 	# Remove points with error > maxerror
 	if maxerror is not None:
-		goodmask 	= np.where((mnfeerr < maxerror)) # & notoutlier) # & (redchisq < 3.0))
+		goodmask 	= np.where((mnfeerr < maxerror) & notoutlier) # & (redchisq < 3.0))
 		name 	= name[goodmask]
 		feh 	= feh[goodmask]
 		feherr  = feherr[goodmask]
@@ -514,7 +515,7 @@ def fit_mnfe_feh(file, mnfe_check, outfile, title, fehia, maxerror=None, nlte=Fa
 		ax.set_ylim([-1.0,1.5])
 
 	# Format plot
-	#ax.set_title(title, fontsize=18)
+	ax.set_title(title, fontsize=18)
 	ax.set_xlabel('[Fe/H]', fontsize=24)
 	ax.set_ylabel('[Mn/Fe]', fontsize=24)
 	if ia_comparison:
@@ -866,12 +867,12 @@ def compare_mnfe(outfile):
 	# Plot models
 	
 	reds = plt.cm.Reds_r(np.linspace(0.,0.8,8))
-	mpl.rcParams['axes.prop_cycle'] = cycler.cycler('color', reds)
-	redcwheel = [np.array(mpl.rcParams['axes.prop_cycle'])[x]['color'] for x in range(8)]
+	matplotlib.rcParams['axes.prop_cycle'] = cycler.cycler('color', reds)
+	redcwheel = [np.array(matplotlib.rcParams['axes.prop_cycle'])[x]['color'] for x in range(8)]
 
 	blues = plt.cm.Blues_r(np.linspace(0.,0.8,8))
-	mpl.rcParams['axes.prop_cycle'] = cycler.cycler('color', blues)
-	bluecwheel = [np.array(mpl.rcParams['axes.prop_cycle'])[x]['color'] for x in range(8)]
+	matplotlib.rcParams['axes.prop_cycle'] = cycler.cycler('color', blues)
+	bluecwheel = [np.array(matplotlib.rcParams['axes.prop_cycle'])[x]['color'] for x in range(8)]
 
 	# DDT (S13)
 	ddts13 = [0.01, -0.06, 0.01, 0.50, 0.53][::-1]
@@ -956,7 +957,12 @@ def main():
 	#fit_mnfe_feh('../data/bscl5_1200B_final3.csv',False,'../figures/scl_fit3', 'Sculptor dSph', fehia=-2.12, maxerror=0.3, sne=True, literature=['Sobeck+06','North+12'])
 	#fit_mnfe_feh('../data/bscl5_1200B_final3.csv',False,'../figures/scl_fit3_nlte', 'Sculptor dSph', fehia=-2.12, maxerror=0.3, nlte=True, sne=False) 
 
-	fit_mnfe_feh('../data/bscl5_1200B_final3.csv',False,'../figures/scl_fit3', 'Sculptor dSph', fehia=-2.12, maxerror=0.3, bestfit=True, sne=True)
+	#fit_mnfe_feh('../data/bscl5_1200B_final3.csv',False,'../figures/scl_fit3', 'Sculptor dSph', fehia=-2.12, maxerror=0.3, bestfit=True, sne=True)
+	
+	# New data (Apr 2021)
+	#fit_mnfe_feh('../data/newdata_2021/dra10_1200B.csv',False,'../figures/apr2021/dra_fit', 'Draco dSph', fehia=-2.36, maxerror=0.3, bestfit=True, sne=True)
+	fit_mnfe_feh('../data/newdata_2021/LeoIIb_1200B.csv',False,'../figures/apr2021/leoii_fit', 'Leo II dSph', fehia=-1.70, maxerror=0.3, bestfit=True, sne=True)
+	#fit_mnfe_feh('../data/newdata_2021/sex10_1200B.csv',False,'../figures/apr2021/sex_fit', 'Sextans dSph', fehia=-2.36, maxerror=0.3, bestfit=True, sne=True)
 
 	# Plot for Ursa Minor
 	#fit_mnfe_feh(['../data/bumia_1200B_final3.csv'],[False],'../figures/umi_fit3', 'Ursa Minor dSph', fehia=-2.42, maxerror=0.3, gratings=['#594F4F'])

@@ -5,8 +5,8 @@
 # Updated 27 Feb 19
 ###################################################################
 
-import matplotlib as mpl
-#matplotlib.use('TkAgg')
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 
 from matplotlib import rc
@@ -512,8 +512,8 @@ def plot_mn_fe(filenames, outfile, title, gratings=None, maxerror=None, xlim=Non
 
 	# Get color wheel
 	color = plt.cm.viridis(np.linspace(0,1,n))
-	mpl.rcParams['axes.prop_cycle'] = cycler.cycler('color', color)
-	cwheel = [np.array(mpl.rcParams['axes.prop_cycle'])[x]['color'] for x in range(n)]
+	matplotlib.rcParams['axes.prop_cycle'] = cycler.cycler('color', color)
+	cwheel = [np.array(matplotlib.rcParams['axes.prop_cycle'])[x]['color'] for x in range(n)]
 
 	# Create figure
 	fig, ax = plt.subplots(figsize=(10,8))
@@ -589,7 +589,6 @@ def plot_mn_fe(filenames, outfile, title, gratings=None, maxerror=None, xlim=Non
 
 		# Testing: Label some stuff
 		outlier = np.where(mnfe > 1)[0]
-		#print(name[outlier])
 
 		if averages:
 			# Make data points transparent
@@ -638,7 +637,7 @@ def plot_mn_fe(filenames, outfile, title, gratings=None, maxerror=None, xlim=Non
 
 	#ax.set_xlim([-3,-0.75])
 	#ax.set_ylim([-2,2])
-	ax.legend(loc='upper right', fontsize=20)
+	ax.legend(loc='upper right', fontsize=14)
 
 	# Output file
 	plt.savefig(outfile, bbox_inches='tight')
@@ -755,7 +754,15 @@ def main():
 	# dSph plots without chem evolution model
 	#plot_mn_fe(['../data/bscl5_1200B_final3.csv','../data/CVnIa_1200B_final3.csv','../data/LeoIb_1200B_final3.csv','../data/UMaIIb_1200B_final3.csv','../data/bfor7_1200B_final3.csv','../data/bumia_1200B_final3.csv'], '../figures/other_dsphs.pdf', None, gratings=['Sculptor','Canes Venatici I','Leo I','Ursa Major II','Fornax','Ursa Minor'], maxerror=0.3, snr=None, solar=False, typeii=False, typei=False, n=6)
 	#plot_mn_fe(['../data/bscl5_1200B_final3.csv','../data/CVnIa_1200B_final3.csv','../data/UMaIIb_1200B_final3.csv','../data/bumia_1200B_final3.csv'], 'figures/other_dsphs_test.pdf', None, gratings=['Sculptor','Canes Venatici I','Ursa Major II','Ursa Minor'], maxerror=0.3, snr=None, solar=False, typeii=False, typei=False)
-	plot_mn_fe(['../data/bscl5_1200B_final3.csv','../data/LeoIb_1200B_final3.csv','../data/bfor7_1200B_final3.csv'], '../figures/other_dsphs_zoom_test.pdf', None, gratings=['Sculptor','Leo I','Fornax'], maxerror=0.3, snr=None, solar=False, typeii=False, typei=False, averages=True, xlim=[-2.50,-0.50], ylim=[-1.0,0.75])
+	#plot_mn_fe(['../data/bscl5_1200B_final3.csv','../data/LeoIb_1200B_final3.csv','../data/bfor7_1200B_final3.csv'], '../figures/other_dsphs_zoom_test.pdf', None, gratings=['Sculptor','Leo I','Fornax'], maxerror=0.3, snr=None, solar=False, typeii=False, typei=False, averages=True, xlim=[-2.50,-0.50], ylim=[-1.0,0.75])
+
+	# dSph plots without chem evolution model (Apr 2021)
+	plot_mn_fe(['../data/newdata_2021/CVnIa_1200B.csv',
+				'../data/newdata_2021/dra10_1200B.csv',
+				'../data/newdata_2021/LeoIIb_1200B.csv',
+				'../data/newdata_2021/sex10_1200B.csv'], 
+			'/Users/miadelosreyes/Documents/Research/MnDwarfs/code/figures/apr2021/all_dsphs.pdf', 
+			None, gratings=['Canes Venatici I','Draco','Leo II','Sextans'], maxerror=0.3, snr=None, solar=False, typeii=False, typei=False, n=4)
 
 	# NLTE checks
 	#gc_mnfe_feh(['../data/7089l1_1200B_final.csv','../data/7078l1_1200B_final.csv','../data/n5024b_1200B_final.csv'], 'figures/gc_checks/GCs_mnfe_feh_nlte.pdf', gratingnames=['M2', 'M15', 'M53'], maxerror=0.3, membercheck=True, solar=True, nlte=True)

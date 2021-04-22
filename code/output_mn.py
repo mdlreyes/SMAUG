@@ -111,7 +111,7 @@ def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, gl
 					continue
 
 			# Run optimization code
-			star = chi_sq.obsSpectrum(filename, paramfilename, i, wvlcorr, galaxyname, slitmaskname, globular, lines, plot=True)
+			star = chi_sq.obsSpectrum(filename, paramfilename, i, wvlcorr, galaxyname, slitmaskname, globular, lines, RA[i], Dec[i], plot=True)
 			best_mn, error, finalchisq = star.plot_chisq(fe, output=True, plots=plots)
 
 		except Exception as e:
@@ -120,9 +120,10 @@ def run_chisq(filename, paramfilename, galaxyname, slitmaskname, startstar=0, gl
 			continue
 
 		print('Finished star '+star.specname, '#'+str(i+1)+'/'+str(Nstars)+' stars')
+		#print('test', star.specname, RA[i], Dec[i], star.temp, star.logg, star.fe, star.fe_err, star.alpha, best_mn, error, finalchisq)
 
 		with open(outputname, 'a') as f:
-			f.write(star.specname+'\t'+str(RA[i])+'\t'+str(Dec[i])+'\t'+str(star.temp)+'\t'+str(star.logg[0])+'\t'+str(star.fe[0])+'\t'+str(star.fe_err[0])+'\t'+str(star.alpha[0])+'\t'+str(best_mn[0])+'\t'+str(error[0])+'\t'+str(finalchisq)+'\n')
+			f.write(star.specname+'\t'+str(RA[i])+'\t'+str(Dec[i])+'\t'+str(star.temp)+'\t'+str(star.logg)+'\t'+str(star.fe)+'\t'+str(star.fe_err)+'\t'+str(star.alpha)+'\t'+str(best_mn[0])+'\t'+str(error[0])+'\t'+str(finalchisq)+'\n')
 
 	return
 
@@ -348,8 +349,8 @@ def main():
 	# Measure Mn abundances for new (Apr 2021) data
 	#run_chisq('/raid/caltech/moogify/sex10_1200B/moogify.fits.gz', '/raid/caltech/moogify/sex10_1200B/moogify.fits.gz', 'sex', 'sex10_1200B', startstar=0, globular=False, lines='new', plots=True, wvlcorr=True)
 	#run_chisq('/raid/caltech/moogify/dra10_1200B/moogify.fits.gz', '/raid/caltech/moogify/dra10_1200B/moogify.fits.gz', 'dra', 'dra10_1200B', startstar=0, globular=False, lines='new', plots=True, wvlcorr=True)
-	run_chisq('/raid/caltech/moogify/CVnIa_1200B/moogify.fits.gz', '/raid/caltech/moogify/CVnIa_1200B/moogify.fits.gz', 'cvni', 'CVnIa_1200B', startstar=99, globular=False, lines='new', plots=True, wvlcorr=True)
-
+	#run_chisq('/raid/caltech/moogify/CVnIa_1200B/moogify.fits.gz', '/raid/caltech/moogify/CVnIa_1200B/moogify.fits.gz', 'cvni', 'CVnIa_1200B', startstar=99, globular=False, lines='new', plots=True, wvlcorr=True)
+	run_chisq('/raid/caltech/moogify/bumia_1200B/moogify.fits.gz', '/raid/caltech/moogify/bumia_1200B/moogify.fits.gz', 'umi', 'bumia_1200B', startstar=0, globular=False, lines='new', plots=True, wvlcorr=True)
 
 if __name__ == "__main__":
 	main()

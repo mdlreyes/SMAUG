@@ -18,7 +18,7 @@ from astropy.io import fits
 from smooth_gauss import smooth_gauss
 import matplotlib.pyplot as plt
 
-def open_obs_file(filename, retrievespec=None, specparams=False, objname=None, coords=False, hires=False):
+def open_obs_file(filename, retrievespec=None, specparams=False, objname=None, coords=False, hires=False, inputcoords=None):
 	"""Open .fits.gz files with observed spectra.
 
 	Inputs:
@@ -37,6 +37,8 @@ def open_obs_file(filename, retrievespec=None, specparams=False, objname=None, c
 	coords 		 - if True, output the coordinates of the stars in file
 
 	hires 		 - open hi-res spectra (different format than Moogify)
+
+	inputcoords  - if not None (default), use to do coordinate matching as well as object name matching
 
 	Outputs:
 	wvl  - rest wavelength array for nth star
@@ -128,18 +130,32 @@ def open_obs_file(filename, retrievespec=None, specparams=False, objname=None, c
 				# Get index of entry that matches object name of spectrum
 				namearray = data['OBJNAME']
 				index 	  = np.where(namearray==objname)
-				print(objname, index)
+				print('test', objname, index)
 
 				# Check that such an entry exists
 				if len(index[0]) > 0:
 					print(index[0])
 
-					temp 	= int(data['TEFF'][index[0]])
-					logg 	= data['LOGG'][index[0]]
-					fe 		= data['FEH'][index[0]]
-					alpha 	= data['ALPHAFE'][index[0]]
+					# If needed, do additional coordinate matching
+					if len(index[0]) > 1:
+						idxRA = np.argmin(np.abs(inputcoords[0] - data['RA']))
+						idxDec = np.argmin(np.abs(inputcoords[1] - data['Dec']))
 
-					fe_err  = data['FEHERR'][index[0]]
+						if idxRA != idxDec:
+							print(idxRA, idxDec)
+							raise ValueError('Having trouble with coordinate matching!')
+						else:
+							idx = idxRA
+
+					else:
+						idx = index[0]
+
+					temp 	= int(data['TEFF'][idx])
+					logg 	= data['LOGG'][idx]
+					fe 		= data['FEH'][idx]
+					alpha 	= data['ALPHAFE'][idx]
+
+					fe_err  = data['FEHERR'][idx]
 					#zrest = data['ZREST'][index[0]]
 
 					print('Parameters: ', temp, logg, fe, alpha)
