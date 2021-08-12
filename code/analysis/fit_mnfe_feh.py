@@ -29,7 +29,7 @@ import matplotlib.patches as mpatches
 from statsmodels.stats.weightstats import DescrStatsW
 import cycler
 
-def fit_mnfe_feh(file, mnfe_check, outfile, title, fehia, maxerror=None, nlte=False, bestfit=False, sne=False, literature=None, ia_comparison=False):
+def fit_mnfe_feh(file, mnfe_check, outfile, title, fehia, maxerror=None, nlte=False, bestfit=False, sne=False, literature=None, ia_comparison=False, testdata=None):
 	"""Use model described in Kirby (in prep.) to determine Type Ia supernova yields for [Mn/H]
 
 	Inputs:
@@ -44,6 +44,7 @@ def fit_mnfe_feh(file, mnfe_check, outfile, title, fehia, maxerror=None, nlte=Fa
 	nlte		-- if 'True', apply statistical NLTE correction
 	bestfit, sne, ia_comparison -- if 'True', plot best-fit model / SNe yields / Z-dep Type Ia models
 	literature  -- if not None, must be list of files with data that can be overplotted
+	testdata	-- if not None, list in the format ['[X/Fe]', theta_X, bperp_X, [X/Fe]_CC]
 	"""
 
 	#############
@@ -51,48 +52,60 @@ def fit_mnfe_feh(file, mnfe_check, outfile, title, fehia, maxerror=None, nlte=Fa
 	#############
 
 	# Get data from files
-	name 	= []
-	feh 	= []
-	feherr 	= []
-	mnh 	= []
-	mnherr	= []
-	redchisq = []
-	mnfeflag = []
+	if testdata is None:
+		name 	= np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=0, dtype='str')
 
-	name 	= np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=0, dtype='str')
+		data = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=[5,6,8,9,10])
+		feh 	= data[:,0]
+		feherr 	= data[:,1]
+		mnh 	= data[:,2]
+		mnherr 	= data[:,3]
+		redchisq = data[:,4]
+		mnfeflag = len(feh) * [mnfe_check]
 
-	data = np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=[5,6,8,9,10])
-	feh 	= data[:,0]
-	feherr 	= data[:,1]
-	mnh 	= data[:,2]
-	mnherr 	= data[:,3]
-	redchisq = data[:,4]
-	mnfeflag = len(feh) * [mnfe_check]
+		# Compute [Mn/Fe]
+		mnfe = np.zeros(len(mnh))
+		mnfeerr = np.zeros(len(mnherr))
 
-	# Compute [Mn/Fe]
-	mnfe = np.zeros(len(mnh))
-	mnfeerr = np.zeros(len(mnherr))
+		for i in range(len(feh)):
+			if mnfeflag[i]:
+				mnfe[i] = mnh[i]
+				mnfeerr[i] = mnherr[i]
+			else:
+				mnfe[i] = mnh[i] - feh[i]
+				mnfeerr[i] = np.sqrt(np.power(mnherr[i],2.)+0.10**2.)
 
-	for i in range(len(feh)):
-		if mnfeflag[i]:
-			mnfe[i] = mnh[i]
-			mnfeerr[i] = mnherr[i]
-		else:
-			mnfe[i] = mnh[i] - feh[i]
-			mnfeerr[i] = np.sqrt(np.power(mnherr[i],2.)+0.10**2.)
+	# Get data for testing from Kirby+18
+	else:
+		# Read in [Mg/Fe] data instead of [Mn/Fe]
+		data = ascii.read("../data/evan_data/kirby18_data.txt").filled(-999)
+		feh = np.asarray(data['[Fe/H]'])
+		feherr = np.asarray(data['e_[Fe/H]'])
+		mnfe = np.asarray(data[testdata[0]])
+		mnfeerr = np.asarray(data['e_'+testdata[0]])
+		name = np.asarray(data['Name'])
+
+		# Remove any bad data
+		goodidx = np.where((feh > -990) & (mnfe > -990) & np.asarray(data['System']=='Sculptor'))
+		feh = feh[goodidx]
+		feherr = feherr[goodidx]
+		mnfe = mnfe[goodidx]
+		mnfeerr = mnfeerr[goodidx]
 
 	# Define outliers if necessary
-	outlier = np.where((feh < -2.25) & (mnfeerr < maxerror))[0]
+	'''
+	outlier = np.where((feh > -0.5))[0]
 	#outlier = np.where(((feh-feherr) < -2.5))[0]
 	#outlier = np.where((mnfe > 0.25))
 	print(name[outlier])
 	print(mnfe[outlier])
 	notoutlier = np.ones(len(mnfe), dtype='bool')
 	notoutlier[outlier] = False
+	'''
 
 	# Remove points with error > maxerror
 	if maxerror is not None:
-		goodmask 	= np.where((mnfeerr < maxerror) & notoutlier) # & (redchisq < 3.0))
+		goodmask 	= np.where((mnfeerr < maxerror)) # & notoutlier) # & (redchisq < 3.0))
 		name 	= name[goodmask]
 		feh 	= feh[goodmask]
 		feherr  = feherr[goodmask]
@@ -128,10 +141,12 @@ def fit_mnfe_feh(file, mnfe_check, outfile, title, fehia, maxerror=None, nlte=Fa
 	def lnlike(params, x, y, xerr, yerr):
 		theta, bperp = params
 
+		'''
 		# Make sure (Mn/Fe)_Ia is positive
 		mnfe_cc, test = compute_mnfe_ia(theta, bperp, R, xfit)
 		if (test < 0).any():
 			return -np.inf
+		'''
 
 		'''
 		L = 0.
@@ -162,10 +177,12 @@ def fit_mnfe_feh(file, mnfe_check, outfile, title, fehia, maxerror=None, nlte=Fa
 
 		L = np.sum( (-1.*np.log(np.sqrt(2.*np.pi)*sigma) - (np.power(delta,2.))/(2*np.power(sigma,2.))) )
 
+		'''
 		# Add in prior for [Mn/Fe]_CC ~ -0.3 from metal-poor MW halo
 		delta_cc = -0.3 - mnfe_cc
 		sigma_cc = 0.1
 		L = L + (-1.*np.log(np.sqrt(2.*np.pi)*sigma_cc) - (np.power(delta_cc,2.))/(2*np.power(sigma_cc,2.)))
+		'''
 
 		return L
 
@@ -190,6 +207,7 @@ def fit_mnfe_feh(file, mnfe_check, outfile, title, fehia, maxerror=None, nlte=Fa
 	maskinit = np.where((feh > -2.1))[0]
 	result = op.minimize(nll, [0., 0.], args=(feh[maskinit], mnfe[maskinit], feherr[maskinit], mnfeerr[maskinit]))
 	theta_init, b_init = result["x"]
+	print(theta_init, b_init)
 
 	# Sample the log-probability function using emcee - first, initialize the walkers
 	ndim = 2
@@ -274,13 +292,17 @@ def fit_mnfe_feh(file, mnfe_check, outfile, title, fehia, maxerror=None, nlte=Fa
 	plotmask = np.zeros(len(xfit), dtype='bool')
 	for i in range(len(R)):
 		if R[i] > 0:
-			test = np.log10( (R[i] + 1.)/(R[i]) * np.power(10.,yvalues[i]) - (1./R[i] * np.power(10.,all_mnfe_cc)) )
+			test = np.log10((R[i] + 1.)/(R[i]) * np.power(10.,yvalues[i]) - (1./R[i] * np.power(10.,all_mnfe_cc)))
+
 			mask = np.isnan(test)
-			if mask.any() == False:
+			if (mask.any() == False) and (xfit[i] > (fehia+0.15)):
 				plotmask[i] = True
 
 			all_mnfe_ia = test[~mask]
-			mnfe_ia[:,i] = np.array([np.percentile(all_mnfe_ia,16), np.percentile(all_mnfe_ia,50), np.percentile(all_mnfe_ia,84)])
+			try:
+				mnfe_ia[:,i] = np.array([np.percentile(all_mnfe_ia,16), np.percentile(all_mnfe_ia,50), np.percentile(all_mnfe_ia,84)])
+			except:
+				pass
 
 	#################
 	# Create figure #
@@ -370,21 +392,34 @@ def fit_mnfe_feh(file, mnfe_check, outfile, title, fehia, maxerror=None, nlte=Fa
 
 		print('Average best-fit model:',np.average(yfit[1]))
 
+	if testdata is not None:
+		# Plot results from Kirby+19
+		ytest = np.zeros_like(xfit)
+		for i in range(len(ytest)):
+			if xfit[i] <= fehia:
+				ytest[i] = testdata[3]
+			else:
+				ytest[i] = xfit[i]*np.tan(testdata[1]) + testdata[2]/(np.cos(testdata[1]))
+
+		testplot, = ax.plot(xfit, ytest, color='C4', linestyle=':', linewidth=5, zorder=300)
+		patches.append(testplot)
+		labels.append("Kirby+19")
+
 	if sne:
 
 		#patches = []
 		#labels = []
 
 		# Plot Type Ia [Mn/Fe] yield
-		mask = np.nonzero(mnfe_ia[1])
-		ax.fill_between(xfit[plotmask], mnfe_ia[2][plotmask], mnfe_ia[0][plotmask], color='C9', alpha=0.4, zorder=200)
+		mask = np.where((xfit > (fehia + 0.1))) # and ~np.isclose(mnfe_ia[1],0.))
+		ax.fill_between(xfit[mask], mnfe_ia[2][mask], mnfe_ia[0][mask], color='C9', alpha=0.4, zorder=200)
 		typeia1 = mpatches.Patch(color='C9', alpha=0.4)
 		typeia2, = ax.plot(xfit[mask], mnfe_ia[1][mask], color='C9', linestyle='--', linewidth=3, zorder=200)
 
 		fehmeasures = np.array((-1.5,-1.0,-2.0)) # [Fe/H] at which to measure [Mn/Fe]_Ia
 		for fehmeasure in fehmeasures:
 			idx_feh = np.argmin(np.abs(xfit - fehmeasure))
-			print('[Mn/Fe] at '+str(fehmeasure))
+			print('[Mn/Fe]_Ia at '+str(fehmeasure))
 			print(mnfe_ia[1][idx_feh])
 			print(mnfe_ia[2][idx_feh]-mnfe_ia[1][idx_feh])
 			print(mnfe_ia[1][idx_feh]-mnfe_ia[0][idx_feh])
@@ -408,8 +443,10 @@ def fit_mnfe_feh(file, mnfe_check, outfile, title, fehia, maxerror=None, nlte=Fa
 		ax.add_artist(legend)
 		'''
 
+	# Set axis limits
 	ax.set_xlim([-2.8,-0.75])
-	ax.set_ylim([-1.2,1.0])
+	if testdata is None:
+		ax.set_ylim([-1.2,1.0])
 
 	if ia_comparison:
 		outfile += '_zdep'
@@ -517,7 +554,10 @@ def fit_mnfe_feh(file, mnfe_check, outfile, title, fehia, maxerror=None, nlte=Fa
 	# Format plot
 	ax.set_title(title, fontsize=18)
 	ax.set_xlabel('[Fe/H]', fontsize=24)
-	ax.set_ylabel('[Mn/Fe]', fontsize=24)
+	if testdata is not None:
+		ax.set_ylabel(testdata[0], fontsize=24)
+	else:
+		ax.set_ylabel('[Mn/Fe]', fontsize=24)
 	if ia_comparison:
 		ax.set_ylabel(r'[Mn/Fe]$_{\mathrm{Ia}}$', fontsize=24)
 	for label in (ax.get_xticklabels() + ax.get_yticklabels()):
@@ -957,12 +997,14 @@ def main():
 	#fit_mnfe_feh('../data/bscl5_1200B_final3.csv',False,'../figures/scl_fit3', 'Sculptor dSph', fehia=-2.12, maxerror=0.3, sne=True, literature=['Sobeck+06','North+12'])
 	#fit_mnfe_feh('../data/bscl5_1200B_final3.csv',False,'../figures/scl_fit3_nlte', 'Sculptor dSph', fehia=-2.12, maxerror=0.3, nlte=True, sne=False) 
 
-	#fit_mnfe_feh('../data/bscl5_1200B_final3.csv',False,'../figures/scl_fit3', 'Sculptor dSph', fehia=-2.12, maxerror=0.3, bestfit=True, sne=True)
-	
+	# Test: try to reproduce Kirby+19 results
+	#fit_mnfe_feh('../data/bscl5_1200B_final3.csv',False,'../figures/scl_fit3', 'Sculptor dSph', fehia=-2.12, maxerror=0.3, bestfit=True, sne=True, testdata=['[Ni/Fe]', -0.240855437, -0.55, -0.07])
+	#fit_mnfe_feh('../data/bscl5_1200B_final3.csv',False,'../figures/scl_fit3', 'Sculptor dSph', fehia=-2.12, maxerror=0.3, bestfit=True, sne=True, testdata=['[Co/Fe]', -0.719075652, -1.13, 0.26])
+
 	# New data (Apr 2021)
 	#fit_mnfe_feh('../data/newdata_2021/dra10_1200B.csv',False,'../figures/apr2021/dra_fit', 'Draco dSph', fehia=-2.36, maxerror=0.3, bestfit=True, sne=True)
-	fit_mnfe_feh('../data/newdata_2021/LeoIIb_1200B.csv',False,'../figures/apr2021/leoii_fit', 'Leo II dSph', fehia=-1.70, maxerror=0.3, bestfit=True, sne=True)
-	#fit_mnfe_feh('../data/newdata_2021/sex10_1200B.csv',False,'../figures/apr2021/sex_fit', 'Sextans dSph', fehia=-2.36, maxerror=0.3, bestfit=True, sne=True)
+	#fit_mnfe_feh('../data/newdata_2021/LeoIIb_1200B.csv',False,'../figures/apr2021/leoii_fit', 'Leo II dSph', fehia=-1.70, maxerror=0.3, bestfit=True, sne=True)
+	fit_mnfe_feh('../data/newdata_2021/sex10_1200B.csv',False,'../figures/apr2021/sex_fit', 'Sextans dSph', fehia=-2.36, maxerror=0.3, bestfit=True, sne=True)
 
 	# Plot for Ursa Minor
 	#fit_mnfe_feh(['../data/bumia_1200B_final3.csv'],[False],'../figures/umi_fit3', 'Ursa Minor dSph', fehia=-2.42, maxerror=0.3, gratings=['#594F4F'])
